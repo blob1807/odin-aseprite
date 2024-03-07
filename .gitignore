@@ -1,1 +1,9 @@
 \ols.json
+\main.odin
+
+*.exe
+*.ll
+*.obj
+\build\*
+*.a
+*.o
