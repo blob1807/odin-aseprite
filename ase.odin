@@ -7,21 +7,21 @@ import "core:strings"
 import "core:unicode/utf8"
 import "core:c"
 
-BYTE: u8
-WORD: u16le
-SHORT: i16le
-DWORD: u32le
-LONG: i32le
-FIXED: u32le // 16.16
-FLOAT: f32le
-DOUBLE: f64le
-QWORD: u64le
-LONG64: i64le
+BYTE   :: u8
+WORD   :: u16le
+SHORT  :: i16le
+DWORD  :: u32le
+LONG   :: i32le
+FIXED  :: u32le // 16.16
+FLOAT  :: f32le
+DOUBLE :: f64le
+QWORD  :: u64le
+LONG64 :: i64le
 
-BYTE_N: [dynamic]BYTE
+BYTE_N :: [dynamic]BYTE
 
 STRING :: struct {
-    length: WORD
+    length: WORD,
     data: []u8
 }
 POINT :: struct {
@@ -35,8 +35,11 @@ PECT :: struct {
     size: SIZE,
 }
 
-PIXEL :: union {RGBA: [4]BYTE, GRAYSCALE: [2]BYTE, INDEXED: BYTE}
+PIXEL_RGBA      :: [4]BYTE
+PIXEL_GRAYSCALE :: [2]BYTE
+PIXEL_INDEXED   :: BYTE
 
-TILE :: union {BYTE, WORD, DWORD}
+PIXEL :: union {PIXEL_RGBA, PIXEL_GRAYSCALE, PIXEL_INDEXED}
+TILE  :: union {BYTE, WORD, DWORD}
 
-UUID: [16]BYTE
+UUID :: [16]BYTE
