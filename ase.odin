@@ -22,6 +22,8 @@ LONG64 :: i64le
 
 BYTE_N :: [dynamic]BYTE
 
+// TODO: See if adding #packed is better
+// https://odin-lang.org/docs/overview/#packed 
 STRING :: struct {
     length: WORD,
     data: []u8
