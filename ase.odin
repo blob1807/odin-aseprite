@@ -1,4 +1,4 @@
-package ase_handler
+package aseprite_file_handler
 
 import "core:fmt"
 import "core:io"
@@ -14,7 +14,8 @@ WORD   :: u16le
 SHORT  :: i16le
 DWORD  :: u32le
 LONG   :: i32le
-FIXED  :: u32le // 16.16
+//FIXED  :: u32le // 16.16
+FIXED :: struct {high, low:u16le}
 FLOAT  :: f32le
 DOUBLE :: f64le
 QWORD  :: u64le
