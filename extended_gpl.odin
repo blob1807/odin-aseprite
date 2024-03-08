@@ -1,4 +1,4 @@
-package ase_handler
+package aseprite_file_handler
 
 import "core:fmt"
 import "core:io"
@@ -22,151 +22,151 @@ gpl_palette :: struct {
 
 gpl_color :: struct {
     using color: struct{r,g,b,a: int},
+    //using color: [4]int,
     name: string
 }
 
-gpl_parse_split:: proc(data: string, allocator := context.allocator) -> (parsed: gpl_palette, ok: bool, err: runtime.Allocator_Error) {
-    split := strings.split_lines(data, allocator) or_return
-    defer delete(split)
-
-    if len(split) <= 1 || split[0] != "GIMP Palette" {
-        return
-    }
-    for line in split[1:] {
-        line := strings.trim_null(strings.trim_space(line))
-
-        if len(line) < 1 || line[0] == '#' {
-        }
-        else if strings.has_prefix(line, "Channels") || strings.has_prefix(line, "channels") {
-            if strings.has_suffix(line, "rgba") || strings.has_suffix(line, "RGBA") {
-                parsed.rgba = true
-            }
-        } else if strings.has_prefix(line, "Name") || strings.has_prefix(line, "Name") {
-            line = strings.trim_prefix(line, "name: ")
-            parsed.name = strings.clone(strings.trim_prefix(line, "Name: "), allocator)
-
-        } else if strings.has_prefix(line, "Colums") || strings.has_prefix(line, "colums") {
-            line = strings.trim_prefix(line, "colums: ")
-            n, n_ok := strconv.parse_int(strings.trim_prefix(line, "Colums: "))
-            if !n_ok {
-                return
-            }
-            parsed.colums = n
-        } else {
-            color: gpl_color
-            line := line
-            i := strings.index(line, " ")
-            n, n_ok := strconv.parse_int(line[:i])
-            if !n_ok {return}
-            color.r = n
-
-            line = strings.trim_left_space(line[i:])
-            i = strings.index(line, " ")
-            n, n_ok = strconv.parse_int(line[:i])
-            if !n_ok {return}
-            color.g = n
-
-            line = strings.trim_left_space(line[i:])
-            i = strings.index(line, " ")
-            if i == -1 {i = len(line)-1}
-            n, n_ok = strconv.parse_int(line[:i])
-            if !n_ok {return}
-            color.b = n
-
-            if parsed.rgba {
-                line = strings.trim_left_space(line[i:])
-                i = strings.index(line, " ")
-                if i == -1 {i = len(line)-1}
-                n, n_ok = strconv.parse_int(line[:i])
-                if !n_ok {return}
-                color.a = n
-            }
-            color.name = line[i+1:]
-
-            append(&parsed.colors, color)
-        }
-    }
-    return parsed, true, .None
+GPL_Unmarshal_Error :: enum {
+    None,
+    Invalid_Palette,
+    Bad_Magic_Number,
+    Cant_Parse_Columns,
+    Cant_Parse_Color,
 }
 
-
-gpl_parse :: proc(data: string, allocator := context.allocator) -> (parsed: gpl_palette, ok: bool, err: runtime.Allocator_Error) {
-    parsed.raw := data
+gpl_unmarshal_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Unmarshal_Error) {
+    parsed.raw = data
     s := parsed.raw
     index := strings.index(s, "\n")
-    if index == -1 || s[:index] != "GIMP Palette" { return }
+    if index == -1 || s[:index] != "GIMP Palette" { return {}, .Bad_Magic_Number }
 
     s = s[index+1:]
     index = strings.index(s, "\n")
 
-    for s[0] == '#' { s = s[index+1:];index = strings.index(s, "\n") }
-    if index == -1 { return }
-
-    for {
-        if i := strings.index(s, "Name: "); i > 0 {
-            index = strings.index(s, "\n")
-            if index == -1 { index = len(data)-1 }
-            parsed.name = s[i:index]
+    for s[0] == '#' { 
+        s = s[index+1:]
+        index = strings.index(s, "\n")
+        if index == -1 { 
+            return {}, .Invalid_Palette
         }
     }
-    
-    
-    for {
-        line := strings.trim_null(strings.trim_space(s))
 
-        if len(line) < 1 || line[0] == '#' {
-        }
-        else if strings.has_prefix(line, "Channels") || strings.has_prefix(line, "channels") {
-            if strings.has_suffix(line, "rgba") || strings.has_suffix(line, "RGBA") {
+    for {
+        index = strings.index(s, "\n")
+        if index == -1 { index = len(s)-1 } 
+        if s[0] == '#' {}
+        else if strings.has_prefix(s, "Name: ") {
+            i := strings.index(s, " ")
+            parsed.name = strings.trim_space(s[i:index])
+
+        } else if strings.has_prefix(s, "Channels: ") {
+            if strings.has_suffix(s[:index], "RGBA") {
                 parsed.rgba = true
             }
-        } else if strings.has_prefix(line, "Name") || strings.has_prefix(line, "name") {
-            line = strings.trim_prefix(line, "name: ")
-            parsed.name = strings.clone(strings.trim_prefix(line, "Name: "), allocator)
-
-        } else if strings.has_prefix(line, "Colums") || strings.has_prefix(line, "colums") {
-            line = strings.trim_prefix(line, "colums: ")
-            n, n_ok := strconv.parse_int(strings.trim_prefix(line, "Colums: "))
-            if !n_ok {
-                return
-            }
+            
+        } else if strings.has_prefix(s, "Colums: ") {
+            i := strings.index(s, " ")
+            n, n_ok := strconv.parse_int(strings.trim_space(s[i:index]))
+            if !n_ok { return {}, .Cant_Parse_Columns }
             parsed.colums = n
+            
         } else {
+            break
+        }
+        s = s[index+1:]
+    }    
+    
+    for len(s) != 0 && index != len(s) {
+        index = strings.index(s, "\n")
+        if index == -1 { index = len(s) }
+        if s[0] != '#' { 
             color: gpl_color
             color.a = 255
-            line := line
+            line := strings.trim_left_space(s[:index])
 
             i := strings.index(line, " ")
             n, n_ok := strconv.parse_int(line[:i])
-            if !n_ok {return}
+            if !n_ok { return {}, .Cant_Parse_Color }
             color.r = n
 
             line = strings.trim_left_space(line[i:])
             i = strings.index(line, " ")
             n, n_ok = strconv.parse_int(line[:i])
-            if !n_ok {return}
+            if !n_ok { return {}, .Cant_Parse_Color }
             color.g = n
 
             line = strings.trim_left_space(line[i:])
             i = strings.index(line, " ")
             if i == -1 {i = len(line)-1}
             n, n_ok = strconv.parse_int(line[:i])
-            if !n_ok {return}
+            if !n_ok { return {}, .Cant_Parse_Color }
             color.b = n
 
             if parsed.rgba {
                 line = strings.trim_left_space(line[i:])
                 i = strings.index(line, " ")
-                if i == -1 {i = len(line)-1}
+                if i == -1 {i = len(line)}
                 n, n_ok = strconv.parse_int(line[:i])
-                if !n_ok {return}
+                if !n_ok { return {}, .Cant_Parse_Color }
                 color.a = n
+            } else {
+                color.a = 255
             }
-            color.name = line[i+1:]
-
+            color.name = strings.trim_space(line[i:])
             append(&parsed.colors, color)
         }
-        fmt.println(line)
+        if index == len(s) {
+            break
+        }
+        s = s[index+1:]
     }
-    return parsed, true, .None
+    return
+}
+
+gpl_unmarshal_bytes :: proc(data: []byte) -> (parsed: gpl_palette, err: GPL_Unmarshal_Error) {
+    return gpl_unmarshal_string(string(data))
+}
+
+gpl_unmarshal :: proc {gpl_unmarshal_string, gpl_unmarshal_bytes}
+
+
+gpl_marshal :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []byte, err: runtime.Allocator_Error) {
+    sb: strings.Builder
+    // len("GIMP Palette\nName: \nChannels: RGBA\nColums: 255\n") == 47
+    strings.builder_init_len_cap(&sb, 0, 47 + len(pal.colors) + len(pal.name), allocator) or_return
+    strings.write_string(&sb, "GIMP Palette\n")
+
+    if len(pal.name) != 0 {
+        strings.write_string(&sb, "Name: ")
+        strings.write_string(&sb, pal.name)
+        strings.write_string(&sb, "\n")
+    }
+    if pal.colums != 0 {
+        strings.write_string(&sb, "Colums: ")
+        strings.write_int(&sb, pal.colums)
+        strings.write_string(&sb, "\n")
+    }
+
+    strings.write_string(&sb, "Channels: RGBA\n#\n")
+
+    for color in pal.colors {
+        strings.write_int(&sb, color.r)
+        strings.write_byte(&sb, ' ')
+        strings.write_int(&sb, color.g)
+        strings.write_byte(&sb, ' ')
+        strings.write_int(&sb, color.b)
+        strings.write_byte(&sb, ' ')
+        strings.write_int(&sb, color.a)
+        strings.write_byte(&sb, ' ')
+        strings.write_string(&sb, color.name)
+        strings.write_byte(&sb, '\n')
+
+        //fmt.sbprintln(&sb, color.r, color.g, color.b, color.a, color.name)
+    }
+    data = sb.buf[:]
+    return
+}
+
+gpl_marshal_string  :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
+    return string(gpl_marshal(pal, allocator) or_return), .None
 }
