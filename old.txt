@@ -1,0 +1,63 @@
+gpl_parse_og :: proc(data: string, allocator := context.allocator) -> (parsed: gpl_palette, ok: bool, err: runtime.Allocator_Error) {
+    split := strings.split_lines(data, allocator) or_return
+    defer delete(split)
+
+    if len(split) <= 1 || split[0] != "GIMP Palette" {
+        return
+    }
+    for line in split[1:] {
+        line := strings.trim_null(strings.trim_space(line))
+
+        if len(line) < 1 || line[0] == '#' {
+        }
+        else if strings.has_prefix(line, "Channels") || strings.has_prefix(line, "channels") {
+            if strings.has_suffix(line, "rgba") || strings.has_suffix(line, "RGBA") {
+                parsed.rgba = true
+            }
+        } else if strings.has_prefix(line, "Name") || strings.has_prefix(line, "Name") {
+            line = strings.trim_prefix(line, "name: ")
+            parsed.name = strings.clone(strings.trim_prefix(line, "Name: "), allocator)
+
+        } else if strings.has_prefix(line, "Colums") || strings.has_prefix(line, "colums") {
+            line = strings.trim_prefix(line, "colums: ")
+            n, n_ok := strconv.parse_int(strings.trim_prefix(line, "Colums: "))
+            if !n_ok {
+                return
+            }
+            parsed.colums = n
+        } else {
+            color: gpl_color
+            line := line
+            i := strings.index(line, " ")
+            n, n_ok := strconv.parse_int(line[:i])
+            if !n_ok {return}
+            color.r = n
+
+            line = strings.trim_left_space(line[i:])
+            i = strings.index(line, " ")
+            n, n_ok = strconv.parse_int(line[:i])
+            if !n_ok {return}
+            color.g = n
+
+            line = strings.trim_left_space(line[i:])
+            i = strings.index(line, " ")
+            if i == -1 {i = len(line)-1}
+            n, n_ok = strconv.parse_int(line[:i])
+            if !n_ok {return}
+            color.b = n
+
+            if parsed.rgba {
+                line = strings.trim_left_space(line[i:])
+                i = strings.index(line, " ")
+                if i == -1 {i = len(line)-1}
+                n, n_ok = strconv.parse_int(line[:i])
+                if !n_ok {return}
+                color.a = n
+            }
+            color.name = line[i+1:]
+
+            append(&parsed.colors, color)
+        }
+    }
+    return parsed, true, .None
+}
