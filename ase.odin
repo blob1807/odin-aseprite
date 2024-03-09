@@ -6,6 +6,7 @@ import "core:os"
 import "core:strings"
 import "core:unicode/utf8"
 import "core:c"
+import "core:math/fixed"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
@@ -15,7 +16,9 @@ SHORT  :: i16le
 DWORD  :: u32le
 LONG   :: i32le
 //FIXED  :: u32le // 16.16
-FIXED :: struct {high, low:u16le}
+//FIXED  :: struct{h,l: u16le}
+//FIXED  :: fixed.Fixed16_16
+FIXED  :: distinct fixed.Fixed(i32le, 16)
 FLOAT  :: f32le
 DOUBLE :: f64le
 QWORD  :: u64le
@@ -25,17 +28,15 @@ BYTE_N :: [dynamic]BYTE
 
 // TODO: See if adding #packed is better
 // https://odin-lang.org/docs/overview/#packed 
-STRING :: struct {
-    length: WORD,
-    data: []u8
-}
+// STRING :: struct {length: WORD, data: []u8}
+STRING :: string
 POINT :: struct {
     x,y: LONG
 }
 SIZE :: struct {
     w,h: LONG
 }
-PECT :: struct {
+RECT :: struct {
     origin: POINT,
     size: SIZE,
 }
@@ -49,6 +50,9 @@ TILE  :: union {BYTE, WORD, DWORD}
 
 UUID :: [16]BYTE
 
+Color_RGB :: struct{r,g,b: BYTE} // == [3]BYTE
+Color_RGBA :: struct{r,g,b,a: BYTE} // == [4]BYTE
+
 FILE_HEADER_SIZE :: 128
 file_header :: struct {
     size: DWORD,
@@ -56,7 +60,12 @@ file_header :: struct {
     frames: WORD,
     width: WORD,
     height: WORD,
-    color_depth: WORD, // 32=RGBA, 16=Grayscale, 8=Indexed
+    //color_depth: WORD, // 32=RGBA, 16=Grayscale, 8=Indexed
+    color_depth: enum(WORD){ // TODO: is bitset????
+        Indexed=8,
+        Grayscale=16,
+        RGBA=32
+    }, 
     flags: DWORD, // 1=Layer opacity has valid value
     speed: WORD, // Not longer in use
     transparent_index: BYTE, // for Indexed sprites only
@@ -104,8 +113,232 @@ Chunk_Types :: enum(WORD) {
 
 old_palette_256_chunk :: struct {
     size: WORD,
-    packets: [dynamic]struct {
-
+    packets: []struct {
+        entries_to_skip: BYTE, // start from 0
+        num_colors: BYTE, // 0 == 256
+        colors: []Color_RGB
     }
+}
 
+old_palette_64_chunk :: struct {
+    size: WORD,
+    packets: []struct {
+        entries_to_skip: BYTE, // start from 0
+        num_colors: BYTE, // 0 == 256
+        colors: []Color_RGB
+    }
+}
+
+layer_chunk :: struct {
+    flags: enum(WORD) { // TODO: is bitset????
+        Visiable = 1,
+        Editable = 2,
+        Lock_Movement = 4,
+        Background = 8,
+        Prefer_Linked_Cels = 16,
+        Group_Collapsed = 32,
+        Ref_Layer = 64,
+    },
+    type: enum(WORD) {
+        Normal, // image
+        Group,
+        Tilemap,
+    },
+    child_level: WORD,
+    default_width: WORD, // Ignored
+    default_height: WORD, // Ignored
+    blend_mode: enum(WORD) {
+        Normal,
+        Multiply,
+        Screen,
+        Overlay,
+        Darken,
+        Lighten,
+        Color_Dodge,
+        Color_Burn,
+        Hard_Light,
+        Soft_Light,
+        Difference,
+        Exclusion,
+        Hue,
+        Saturation,
+        Color,
+        Luminosity,
+        Addition,
+        Subtract,
+        Divide,
+    },
+    opacity: BYTE, // set header flag is 1
+    name: STRING,
+    tileset_index: DWORD, // set if type == Tilemap
+}
+
+raw_cel :: struct{width, height: WORD, pixel: []PIXEL}
+linked_cel :: distinct WORD
+com_image_cel :: struct{width, height: WORD, pixel: []PIXEL} // raw cel ZLIB compressed
+com_tilemap_cel :: struct{
+    width, height: WORD,
+    bits_per_tile: WORD, // always 32
+    bitmask_id: DWORD,
+    bitmask_x: DWORD,
+    bitmask_y: DWORD,
+    bitmask_diagonal: DWORD,
+    tiles: []TILE, // ZLIB compressed
+}
+
+cel_chunk :: struct {
+    layer_index: WORD,
+    x,y: SHORT,
+    opacity_level: BYTE,
+    type: enum(WORD){
+        Raw,
+        Linked_Cel,
+        Compressed_Image,
+        Compressed_Tilemap,
+    },
+    z_index: SHORT, //0=default, pos=show n layers later, neg=back
+    cel: union{ raw_cel, linked_cel, com_image_cel, com_tilemap_cel}
+}
+
+cel_extra_chunk :: struct {
+    flags: enum(WORD){None,Precise},
+    x,y: FIXED,
+    width, height: FIXED,
+}
+
+color_profile_chunk :: struct {
+    type: enum(WORD) {
+        none,
+        srgb,
+        icc,
+    },
+    flags: WORD,
+    fixed_gamma: FIXED,
+    icc: struct {
+        length: DWORD,
+        data: []BYTE,
+    },
+}
+
+external_files_chunk :: struct {
+    length: DWORD,
+    entries: []struct{
+        id: DWORD,
+        type: enum(BYTE){ // TODO: is bitset????
+            Palette,
+            Tileset,
+            Properties_Name,
+            Tile_Manegment_Name,
+        },
+        file_name_or_id: STRING,
+    }
+}
+
+mask_chunk :: struct {
+    x,y: SHORT,
+    width, height: WORD,
+    name: STRING,
+    bit_map_data: []BYTE, //size = height*((width+7)/8)
+}
+
+path_chunk :: struct{} // never used
+
+tags_chunk :: struct {
+    nuber: WORD,
+    tags: []struct{
+        from_frame: WORD,
+        to_frame: WORD,
+        loop_direction: enum(BYTE){ // TODO: is bitset????
+            Forward,
+            Reverse,
+            Ping_Pong,
+            Ping_Pong_Reverse,
+        },
+        repeat: WORD,
+        tag_color: Color_RGB,
+        name: STRING,
+    }
+}
+
+palette_chunk :: struct {
+    size: DWORD,
+    first_index: DWORD,
+    last_index: DWORD,
+    entries: []struct {
+        flags: WORD, // 1=has name
+        red, green, blue, alpha: BYTE,
+        name: STRING,
+    }
+}
+
+user_data_vec :: struct {
+    name: DWORD,
+    type: WORD,
+    data: union {
+        []struct{type: WORD, data: []BYTE},
+        []BYTE,
+    }
+}
+
+// TODO: properties_map needs to be reworked into a map
+user_data_bit_4 :: struct {
+    size: DWORD,
+    num: DWORD,
+    properties_map: []struct {
+        key: DWORD,
+        num: DWORD,
+        property:[]struct {
+            name: STRING,
+            type: WORD,
+            data: union {
+                BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
+                DOUBLE, STRING, SIZE, RECT, user_data_vec, 
+                struct{type: WORD, data: []BYTE}, UUID
+            }
+        }
+    }
+}
+
+user_data_chunk :: struct {
+    flags: enum(DWORD){ // TODO: is bitset????
+        test=1,
+        color=2,
+        properties=4
+    },
+    data: union{STRING, Color_RGBA, user_data_bit_4}
+}
+
+slice_chunk :: struct {
+    num_of_keys: DWORD,
+    flags: DWORD, // 1=9-patched slice, 2=pivot information
+    name: STRING,
+    data: []struct{
+        frams_num: DWORD,
+        x,y: LONG,
+        width, heigth: DWORD,
+        data: union{
+            struct{center_x,center_y: LONG, center_width, center_height: DWORD}, 
+            struct{pivot_x,pivot_y: LONG}
+        }
+    }
+}
+
+tileset_chunk :: struct {
+    id: DWORD,
+    flags: enum(DWORD){ // TODO: is bitset????
+        include_link_to_external_file=1,
+        Include_tiles_inside_this_file=2,
+        tile_id_is_0=4,
+        auto_mode_x_flip_match=8,
+        ditto_y=16,
+        ditto_diagonal=32,
+    },
+    num_of_tiles: DWORD,
+    witdh, height: WORD,
+    base_index: SHORT,
+    name: STRING,
+    data: union{
+        struct{file_id, tileset_id: DWORD},
+        struct{length: DWORD, data:[]PIXEL},
+    }
 }
