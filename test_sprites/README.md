@@ -1,7 +1,9 @@
 # Files
 
 ### Provided by Blob
-* `robot.aseprite`: Mulipule layers & frames, Custom palette.
+* `geralt.aseprite`
+* `mango-panda.aseprite`
+* `marshmallow.aseprite`
 
 ### Provided by  [Aseprite GitHub](https://github.com/aseprite/aseprite/tree/main/tests/sprites)
 * `abcd.aseprite`: Indexed, 32x32, four layers ("a", "b", "c", "d")
