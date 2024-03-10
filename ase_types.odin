@@ -9,9 +9,6 @@ WORD   :: u16le
 SHORT  :: i16le
 DWORD  :: u32le
 LONG   :: i32le
-//FIXED  :: u32le // 16.16
-//FIXED  :: struct{h,l: u16le}
-//FIXED  :: fixed.Fixed16_16
 FIXED  :: distinct fixed.Fixed(i32le, 16)
 FLOAT  :: f32le
 DOUBLE :: f64le
@@ -22,8 +19,6 @@ BYTE_N :: [dynamic]BYTE
 
 // TODO: See if adding #packed is better
 // https://odin-lang.org/docs/overview/#packed 
-// STRING :: struct {length: WORD, data: []u8}
-// STRING :: string
 POINT :: struct {
     x,y: LONG
 }
@@ -47,15 +42,28 @@ UUID :: [16]BYTE
 Color_RGB :: struct{r,g,b: BYTE} // == [3]BYTE
 Color_RGBA :: struct{r,g,b,a: BYTE} // == [4]BYTE
 
+ASE_Document :: struct {
+    header: File_Header,
+    frames: []Frame,
+}
+
+Frame :: struct {
+    header: Frame_Header,
+    chunks: []Chunk,
+}
+
+Chunk :: union{
+    Old_Palette_256_Chunk, Old_Palette_64_Chunk, Layer_Chunk, Cel_Chunk, 
+    Cel_Extra_Chunk, Color_Profile_Chunk, External_Files_Chunk, Mask_Chunk, 
+    Path_Chunk, Tags_Chunk, Palette_Chunk, User_Data_Chunk, Slice_Chunk, 
+    Tileset_Chunk,
+}
 
 FILE_HEADER_SIZE :: 128
 File_Header :: struct {
-    size: DWORD,
-    magic: WORD, // always \xA5E0
     frames: WORD,
     width: WORD,
     height: WORD,
-    //color_depth: WORD, // 32=RGBA, 16=Grayscale, 8=Indexed
     color_depth: enum(WORD){
         Indexed=8,
         Grayscale=16,
@@ -75,24 +83,9 @@ File_Header :: struct {
 
 FRAME_HEADER_SIZE :: 16
 Frame_Header :: struct {
-    size: DWORD,
-    magic: WORD, // always \xF1FA
     old_num_of_chunks: WORD, // if \xFFFF use new
     duration: WORD, // in milliseconds
     num_of_chunks: WORD, // if 0 use old
-}
-
-Frame :: struct {
-    size: DWORD,
-    type: Chunk_Types,
-    data: []Chunk,
-}
-
-Chunk :: union{
-    Old_Palette_256_Chunk, Old_Palette_64_Chunk, Layer_Chunk, Cel_Chunk, 
-    Cel_Extra_Chunk, Color_Profile_Chunk, External_Files_Chunk, Mask_Chunk, 
-    Path_Chunk, Tags_Chunk, Palette_Chunk, User_Data_Chunk, Slice_Chunk, 
-    Tileset_Chunk,
 }
 
 Chunk_Types :: enum(WORD) {
@@ -114,7 +107,6 @@ Chunk_Types :: enum(WORD) {
 }
 
 Old_Palette_256_Chunk :: struct {
-    size: WORD,
     packets: []struct {
         entries_to_skip: BYTE, // start from 0
         num_colors: BYTE, // 0 == 256
@@ -123,7 +115,6 @@ Old_Palette_256_Chunk :: struct {
 }
 
 Old_Palette_64_Chunk :: struct {
-    size: WORD,
     packets: []struct {
         entries_to_skip: BYTE, // start from 0
         num_colors: BYTE, // 0 == 256
@@ -228,7 +219,6 @@ Color_Profile_Chunk :: struct {
 }
 
 External_Files_Chunk :: struct {
-    length: DWORD,
     entries: []struct{
         id: DWORD,
         type: enum(BYTE){
@@ -251,7 +241,7 @@ Mask_Chunk :: struct {
 Path_Chunk :: struct{} // never used
 
 Tags_Chunk :: struct {
-    nuber: WORD,
+    number: WORD,
     tags: []struct{
         from_frame: WORD,
         to_frame: WORD,
@@ -268,64 +258,75 @@ Tags_Chunk :: struct {
 }
 
 Palette_Chunk :: struct {
-    size: DWORD,
     first_index: DWORD,
     last_index: DWORD,
     entries: []struct {
-        // flags: bit_set[enum(WORD){Has_Name}; WORD],
-        flags: enum(WORD){None, Has_Name},
-        red, green, blue, alpha: BYTE,
+        //flags: bit_set[enum(WORD){Has_Name}; WORD],
+        has_name: bool,
+        color: Color_RGBA,
         name: string,
     }
 }
 
-user_data_vec :: struct {
+UD_Vec_Diff :: struct{
+    type: WORD, 
+    data: []BYTE
+}
+
+UD_Vec_Same :: []BYTE
+
+UD_Vec :: struct {
     name: DWORD,
     type: WORD,
+    data: []union {UD_Vec_Diff, UD_Vec_Same}
+}
+
+UD_Properties_Map :: map[DWORD][]UD_Property
+
+UD_Property :: struct {
+    name: string,
+    type: WORD,
     data: union {
-        []struct{type: WORD, data: []BYTE},
-        []BYTE,
+        BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
+        DOUBLE, string, SIZE, RECT, UD_Vec, 
+        UD_Properties_Map, UUID
     }
 }
 
-// TODO: properties_map needs to be reworked into a map
-user_data_bit_4 :: struct {
+UD_Bit_4 :: struct {
     size: DWORD,
     num: DWORD,
-    properties_map: []struct {
-        key: DWORD,
-        num: DWORD,
-        property:[]struct {
-            name: string,
-            type: WORD,
-            data: union {
-                BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
-                DOUBLE, string, SIZE, RECT, user_data_vec, 
-                struct{type: WORD, data: []BYTE}, UUID
-            }
-        }
-    }
+    properties_map: []UD_Properties_Map
 }
 
-user_data_chunk_flags :: enum(DWORD) {
+User_Date_Flags :: enum(DWORD) {
     Test,
     Color,
     Properties,
 }
 
 User_Data_Chunk :: struct {
-    flags: bit_set[user_data_chunk_flags; DWORD],
-    data: union{string, Color_RGBA, user_data_bit_4}
+    flags: bit_set[User_Date_Flags; DWORD],
+    data: union{string, Color_RGBA, UD_Bit_4}
 }
 
-slice_chunk_flags :: enum(DWORD) {
+Slice_Flags :: enum(DWORD) {
     Patched_slice, 
     Pivot_Information,
 }
 
+Slice_Center :: struct{
+    center_x,center_y: LONG, 
+    center_width, center_height: DWORD
+}
+
+Slice_Pivot :: struct{
+    pivot_x, pivot_y: LONG
+}
+
 Slice_Chunk :: struct {
     num_of_keys: DWORD,
-    flags: bit_set[slice_chunk_flags; DWORD],
+    flags: bit_set[Slice_Flags; DWORD],
     name: string,
     data: []struct{
         frams_num: DWORD,
@@ -338,24 +339,30 @@ Slice_Chunk :: struct {
     }
 }
 
-tileset_chunk_flags :: enum(DWORD) {
-    include_link_to_external_file,
-    Include_tiles_inside_this_file,
-    tile_id_is_0,
-    auto_mode_x_flip_match,
-    ditto_y,
-    ditto_diagonal,
+Tileset_Flags :: enum(DWORD) {
+    Include_Link_To_External_File,
+    Include_Tiles_Inside_This_File,
+    Tile_ID_Is_0,
+    Auto_Mode_X_Flip_Match,
+    Auto_Mode_Y_Flip_Match,
+    Auto_Mode_Diagonal_Flip_Match,
+}
+
+Tileset_External :: struct{
+    file_id, tileset_id: DWORD
+}
+
+Tileset_Compressed :: struct{
+    length: DWORD, 
+    data: []PIXEL
 }
 
 Tileset_Chunk :: struct {
     id: DWORD,
-    flags: bit_set[tileset_chunk_flags; DWORD],
+    flags: bit_set[Tileset_Flags; DWORD],
     num_of_tiles: DWORD,
     witdh, height: WORD,
     base_index: SHORT,
     name: string,
-    data: union{
-        struct{file_id, tileset_id: DWORD},
-        struct{length: DWORD, data:[]PIXEL},
-    }
+    data: union {Tileset_External, Tileset_Compressed}
 }
