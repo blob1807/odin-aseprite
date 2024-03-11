@@ -8,3 +8,4 @@
 \build\*
 *.a
 *.o
+*.pdb
