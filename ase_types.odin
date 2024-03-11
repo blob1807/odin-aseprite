@@ -4,16 +4,17 @@ import "core:math/fixed"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
+// all writen in le
 BYTE   :: u8
-WORD   :: u16le
-SHORT  :: i16le
-DWORD  :: u32le
-LONG   :: i32le
-FIXED  :: distinct fixed.Fixed(i32le, 16)
-FLOAT  :: f32le
-DOUBLE :: f64le
-QWORD  :: u64le
-LONG64 :: i64le
+WORD   :: u16
+SHORT  :: i16
+DWORD  :: u32
+LONG   :: i32
+FIXED  :: fixed.Fixed16_16
+FLOAT  :: f32
+DOUBLE :: f64
+QWORD  :: u64
+LONG64 :: i64
 
 BYTE_N :: [dynamic]BYTE
 
@@ -61,7 +62,6 @@ Chunk :: union{
 
 FILE_HEADER_SIZE :: 128
 File_Header :: struct {
-    frames: WORD,
     width: WORD,
     height: WORD,
     color_depth: enum(WORD){
@@ -69,7 +69,8 @@ File_Header :: struct {
         Grayscale=16,
         RGBA=32
     },
-    flags: bit_set[enum(DWORD){Layer_Opacity}; DWORD], // 1=Layer opacity has valid value
+    //flags: bit_set[enum(DWORD){Layer_Opacity}; DWORD], // 1=Layer opacity has valid value
+    valid_opacity: bool,
     speed: WORD, // Not longer in use
     transparent_index: BYTE, // for Indexed sprites only
     num_of_colors: WORD, // 0 == 256 for old sprites
@@ -132,8 +133,29 @@ Layer_Chunk_Flags :: enum(WORD) {
     Ref_Layer,
 }
 
+Layer_Blend_Mode :: enum(WORD) {
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    Color_Dodge,
+    Color_Burn,
+    Hard_Light,
+    Soft_Light,
+    Difference,
+    Exclusion,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
+    Addition,
+    Subtract,
+    Divide,
+}
+
 Layer_Chunk :: struct {
-    //flags: WORD,
     flags: bit_set [Layer_Chunk_Flags; WORD], // to WORD -> transmute(WORD)layer_chunk.flags
     type: enum(WORD) {
         Normal, // image
@@ -143,27 +165,7 @@ Layer_Chunk :: struct {
     child_level: WORD,
     default_width: WORD, // Ignored
     default_height: WORD, // Ignored
-    blend_mode: enum(WORD) {
-        Normal,
-        Multiply,
-        Screen,
-        Overlay,
-        Darken,
-        Lighten,
-        Color_Dodge,
-        Color_Burn,
-        Hard_Light,
-        Soft_Light,
-        Difference,
-        Exclusion,
-        Hue,
-        Saturation,
-        Color,
-        Luminosity,
-        Addition,
-        Subtract,
-        Divide,
-    },
+    blend_mode: Layer_Blend_Mode,
     opacity: BYTE, // set when header flag is 1
     name: string,
     tileset_index: DWORD, // set if type == Tilemap
@@ -199,10 +201,15 @@ Cel_Chunk :: struct {
 }
 
 Cel_Extra_Chunk :: struct {
-    flags: bit_set[enum(WORD){Precise}; WORD],
-    x,y: FIXED,
-    width, height: FIXED,
+    //flags: bit_set[enum(WORD){Precise}; WORD],
+    precise_bounds: bool,
+    x: FIXED,
+    y: FIXED,
+    width: FIXED, 
+    height: FIXED,
 }
+
+ICC_Profile :: []byte
 
 Color_Profile_Chunk :: struct {
     type: enum(WORD) {
@@ -210,12 +217,14 @@ Color_Profile_Chunk :: struct {
         sRGB,
         ICC,
     },
-    flags: bit_set[enum(WORD){Fixed_Gamma}; WORD],
+    //flags: bit_set[enum(WORD){Fixed_Gamma}; WORD],
+    use_fixed_gamma: bool,
     fixed_gamma: FIXED,
-    icc: struct {
+    /*icc: struct { // TODO: Yay more libs to make, https://www.color.org/icc1v42.pdf
         length: DWORD,
         data: []BYTE,
-    },
+    },*/
+    icc: Maybe(ICC_Profile),
 }
 
 External_Files_Chunk :: struct {
@@ -262,9 +271,9 @@ Palette_Chunk :: struct {
     last_index: DWORD,
     entries: []struct {
         //flags: bit_set[enum(WORD){Has_Name}; WORD],
-        has_name: bool,
+        //has_name: bool,
         color: Color_RGBA,
-        name: string,
+        name: Maybe(string),
     }
 }
 
@@ -281,11 +290,15 @@ UD_Vec :: struct {
     data: []union {UD_Vec_Diff, UD_Vec_Same}
 }
 
-UD_Properties_Map :: map[DWORD][]UD_Property
+UD_Property_Type :: enum(WORD) {
+    Bool, Int8, Uint8, Int16, Uint16, Int64, Uint64,
+    Qword, Fixed, Float, Double, String, Point, Size,
+    Rect, Vector, Nested_Map, UUID 
+}
 
 UD_Property :: struct {
     name: string,
-    type: WORD,
+    type: UD_Property_Type,
     data: union {
         BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
         DOUBLE, string, SIZE, RECT, UD_Vec, 
@@ -293,21 +306,23 @@ UD_Property :: struct {
     }
 }
 
-UD_Bit_4 :: struct {
-    size: DWORD,
-    num: DWORD,
-    properties_map: []UD_Properties_Map
-}
+UD_Properties_Map :: map[DWORD][]UD_Property
 
-User_Date_Flags :: enum(DWORD) {
+User_Data_Flags :: enum(DWORD) {
     Test,
     Color,
     Properties,
 }
 
+User_Data :: struct {
+    text: string, 
+    color: Color_RGBA, 
+    maps: []UD_Properties_Map
+}
+
 User_Data_Chunk :: struct {
-    flags: bit_set[User_Date_Flags; DWORD],
-    data: union{string, Color_RGBA, UD_Bit_4}
+    flags: bit_set[User_Data_Flags; DWORD],
+    data: User_Data
 }
 
 Slice_Flags :: enum(DWORD) {
@@ -316,26 +331,28 @@ Slice_Flags :: enum(DWORD) {
 }
 
 Slice_Center :: struct{
-    center_x,center_y: LONG, 
-    center_width, center_height: DWORD
+    x: LONG,
+    y: LONG, 
+    width: DWORD, 
+    height: DWORD
 }
 
 Slice_Pivot :: struct{
-    pivot_x, pivot_y: LONG
+    x: LONG, 
+    y: LONG,
 }
 
 Slice_Chunk :: struct {
-    num_of_keys: DWORD,
     flags: bit_set[Slice_Flags; DWORD],
     name: string,
     data: []struct{
-        frams_num: DWORD,
-        x,y: LONG,
-        width, heigth: DWORD,
-        data: union{
-            struct{center_x,center_y: LONG, center_width, center_height: DWORD}, 
-            struct{pivot_x,pivot_y: LONG}
-        }
+        frames_num: DWORD,
+        x: LONG,
+        y: LONG, 
+        width: DWORD, 
+        height: DWORD,
+        center: Maybe(Slice_Center),
+        pivot: Maybe(Slice_Pivot),
     }
 }
 
@@ -364,5 +381,7 @@ Tileset_Chunk :: struct {
     witdh, height: WORD,
     base_index: SHORT,
     name: string,
-    data: union {Tileset_External, Tileset_Compressed}
+    external: Maybe(Tileset_External), 
+    compressed: Maybe(Tileset_Compressed),
+
 }

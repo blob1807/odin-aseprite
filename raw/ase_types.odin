@@ -4,17 +4,17 @@ import "core:math/fixed"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
+// all write in le
 BYTE   :: u8
-WORD   :: u16le
-SHORT  :: i16le
-DWORD  :: u32le
-LONG   :: i32le
-FIXED  :: distinct i32le // 16.16
-//FIXED  :: struct{h,l: i16le}
-FLOAT  :: f32le
-DOUBLE :: f64le
-QWORD  :: u64le
-LONG64 :: i64le
+WORD   :: u16
+SHORT  :: i16
+DWORD  :: u32
+LONG   :: i32
+FIXED  :: distinct i32 // 16.16
+FLOAT  :: f32
+DOUBLE :: f64
+QWORD  :: u64
+LONG64 :: i64
 
 BYTE_N :: [dynamic]BYTE
 
@@ -44,7 +44,7 @@ TILE  :: union {BYTE, WORD, DWORD}
 
 UUID :: [16]BYTE
 
-Document :: struct {
+ASE_Document :: struct {
     header: File_Header,
     frames: []Frame
 }
@@ -86,7 +86,7 @@ Frame_Header :: struct {
     magic: WORD, // always \xF1FA
     old_num_of_chunks: WORD, // if \xFFFF use new
     duration: WORD, // in milliseconds
-    num_of_chunks: WORD, // if 0 use old
+    num_of_chunks: DWORD, // if 0 use old
 }
 
 Chunk_Data :: union{
@@ -133,7 +133,6 @@ Old_Palette_64_Chunk :: struct {
 }
 
 Layer_Chunk :: struct {
-    //flags: WORD,
     flags: WORD, // to WORD -> transmute(WORD)layer_chunk.flags
     type: WORD,
     child_level: WORD,
@@ -276,7 +275,7 @@ Slice_Chunk :: struct {
     data: []struct{
         frams_num: DWORD,
         x,y: LONG,
-        width, heigth: DWORD,
+        width, height: DWORD,
         data: union {Slice_Center, Slice_Pivot}
     }
 }
