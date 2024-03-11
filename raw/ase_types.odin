@@ -57,7 +57,7 @@ Frame :: struct {
 Chunk :: struct {
     size: DWORD,
     type: Chunk_Types,
-    data: []Chunk_Data,
+    data: Chunk_Data,
 }
 
 FILE_HEADER_SIZE :: 128
@@ -100,7 +100,7 @@ Chunk_Types :: enum(WORD) {
     none,
     old_palette_256 = 0x0004,
     old_palette_64 = 0x0011,
-    laayer = 0x2004,
+    layer = 0x2004,
     cel = 0x2005,
     cel_extra = 0x2006,
     color_profile = 0x2007,
@@ -114,22 +114,20 @@ Chunk_Types :: enum(WORD) {
     tileset = 0x2023,
 }
 
+Old_Palette_Packet :: struct {
+    entries_to_skip: BYTE, // start from 0
+    num_colors: BYTE, // 0 == 256
+    colors: [][3]BYTE
+}
+
 Old_Palette_256_Chunk :: struct {
     size: WORD,
-    packets: []struct {
-        entries_to_skip: BYTE, // start from 0
-        num_colors: BYTE, // 0 == 256
-        colors: [][3]BYTE
-    }
+    packets: []Old_Palette_Packet
 }
 
 Old_Palette_64_Chunk :: struct {
     size: WORD,
-    packets: []struct {
-        entries_to_skip: BYTE, // start from 0
-        num_colors: BYTE, // 0 == 256
-        colors: [][3]BYTE
-    }
+    packets: []Old_Palette_Packet
 }
 
 Layer_Chunk :: struct {
@@ -192,8 +190,10 @@ External_Files_Chunk :: struct {
 }
 
 Mask_Chunk :: struct {
-    x,y: SHORT,
-    width, height: WORD,
+    x: SHORT,
+    y: SHORT,
+    width: WORD, 
+    height: WORD,
     name: STRING,
     bit_map_data: []BYTE, //size = height*((width+7)/8)
 }
@@ -201,7 +201,7 @@ Mask_Chunk :: struct {
 Path_Chunk :: struct{} // never used
 
 Tags_Chunk :: struct {
-    nuber: WORD,
+    number: WORD,
     tags: []struct{
         from_frame: WORD,
         to_frame: WORD,
@@ -260,12 +260,15 @@ User_Data_Chunk :: struct {
 }
 
 Slice_Center :: struct{
-    center_x,center_y: LONG, 
-    center_width, center_height: DWORD
+    x: LONG,
+    y: LONG, 
+    width: DWORD, 
+    height: DWORD,
 }
 
 Slice_Pivot :: struct{
-    pivot_x, pivot_y: LONG
+    x: LONG, 
+    y: LONG
 }
 
 Slice_Chunk :: struct {
@@ -281,7 +284,8 @@ Slice_Chunk :: struct {
 }
 
 Tileset_External :: struct{
-    file_id, tileset_id: DWORD
+    file_id: DWORD, 
+    tileset_id: DWORD
 }
 
 Tileset_Compressed :: struct{
