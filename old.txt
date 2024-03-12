@@ -61,3 +61,36 @@ gpl_parse_og :: proc(data: string, allocator := context.allocator) -> (parsed: g
     }
     return parsed, true, .None
 }
+
+
+if h.color_depth == 32 { // RGBA
+    pixel := make([]PIXEL_RGBA, cel.height*cel.width/4, allocator)
+    for px in 0..<(cel.height*cel.width/4) {
+        for value in 0..<4 {
+            last = pos
+            pos += size_of(BYTE)
+            pixel[px][value] = data[pos]
+        }
+    }
+    cel.pixel = PIXEL(pixel)
+
+} else if h.color_depth == 16 { // Grayscale
+    pixel := make([]PIXEL_GRAYSCALE, cel.height*cel.width/2, allocator)
+    for px in 0..<(cel.height*cel.width/2) {
+        for value in 0..<2 {
+            last = pos
+            pos += size_of(BYTE)
+            cel.pixel[px][value] = data[pos]
+        }
+    }
+    cel.pixel = PIXEL(pixel)
+
+} else if h.color_depth == 8 { // Indexed
+    pixel := make([]PIXEL_INDEXED, cel.height*cel.width, allocator)
+    for px in 0..<(cel.height*cel.width) {
+        last = pos
+        pos += size_of(PIXEL_INDEXED)
+        pixel[px] = data[pos]
+    }
+    cel.pixel = PIXEL(pixel)
+}
