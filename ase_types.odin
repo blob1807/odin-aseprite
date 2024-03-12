@@ -346,7 +346,7 @@ Slice_Chunk :: struct {
     flags: bit_set[Slice_Flags; DWORD],
     name: string,
     data: []struct{
-        frames_num: DWORD,
+        frame_num: DWORD,
         x: LONG,
         y: LONG, 
         width: DWORD, 
