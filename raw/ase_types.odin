@@ -25,10 +25,12 @@ STRING :: struct {
     data: []u8
 }
 POINT :: struct {
-    x,y: LONG
+    x: LONG,
+    y: LONG
 }
 SIZE :: struct {
-    w,h: LONG
+    w: LONG,
+    h: LONG
 }
 RECT :: struct {
     origin: POINT,
@@ -39,7 +41,8 @@ PIXEL_RGBA      :: [4]BYTE
 PIXEL_GRAYSCALE :: [2]BYTE
 PIXEL_INDEXED   :: BYTE
 
-PIXEL :: union {PIXEL_RGBA, PIXEL_GRAYSCALE, PIXEL_INDEXED}
+// PIXEL :: union {PIXEL_RGBA, PIXEL_GRAYSCALE, PIXEL_INDEXED}
+PIXEL :: BYTE
 TILE  :: union {BYTE, WORD, DWORD}
 
 UUID :: [16]BYTE
@@ -142,9 +145,18 @@ Layer_Chunk :: struct {
     tileset_index: DWORD, // set if type == Tilemap
 }
 
-Raw_Cel :: struct{width, height: WORD, pixel: []PIXEL}
+Raw_Cel :: struct{
+    width: WORD, 
+    height: WORD, 
+    pixel: []PIXEL
+}
 Linked_Cel :: distinct WORD
-Com_Image_Cel :: struct{width, height: WORD, pixel: []PIXEL} // raw cel ZLIB compressed
+Com_Image_Cel :: struct{
+    width: WORD, 
+    height: WORD, 
+    pixel: []PIXEL
+} // raw cel ZLIB compressed
+
 Com_Tilemap_Cel :: struct{
     width, height: WORD,
     bits_per_tile: WORD, // always 32
@@ -152,12 +164,14 @@ Com_Tilemap_Cel :: struct{
     bitmask_x: DWORD,
     bitmask_y: DWORD,
     bitmask_diagonal: DWORD,
-    tiles: []TILE, // ZLIB compressed
+    //tiles: []TILE, // ZLIB compressed
+    tiles: []BYTE
 }
 
 Cel_Chunk :: struct {
     layer_index: WORD,
-    x,y: SHORT,
+    x: SHORT,
+    y: SHORT,
     opacity_level: BYTE,
     type: WORD,
     z_index: SHORT, //0=default, pos=show n layers later, neg=back
@@ -180,13 +194,15 @@ Color_Profile_Chunk :: struct {
     },
 }
 
+External_Files_Entry :: struct{
+    id: DWORD,
+    type: BYTE,
+    file_name_or_id: STRING,
+}
+
 External_Files_Chunk :: struct {
     length: DWORD,
-    entries: []struct{
-        id: DWORD,
-        type: BYTE,
-        file_name_or_id: STRING,
-    }
+    entries: []External_Files_Entry
 }
 
 Mask_Chunk :: struct {
@@ -200,27 +216,31 @@ Mask_Chunk :: struct {
 
 Path_Chunk :: struct{} // never used
 
+Tag :: struct{
+    from_frame: WORD,
+    to_frame: WORD,
+    loop_direction: BYTE,
+    repeat: WORD,
+    tag_color: [3]BYTE,
+    name: STRING,
+}
+
 Tags_Chunk :: struct {
     number: WORD,
-    tags: []struct{
-        from_frame: WORD,
-        to_frame: WORD,
-        loop_direction: BYTE,
-        repeat: WORD,
-        tag_color: [3]BYTE,
-        name: STRING,
-    }
+    tags: []Tag,
+}
+
+Palette_Entry :: struct {
+    flags: WORD,
+    red, green, blue, alpha: BYTE,
+    name: STRING,
 }
 
 Palette_Chunk :: struct {
     size: DWORD,
     first_index: DWORD,
     last_index: DWORD,
-    entries: []struct {
-        flags: WORD,
-        red, green, blue, alpha: BYTE,
-        name: STRING,
-    }
+    entries: []Palette_Entry,
 }
 
 UD_Vec :: struct {
@@ -255,8 +275,10 @@ UD_Bit_4 :: struct {
 UB_Bit_2 :: [4]BYTE
 
 User_Data_Chunk :: struct {
-    flags: WORD,
-    data: union{STRING, UB_Bit_2, UD_Bit_4}
+    flags: DWORD,
+    text: Maybe(STRING),
+    color: Maybe(UB_Bit_2),
+    properties: Maybe(UD_Bit_4),
 }
 
 Slice_Center :: struct{
@@ -271,16 +293,21 @@ Slice_Pivot :: struct{
     y: LONG
 }
 
+Slice_Key :: struct{
+    frame_num: DWORD,
+    x: LONG,
+    y: LONG,
+    width: DWORD, 
+    height: DWORD,
+    center: Maybe(Slice_Center),
+    pivot: Maybe(Slice_Pivot),
+}
+
 Slice_Chunk :: struct {
     num_of_keys: DWORD,
     flags: DWORD,
     name: STRING,
-    data: []struct{
-        frams_num: DWORD,
-        x,y: LONG,
-        width, height: DWORD,
-        data: union {Slice_Center, Slice_Pivot}
-    }
+    data: []Slice_Key,
 }
 
 Tileset_External :: struct{
@@ -297,8 +324,10 @@ Tileset_Chunk :: struct {
     id: DWORD,
     flags: DWORD,
     num_of_tiles: DWORD,
-    witdh, height: WORD,
+    width: WORD, 
+    height: WORD,
     base_index: SHORT,
     name: STRING,
-    data: union {Tileset_External, Tileset_Compressed}
+    external: Maybe(Tileset_External), 
+    compressed: Maybe(Tileset_Compressed),
 }
