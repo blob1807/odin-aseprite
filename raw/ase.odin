@@ -9,10 +9,16 @@ import "core:unicode/utf8"
 import "core:encoding/endian"
 import "core:slice"
 import "core:log"
+import "core:compress/zlib"
+import "core:bytes"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
-ASE_Unmarshal_Errors :: enum{}
+ASE_Unmarshal_Errors :: enum {
+    Bad_File_Magic_Number,
+    Bad_Frame_Magic_Number,
+    Bad_User_Data_Type,
+}
 ASE_Unmarshal_Error :: union #shared_nil {ASE_Unmarshal_Errors, runtime.Allocator_Error}
 
 ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocator) -> (err: ASE_Unmarshal_Error) {
@@ -25,6 +31,10 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
     last = pos
     pos += size_of(WORD)
     h.magic, _ = endian.get_u16(data[last:pos], .Little)
+
+    if h.magic != 0xA5E0 {
+        return .Bad_File_Magic_Number
+    }
 
     last = pos
     pos += size_of(WORD)
@@ -106,6 +116,10 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
         last = pos
         pos += size_of(WORD)
         fh.magic, _ = endian.get_u16(data[last:pos], .Little)
+
+        if fh.magic != 0xF1FA {
+            return .Bad_Frame_Magic_Number
+        }
 
         last = pos
         pos += size_of(WORD)
@@ -321,10 +335,23 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     pos += size_of(WORD)
                     cel.height, _ = endian.get_u16(data[last:pos], .Little)
 
-                    /*last = pos
-                    pos += int(c.size)
-                    cel.pixel = data[last:pos]*/
-                    log.errorf("Compressed Images are currently unsupported. Skipping unknown number of bytes.")
+                    last = pos
+                    pos = t_pos + int(c.size)
+
+                    buf: bytes.Buffer
+                    defer bytes.buffer_destroy(&buf)
+
+                    expected_size := int(h.color_depth / 8 * cel.height * cel.width)
+                    com_err := zlib.inflate(data[last:pos], &buf, expected_output_size=expected_size)
+
+                    if com_err != nil {
+                        cel.pixel = data[last:pos]
+                        log.errorf("Unable to Uncompressed Image. Writing raw data of %v bytes.", pos-last)
+                    } else {
+                        //cel.pixel = make_slice([]u8, expected_size, allocator) or_return
+                        cel.pixel = slice.clone(buf.buf[:], allocator) or_return
+                    }
+
 
                     ct.cel = cel
 
@@ -361,10 +388,22 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(BYTE)*10
 
-                    /*last = pos
-                    pos = int(c.size)
-                    cel.tiles = data[last:pos]*/
-                    log.errorf("Compressed Tilemaps are currently unsupported. Skipping unknown number of bytes.")
+                    last = pos
+                    pos = t_pos + int(c.size)
+
+                    buf: bytes.Buffer
+                    defer bytes.buffer_destroy(&buf)
+
+                    expected_size := int(h.color_depth / 8 * cel.height * cel.width)
+                    com_err := zlib.inflate(data[last:pos], &buf, expected_output_size=expected_size)
+
+                    if com_err != nil {
+                        cel.tiles = data[last:pos]
+                        log.errorf("Unable to Uncompressed Tilemap. Writing raw data of %v bytes.", pos-last)
+                    } else {
+                        //cel.tiles = make_slice([]u8, expected_size, allocator) or_return
+                        cel.tiles = slice.clone(buf.buf[:], allocator) or_return
+                    }
 
                     ct.cel = cel
                 }
@@ -458,7 +497,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     pos += size_of(WORD)
                     sl, _ := endian.get_u16(data[last:pos], .Little)
                     ct.entries[file].file_name_or_id.length = sl
-                    ct.entries[file].file_name_or_id.data = make_slice([]u8, sl, allocator) or_return
+                    // ct.entries[file].file_name_or_id.data = make_slice([]u8, sl, allocator) or_return
 
                     last = pos
                     pos += int(sl)
@@ -491,7 +530,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(WORD)
                 ct.name.length, _ = endian.get_u16(data[last:pos], .Little)
-                ct.name.data = make_slice([]u8, ct.name.length, allocator) or_return
+                // ct.name.data = make_slice([]u8, ct.name.length, allocator) or_return
 
                 last = pos
                 pos += int(ct.name.length)
@@ -555,7 +594,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(WORD)
                     ct.tags[tag].name.length, _ = endian.get_u16(data[last:pos], .Little)
-                    ct.tags[tag].name.data = make_slice([]u8, ct.tags[tag].name.length, allocator) or_return
+                    // ct.tags[tag].name.data = make_slice([]u8, ct.tags[tag].name.length, allocator) or_return
 
                     last = pos
                     pos += int(ct.tags[tag].name.length)
@@ -630,7 +669,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(WORD)
                     str.length, _ = endian.get_u16(data[last:pos], .Little)
-                    str.data = make_slice([]u8, int(str.length), allocator) or_return
+                    // str.data = make_slice([]u8, int(str.length), allocator) or_return
 
                     last = pos
                     pos += int(str.length)
@@ -659,13 +698,23 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 }
                 
                 if (ct.flags & 4) == 4 {
+                    bit_4: UD_Bit_4
                     last = pos
                     pos += size_of(DWORD)
-                    skipped, _ := endian.get_u32(data[last:pos], .Little)
-                    log.errorf("User Data Properties Maps are currently unsupported. Skipping %v bytes.", skipped)
+                    bit_4.size, _ = endian.get_u32(data[last:pos], .Little)
 
                     last = pos
-                    pos += int(skipped)
+                    pos += size_of(DWORD)
+                    bit_4.num, _ = endian.get_u32(data[last:pos], .Little)
+                    bit_4.properties_map = make_slice([]UD_Properties_Map, int(bit_4.size), allocator) or_return
+
+                    for n in 0..<int(bit_4.num) {
+                        bit_4.properties_map[n], last, pos = parce_ud_map(last, pos, data[:], allocator) or_return
+                    }
+
+                    last = pos
+                    pos += int(bit_4.size)
+
                 }
 
                 c.data = ct
@@ -686,7 +735,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(WORD)
                 ct.name.length, _ = endian.get_u16(data[last:pos], .Little)
-                ct.name.data = make_slice([]u8, int(ct.name.length), allocator) or_return
+                // ct.name.data = make_slice([]u8, int(ct.name.length), allocator) or_return
 
                 last = pos
                 pos += int(ct.name.length)
@@ -785,7 +834,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(WORD)
                 ct.name.length, _ = endian.get_u16(data[last:pos], .Little)
-                ct.name.data = make_slice([]u8, int(ct.name.length), allocator) or_return
+                // ct.name.data = make_slice([]u8, int(ct.name.length), allocator) or_return
 
                 last = pos
                 pos += int(ct.name.length)
@@ -808,7 +857,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(DWORD)
                     img_set.length, _ = endian.get_u32(data[last:pos], .Little)
-                    img_set.data = make_slice([]u8, int(img_set.length), allocator) or_return
+                    // img_set.data = make_slice([]u8, int(img_set.length), allocator) or_return
 
                     last = pos
                     pos += int(img_set.length)
@@ -828,5 +877,238 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
     }
 
     
+    return
+}
+
+parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, allocator := context.allocator) -> 
+    (value: UD_Property_Value, last, pos: int, err: ASE_Unmarshal_Error) 
+{
+    last = old_last
+    pos = old_pos
+    
+    switch type {
+    case 0x0001, 0x0002, 0x0003:
+        last = pos
+        pos += size_of(BYTE)
+        value = data[pos]
+
+    case 0x0004:
+        last = pos
+        pos += size_of(SHORT)
+        value, _ = endian.get_i16(data[last:pos], .Little)
+
+    case 0x0005:
+        last = pos
+        pos += size_of(WORD)
+        value, _ = endian.get_u16(data[last:pos], .Little)
+
+    case 0x0006:
+        last = pos
+        pos += size_of(LONG)
+        value, _ = endian.get_i32(data[last:pos], .Little)
+
+    case 0x0007:
+        last = pos
+        pos += size_of(DWORD)
+        value, _ = endian.get_u32(data[last:pos], .Little)
+
+    case 0x0008:
+        last = pos
+        pos += size_of(LONG64)
+        value, _ = endian.get_i64(data[last:pos], .Little)
+
+    case 0x0009:
+        last = pos
+        pos += size_of(QWORD)
+        value, _ = endian.get_u64(data[last:pos], .Little)
+
+    case 0x000A:
+        last = pos
+        pos += size_of(FIXED)
+        t, _ := endian.get_i16(data[last:pos], .Little)
+        value = FIXED(t)
+
+    case 0x000B:
+        last = pos
+        pos += size_of(FLOAT)
+        value, _ = endian.get_f32(data[last:pos], .Little)
+
+    case 0x000C:
+        last = pos
+        pos += size_of(DOUBLE)
+        value, _ = endian.get_f64(data[last:pos], .Little)
+
+    case 0x000D:
+        st: STRING
+        last = pos
+        pos += size_of(WORD)
+        st.length, _ = endian.get_u16(data[last:pos], .Little)
+
+        last = pos
+        pos += int(st.length)
+        st.data = data[last:pos]
+
+        value = st
+
+    case 0x000E:
+        pt: POINT
+        last = pos
+        pos += size_of(LONG)
+        pt.x, _ = endian.get_i32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(LONG)
+        pt.y, _ = endian.get_i32(data[last:pos], .Little)
+
+        value = pt
+
+    case 0x000F:
+        st: SIZE
+        last = pos
+        pos += size_of(LONG)
+        st.w, _ = endian.get_i32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(LONG)
+        st.h, _ = endian.get_i32(data[last:pos], .Little)
+
+        value = st
+
+    case 0x0010:
+        rt: RECT
+        last = pos
+        pos += size_of(LONG)
+        rt.origin.x, _ = endian.get_i32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(LONG)
+        rt.origin.y, _ = endian.get_i32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(LONG)
+        rt.size.w, _ = endian.get_i32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(LONG)
+        rt.size.h, _ = endian.get_i32(data[last:pos], .Little)
+
+        value = rt
+
+    case 0x0011:
+        vect: UD_Vec
+        last = pos
+        pos += size_of(DWORD)
+        vect.num, _ = endian.get_u32(data[last:pos], .Little)
+
+        last = pos
+        pos += size_of(WORD)
+        vect.type, _ = endian.get_u16(data[last:pos], .Little)
+
+        if vect.type == 0 {
+            dt := make_slice([]Vec_Diff, int(vect.num), allocator) or_return
+
+            for n in 0..<int(vect.num) {
+                last = pos
+                pos += size_of(WORD)
+                dt[n].type, _ = endian.get_u16(data[last:pos], .Little)
+
+                dt[n].data, last, pos = parse_property_value(last, pos, dt[n].type, data[:], allocator) or_return
+            }
+
+            vect.data = dt            
+
+        } else {
+            dt := make_slice([]UD_Property_Value, int(vect.num), allocator) or_return
+
+            for n in 0..<int(vect.num) {
+                dt[n], last, pos = parse_property_value(last, pos, vect.type, data[:], allocator) or_return
+            }
+
+            vect.data = dt  
+        }
+
+        value = vect
+
+    case 0x0012:
+        pmt: UD_Properties_Map
+        last = pos
+        pos += size_of(DWORD)
+        pmt.num, _ = endian.get_u32(data[last:pos], .Little)
+        pmt.properties = make_slice([]UD_Property, int(pmt.num), allocator) or_return
+
+        for n in 0..<int(pmt.num) {
+            last = pos
+            pos += size_of(WORD)
+            pmt.properties[n].name.length, _ = endian.get_u16(data[last:pos], .Little)
+
+            last = pos
+            pos += int(pmt.properties[n].name.length)
+            pmt.properties[n].name.data = data[last:pos]
+
+            last = pos
+            pos += size_of(WORD)
+            pmt.properties[n].type, _ = endian.get_u16(data[last:pos], .Little)
+
+            pmt.properties[n].data, last, pos = parse_property_value(last, pos, pmt.properties[n].type, data[:]) or_return
+        }
+
+        value = pmt
+
+    case 0x0013:
+        last = pos
+        pos += size_of(UUID)
+        value = transmute(UUID)data[last:pos]
+
+    case:
+        log.errorf("Unable to continue. Unkown User Data Property Type of %v found at: %v-%v", type, last, pos)
+        err = .Bad_User_Data_Type
+        return
+    }
+    return
+}
+
+parse_ud_property :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
+    (prop: UD_Property, last, pos: int, err: ASE_Unmarshal_Error) 
+{
+    last = old_last
+    pos = old_pos
+
+    last = pos
+    pos += size_of(WORD)
+    prop.name.length, _ = endian.get_u16(data[last:pos], .Little)
+
+    last = pos
+    pos += int(prop.name.length)
+    prop.name.data = data[last:pos]
+
+    last = pos
+    pos += size_of(WORD)
+    prop.type, _ = endian.get_u16(data[last:pos], .Little)
+
+    prop.data, last, pos = parse_property_value(last, pos, prop.type, data[:], allocator) or_return
+
+
+    return
+}
+
+parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
+    (p_map: UD_Properties_Map, last, pos: int, err: ASE_Unmarshal_Error) 
+{   
+    last = old_last
+    pos = old_pos
+
+    last = pos
+    pos += size_of(DWORD)
+    p_map.key, _ = endian.get_u32(data[last:pos], .Little)
+
+    last = pos
+    pos += size_of(DWORD)
+    p_map.num, _ = endian.get_u32(data[last:pos], .Little)
+    p_map.properties = make_slice([]UD_Property, int(p_map.num), allocator) or_return
+
+    for p in 0..<int(p_map.num) {
+        p_map.properties[p], last, pos = parse_ud_property(last, pos, data[:], allocator) or_return
+    }
+
     return
 }
