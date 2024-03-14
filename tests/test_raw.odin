@@ -6,6 +6,8 @@ import "core:testing"
 import "core:fmt"
 import "core:strings"
 import "../raw"
+import "core:mem"
+import "core:slice"
 
 main :: proc() {
     t := testing.T{}
@@ -16,6 +18,20 @@ main :: proc() {
 
 @(test)
 raw_unmarshal :: proc(t: ^testing.T) {
+    /*track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	context.allocator = mem.tracking_allocator(&track)
+
+	defer {
+		for _, leak in track.allocation_map {
+			fmt.printf("%v leaked %v bytes\n", leak.location, leak.size)
+		}
+
+		for bad_free in track.bad_free_array {
+			fmt.printf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory)
+		}
+	}*/
+
     fd, f_err := os.open("./tests", os.O_RDONLY, 0)
     base_f, FF_err := os.read_dir(fd, 0)
     defer delete(base_f)
@@ -23,21 +39,23 @@ raw_unmarshal :: proc(t: ^testing.T) {
 
     for f in base_f {
         if f.is_dir {
-            fd, f_err = os.open(f.fullpath, os.O_RDONLY, 0)
-            sprites, ff_err := os.read_dir(fd, 0)
-            os.close(fd)
+            folder_h, f_err := os.open(f.fullpath, os.O_RDONLY, 0)
+            defer os.close(folder_h)
+            sprites, ff_err := os.read_dir(folder_h, 0)
+            defer delete(sprites)
 
             for s in sprites {
                 if strings.has_suffix(s.name, ".aseprite") || strings.has_suffix(s.name, ".ase") {
-                    fd, f_err = os.open(s.fullpath, os.O_RDONLY, 0)
-                    data, ok := os.read_entire_file(fd)
-                    os.close(fd)
+                    file_h, f_err := os.open(s.fullpath, os.O_RDONLY, 0)
+                    defer os.close(file_h)
+                    data, ok := os.read_entire_file(file_h)
+                    defer delete(data)
 
                     if !ok {
                         testing.fail_now(t, "Failed to load file")
                     }
                     doc: raw.ASE_Document
-                    //defer raw.destroy_doc(&doc)
+                    defer raw.destroy_doc(&doc)
 
                     err := raw.ase_unmarshal(data[:], &doc)
 
@@ -47,20 +65,37 @@ raw_unmarshal :: proc(t: ^testing.T) {
             }
         }
     }
-
-    
 }
 
 @(test)
 raw_marshal :: proc(t: ^testing.T) {
     data := #load("/asefile/basic-16x16.aseprite")
     doc: raw.ASE_Document
-    //defer raw.destroy_doc(&doc)
+    defer raw.destroy_doc(&doc)
 
-    uerr := raw.ase_unmarshal(data[:], &doc)
+    uerr := raw.ase_unmarshal(data[:], &doc, context.temp_allocator)
 
     ok := expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
     if !ok {
-        testing.fail_now(t, "/asefile/basic-16x16.aseprite")
+        testing.fail_now(t, "Unable to unmarshal")
     }
+
+    buf := make_slice([]byte, int(doc.header.size), context.temp_allocator)
+    n, merr := raw.ase_marshal(buf[:], doc, context.temp_allocator)
+
+    ok = expect(t, merr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, merr))
+    if !ok {
+        testing.fail_now(t, "Unable to marshal")
+    }
+    
+    ok = expect(t, n == int(doc.header.size), fmt.tprintf("%s Size: %v, File: /asefile/basic-16x16.aseprite", #procedure, n))
+    if !ok {
+        testing.fail_now(t, "Differant file sizes")
+    }
+
+    ok = expect(t, slice.equal(buf, data), fmt.tprintf("%s File: /asefile/basic-16x16.aseprite", #procedure))
+    if !ok {
+        testing.fail_now(t, "Marshaled doesn't match input")
+    }
+
 }
