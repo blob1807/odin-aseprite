@@ -243,27 +243,33 @@ Palette_Chunk :: struct {
     entries: []Palette_Entry,
 }
 
+Vec_Diff :: struct{type: WORD, data: UD_Property_Value}
+Vec_Type :: union {[]UD_Property_Value, []Vec_Diff}
+
+
 UD_Vec :: struct {
-    name: DWORD,
+    num: DWORD,
     type: WORD,
-    data: []union {
-        struct{type: WORD, data: []BYTE},
-        []BYTE,
-    }
+    data: Vec_Type
+}
+
+UD_Property_Value :: union {
+    BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
+    DOUBLE, STRING, SIZE, POINT, RECT, UUID, 
+    UD_Vec, UD_Properties_Map,
+}
+
+
+UD_Property :: struct {
+    name: STRING,
+    type: WORD,
+    data: UD_Property_Value,
 }
 
 UD_Properties_Map :: struct {
     key: DWORD,
     num: DWORD,
-    property:[]struct {
-        name: STRING,
-        type: WORD,
-        data: union {
-            BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
-            DOUBLE, STRING, SIZE, RECT, UD_Vec, 
-            UD_Properties_Map, UUID
-        }
-    }
+    properties: []UD_Property
 }
 
 UD_Bit_4 :: struct {
@@ -276,9 +282,9 @@ UB_Bit_2 :: [4]BYTE
 
 User_Data_Chunk :: struct {
     flags: DWORD,
-    text: Maybe(STRING),
-    color: Maybe(UB_Bit_2),
-    properties: Maybe(UD_Bit_4),
+    text: STRING,
+    color: UB_Bit_2,
+    properties: UD_Bit_4,
 }
 
 Slice_Center :: struct{
@@ -299,8 +305,8 @@ Slice_Key :: struct{
     y: LONG,
     width: DWORD, 
     height: DWORD,
-    center: Maybe(Slice_Center),
-    pivot: Maybe(Slice_Pivot),
+    center: Slice_Center,
+    pivot: Slice_Pivot,
 }
 
 Slice_Chunk :: struct {
@@ -328,6 +334,6 @@ Tileset_Chunk :: struct {
     height: WORD,
     base_index: SHORT,
     name: STRING,
-    external: Maybe(Tileset_External), 
-    compressed: Maybe(Tileset_Compressed),
+    external: Tileset_External, 
+    compressed: Tileset_Compressed,
 }
