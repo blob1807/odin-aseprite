@@ -94,3 +94,26 @@ if h.color_depth == 32 { // RGBA
     }
     cel.pixel = PIXEL(pixel)
 }
+
+parse_ud_property :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
+    (prop: UD_Property, last, pos: int, err: ASE_Unmarshal_Error) 
+{
+    last = old_last
+    pos = old_pos
+
+    last = pos
+    pos += size_of(WORD)
+    prop.name.length, _ = endian.get_u16(data[last:pos], .Little)
+
+    last = pos
+    pos += int(prop.name.length)
+    prop.name.data = data[last:pos]
+
+    last = pos
+    pos += size_of(WORD)
+    prop.type, _ = endian.get_u16(data[last:pos], .Little)
+
+    prop.data, last, pos = parse_property_value(last, pos, prop.type, data[:], allocator) or_return
+
+    return
+}
