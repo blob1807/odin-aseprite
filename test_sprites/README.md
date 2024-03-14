@@ -1,11 +1,17 @@
 # Files
 
+### Taken from [asefile](https://github.com/alpine-alpaca/asefile/tree/main/tests/data)
+Found in `./test_sprites/asefile`.   
+Too many files to list.
+
 ### Provided by Blob
+Found in `./test_sprites/blob`.
 * `geralt.aseprite`
 * `mango-panda.aseprite`
 * `marshmallow.aseprite`
 
-### Provided by  [Aseprite GitHub](https://github.com/aseprite/aseprite/tree/main/tests/sprites)
+### Taken from  [Aseprite GitHub](https://github.com/aseprite/aseprite/tree/main/tests/sprites)
+Found in `./test_sprites/aseprite`.
 * `abcd.aseprite`: Indexed, 32x32, four layers ("a", "b", "c", "d")
 * `1empty3.aseprite`: RGB, 32x32, two layers ("fg", "bg"), 2nd frame
     completelly empty, two tags ("a", "b")
