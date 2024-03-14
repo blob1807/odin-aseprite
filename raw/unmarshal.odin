@@ -14,36 +14,6 @@ import "core:bytes"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
-ASE_Unmarshal_Errors :: enum {
-    Bad_File_Magic_Number,
-    Bad_Frame_Magic_Number,
-    Bad_User_Data_Type,
-}
-ASE_Unmarshal_Error :: union #shared_nil {ASE_Unmarshal_Errors, runtime.Allocator_Error}
-
-destroy_doc :: proc(doc: ^ASE_Document) {
-
-    for frame in doc.frames {
-        for chunk in frame.chunks {
-            #partial switch c in chunk.data {
-                case Old_Palette_256_Chunk, Old_Palette_64_Chunk:
-                case Cel_Chunk: 
-                case Color_Profile_Chunk:
-                case Mask_Chunk:
-                case Tags_Chunk:
-                case Palette_Chunk:
-                case User_Data_Chunk:
-                case Slice_Chunk:
-                case Tileset_Chunk:
-            }
-        }
-        delete(frame.chunks)
-    }
-
-    delete(doc.frames)
-}
-
-
 ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocator) -> (err: ASE_Unmarshal_Error) {
     last: int
     pos := size_of(DWORD)
@@ -286,13 +256,10 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(WORD)
                 ct.name.length, _ = endian.get_u16(data[last:pos], .Little)
-                ct.name.data = make_slice([]BYTE, int(ct.name.length)) or_return
-                
-                for sl in 0..<int(ct.name.length) {
-                    last = pos
-                    pos += size_of(BYTE)
-                    ct.name.data[sl] = data[last]
-                }
+
+                last = pos
+                pos += int(ct.name.length)
+                ct.name.data = data[last:pos]
 
                 if ct.type == 2 {
                     last = pos
@@ -674,7 +641,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     pos += size_of(BYTE)
                     ct.entries[entry].alpha = data[last]
 
-                    if ct.entries[entry].flags == 1 {
+                    if (ct.entries[entry].flags & 1) == 1 {
                         last = pos
                         pos += size_of(WORD)
                         ct.entries[entry].name.length, _ = endian.get_u16(data[last:pos], .Little)
@@ -739,12 +706,13 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     bit_4.properties_map = make_slice([]UD_Properties_Map, int(bit_4.size), allocator) or_return
 
                     for n in 0..<int(bit_4.num) {
-                        bit_4.properties_map[n], last, pos = parce_ud_map(last, pos, data[:], allocator) or_return
+                        bit_4.properties_map[n], last, pos = _parce_ud_map(last, pos, data[:], allocator) or_return
                     }
 
                     last = pos
                     pos += int(bit_4.size)
 
+                    ct.properties = bit_4
                 }
 
                 c.data = ct
@@ -910,7 +878,8 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
     return
 }
 
-parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, allocator := context.allocator) -> 
+@(private="file")
+_parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, allocator := context.allocator) -> 
     (value: UD_Property_Value, last, pos: int, err: ASE_Unmarshal_Error) 
 {
     last = old_last
@@ -1042,7 +1011,7 @@ parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, all
                 pos += size_of(WORD)
                 dt[n].type, _ = endian.get_u16(data[last:pos], .Little)
 
-                dt[n].data, last, pos = parse_property_value(last, pos, dt[n].type, data[:], allocator) or_return
+                dt[n].data, last, pos = _parse_property_value(last, pos, dt[n].type, data[:], allocator) or_return
             }
 
             vect.data = dt            
@@ -1051,7 +1020,7 @@ parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, all
             dt := make_slice([]UD_Property_Value, int(vect.num), allocator) or_return
 
             for n in 0..<int(vect.num) {
-                dt[n], last, pos = parse_property_value(last, pos, vect.type, data[:], allocator) or_return
+                dt[n], last, pos = _parse_property_value(last, pos, vect.type, data[:], allocator) or_return
             }
 
             vect.data = dt  
@@ -1079,7 +1048,7 @@ parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, all
             pos += size_of(WORD)
             pmt.properties[n].type, _ = endian.get_u16(data[last:pos], .Little)
 
-            pmt.properties[n].data, last, pos = parse_property_value(last, pos, pmt.properties[n].type, data[:]) or_return
+            pmt.properties[n].data, last, pos = _parse_property_value(last, pos, pmt.properties[n].type, data[:]) or_return
         }
 
         value = pmt
@@ -1097,8 +1066,8 @@ parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, all
     return
 }
 
-
-parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
+@(private="file")
+_parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
     (p_map: UD_Properties_Map, last, pos: int, err: ASE_Unmarshal_Error) 
 {   
     last = old_last
@@ -1125,7 +1094,7 @@ parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.al
         pos += size_of(WORD)
         p_map.properties[p].type, _ = endian.get_u16(data[last:pos], .Little)
 
-        p_map.properties[p].data, last, pos = parse_property_value(last, pos, p_map.properties[p].type, data[:], allocator) or_return
+        p_map.properties[p].data, last, pos = _parse_property_value(last, pos, p_map.properties[p].type, data[:], allocator) or_return
     }
 
     return
