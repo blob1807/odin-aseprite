@@ -202,9 +202,14 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].num_colors = data[last]
-                    ct.packets[p].colors = make_slice([][3]BYTE, ct.packets[p].num_colors) or_return
+                    count := int(data[last])
+                    if count == 0 {
+                        count = 256
+                    }
 
-                    for color in 0..<int(ct.packets[p].num_colors){
+                    ct.packets[p].colors = make_slice([][3]BYTE, count) or_return
+
+                    for color in 0..<count{
                         last = pos
                         pos += size_of(BYTE)
                         ct.packets[p].colors[color][2] = data[last]
@@ -347,6 +352,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     } else {
                         //cel.pixel = make_slice([]u8, expected_size, allocator) or_return
                         cel.pixel = slice.clone(buf.buf[:], allocator) or_return
+                        cel.did_com = true
                     }
 
 
@@ -400,6 +406,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     } else {
                         //cel.tiles = make_slice([]u8, expected_size, allocator) or_return
                         cel.tiles = slice.clone(buf.buf[:], allocator) or_return
+                        cel.did_com = true
                     }
 
                     ct.cel = cel
@@ -575,7 +582,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     last = pos
                     pos += size_of(BYTE)
-                    ct.tags[tag].tag_color[0] = data[last]
+                    ct.tags[tag].tag_color[2] = data[last]
 
                     last = pos
                     pos += size_of(BYTE)
@@ -583,7 +590,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     last = pos
                     pos += size_of(BYTE)
-                    ct.tags[tag].tag_color[2] = data[last]
+                    ct.tags[tag].tag_color[0] = data[last]
 
                     last = pos
                     pos += size_of(BYTE)
@@ -679,11 +686,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     color: UB_Bit_2
                     last = pos
                     pos += size_of(BYTE)
-                    color[0] = data[last]
-
-                    last = pos
-                    pos += size_of(BYTE)
-                    color[1] = data[last]
+                    color[3] = data[last]
 
                     last = pos
                     pos += size_of(BYTE)
@@ -691,7 +694,11 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     last = pos
                     pos += size_of(BYTE)
-                    color[3] = data[last]
+                    color[1] = data[last]
+
+                    last = pos
+                    pos += size_of(BYTE)
+                    color[0] = data[last]
                 }
                 
                 if (ct.flags & 4) == 4 {
@@ -706,7 +713,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     bit_4.properties_map = make_slice([]UD_Properties_Map, int(bit_4.size), allocator) or_return
 
                     for n in 0..<int(bit_4.num) {
-                        bit_4.properties_map[n], last, pos = _parce_ud_map(last, pos, data[:], allocator) or_return
+                        bit_4.properties_map[n], last, pos = _read_ud_map(last, pos, data[:], allocator) or_return
                     }
 
                     last = pos
@@ -859,7 +866,22 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     last = pos
                     pos += int(img_set.length)
-                    img_set.data = data[last:pos]
+                    img_set.tiles = data[last:pos]
+
+                    buf: bytes.Buffer
+                    defer bytes.buffer_destroy(&buf)
+
+                    expected_size := int(ct.width) * int(ct.height) * int(ct.num_of_tiles) 
+                    com_err := zlib.inflate(data[last:pos], &buf, expected_output_size=expected_size)
+
+                    if com_err != nil {
+                        img_set.tiles = data[last:pos]
+                        log.errorf("Unable to Uncompressed Tilemap. Writing raw data of %v bytes.", pos-last)
+                    } else {
+                        //cel.tiles = make_slice([]u8, expected_size, allocator) or_return
+                        img_set.tiles = slice.clone(buf.buf[:], allocator) or_return
+                        img_set.did_com = true
+                    }
                     
                 }
                 c.data = ct
@@ -879,7 +901,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 }
 
 @(private="file")
-_parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, allocator := context.allocator) -> 
+_read_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, allocator := context.allocator) -> 
     (value: UD_Property_Value, last, pos: int, err: ASE_Unmarshal_Error) 
 {
     last = old_last
@@ -924,7 +946,7 @@ _parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, al
     case 0x000A:
         last = pos
         pos += size_of(FIXED)
-        t, _ := endian.get_i16(data[last:pos], .Little)
+        t, _ := endian.get_i32(data[last:pos], .Little)
         value = FIXED(t)
 
     case 0x000B:
@@ -1011,7 +1033,7 @@ _parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, al
                 pos += size_of(WORD)
                 dt[n].type, _ = endian.get_u16(data[last:pos], .Little)
 
-                dt[n].data, last, pos = _parse_property_value(last, pos, dt[n].type, data[:], allocator) or_return
+                dt[n].data, last, pos = _read_property_value(last, pos, dt[n].type, data[:], allocator) or_return
             }
 
             vect.data = dt            
@@ -1020,7 +1042,7 @@ _parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, al
             dt := make_slice([]UD_Property_Value, int(vect.num), allocator) or_return
 
             for n in 0..<int(vect.num) {
-                dt[n], last, pos = _parse_property_value(last, pos, vect.type, data[:], allocator) or_return
+                dt[n], last, pos = _read_property_value(last, pos, vect.type, data[:], allocator) or_return
             }
 
             vect.data = dt  
@@ -1048,7 +1070,7 @@ _parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, al
             pos += size_of(WORD)
             pmt.properties[n].type, _ = endian.get_u16(data[last:pos], .Little)
 
-            pmt.properties[n].data, last, pos = _parse_property_value(last, pos, pmt.properties[n].type, data[:]) or_return
+            pmt.properties[n].data, last, pos = _read_property_value(last, pos, pmt.properties[n].type, data[:]) or_return
         }
 
         value = pmt
@@ -1067,7 +1089,7 @@ _parse_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, al
 }
 
 @(private="file")
-_parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
+_read_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
     (p_map: UD_Properties_Map, last, pos: int, err: ASE_Unmarshal_Error) 
 {   
     last = old_last
@@ -1090,11 +1112,12 @@ _parce_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.a
         last = pos
         pos += int(p_map.properties[p].name.length)
         p_map.properties[p].name.data = data[last:pos]
+
         last = pos
         pos += size_of(WORD)
         p_map.properties[p].type, _ = endian.get_u16(data[last:pos], .Little)
 
-        p_map.properties[p].data, last, pos = _parse_property_value(last, pos, p_map.properties[p].type, data[:], allocator) or_return
+        p_map.properties[p].data, last, pos = _read_property_value(last, pos, p_map.properties[p].type, data[:], allocator) or_return
     }
 
     return
