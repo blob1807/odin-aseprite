@@ -168,7 +168,8 @@ Linked_Cel :: distinct WORD
 Com_Image_Cel :: struct{
     width: WORD, 
     height: WORD, 
-    pixel: []PIXEL
+    pixel: []PIXEL,
+    did_com: bool,
 } // raw cel ZLIB compressed
 
 Com_Tilemap_Cel :: struct{
@@ -179,7 +180,8 @@ Com_Tilemap_Cel :: struct{
     bitmask_y: DWORD,
     bitmask_diagonal: DWORD,
     //tiles: []TILE, // ZLIB compressed
-    tiles: []BYTE
+    tiles: []BYTE,
+    did_com: bool,
 }
 
 Cel_Chunk :: struct {
@@ -337,7 +339,8 @@ Tileset_External :: struct{
 
 Tileset_Compressed :: struct{
     length: DWORD, 
-    data: []PIXEL
+    tiles: []PIXEL,
+    did_com: bool,
 }
 
 Tileset_Chunk :: struct {
