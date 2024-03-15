@@ -77,8 +77,8 @@ destroy_doc :: proc(doc: ^ASE_Document) {
                 delete(c.data)
 
             case Tileset_Chunk:
-                if (c.flags & 2) == 2 {
-                    delete(c.compressed.data)
+                if (c.flags & 2) == 2 && c.compressed.did_com {
+                    delete(c.compressed.tiles)
                 }
             }
         }
