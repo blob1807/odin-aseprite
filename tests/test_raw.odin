@@ -69,11 +69,25 @@ raw_unmarshal :: proc(t: ^testing.T) {
 
 @(test)
 raw_marshal :: proc(t: ^testing.T) {
+    /*track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	context.allocator = mem.tracking_allocator(&track)
+
+	defer {
+		for _, leak in track.allocation_map {
+			fmt.printf("%v leaked %v bytes\n", leak.location, leak.size)
+		}
+
+		for bad_free in track.bad_free_array {
+			fmt.printf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory)
+		}
+	}*/
+
     data := #load("/asefile/basic-16x16.aseprite")
     doc: raw.ASE_Document
     defer raw.destroy_doc(&doc)
 
-    uerr := raw.ase_unmarshal(data[:], &doc, context.temp_allocator)
+    uerr := raw.ase_unmarshal(data[:], &doc)
 
     ok := expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
     if !ok {
@@ -81,7 +95,8 @@ raw_marshal :: proc(t: ^testing.T) {
     }
 
     buf := make_slice([]byte, int(doc.header.size), context.temp_allocator)
-    n, merr := raw.ase_marshal(buf[:], doc, context.temp_allocator)
+    defer delete(buf)
+    n, merr := raw.ase_marshal(buf[:], &doc)
 
     ok = expect(t, merr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, merr))
     if !ok {
