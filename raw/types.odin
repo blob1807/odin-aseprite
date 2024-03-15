@@ -1,6 +1,20 @@
 package raw_aseprite_file_handler
 
 import "core:math/fixed"
+import "base:runtime"
+
+ASE_Unmarshal_Errors :: enum {
+    Bad_File_Magic_Number,
+    Bad_Frame_Magic_Number,
+    Bad_User_Data_Type,
+}
+ASE_Unmarshal_Error :: union #shared_nil {ASE_Unmarshal_Errors, runtime.Allocator_Error}
+
+ASE_Marshal_Errors :: enum {
+    Buffer_Not_Big_Enough,
+    Invalid_Chunk_Type,
+}
+ASE_Marshal_Error :: union #shared_nil {ASE_Marshal_Errors, runtime.Allocator_Error}
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
