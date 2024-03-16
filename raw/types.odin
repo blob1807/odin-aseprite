@@ -32,7 +32,6 @@ LONG64 :: i64
 
 BYTE_N :: [dynamic]BYTE
 
-// TODO: See if adding #packed is better
 // https://odin-lang.org/docs/overview/#packed 
 STRING :: struct {
     length: WORD, 
@@ -204,7 +203,7 @@ Color_Profile_Chunk :: struct {
     type: WORD,
     flags: WORD,
     fixed_gamma: FIXED,
-    icc: struct {
+    icc: struct { // TODO: Yay more libs to make, https://www.color.org/icc1v42.pdf
         length: DWORD,
         data: []BYTE,
     },
