@@ -169,6 +169,7 @@ update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
         
         for &chunk in frame.chunks {
             chunk.size = DWORD(size_of(DWORD))
+
             switch &v in chunk.data {
             case Old_Palette_256_Chunk:
                 chunk.size += DWORD(size_of(WORD))
@@ -198,27 +199,62 @@ update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
 
             case Layer_Chunk:
                 v.name.length = WORD(len(v.name.data))
-
+            
             case Cel_Chunk:
             case Cel_Extra_Chunk:
-            case Color_Profile_Chunk: 
+
+            case Color_Profile_Chunk:
+                v.icc.length = DWORD(len(v.icc.data))
+
             case External_Files_Chunk:
+                v.length = DWORD(len(v.entries))
+                for &e in v.entries {
+                    e.file_name_or_id.length = WORD(len(e.file_name_or_id.data))
+                }
+
             case Mask_Chunk:
-            case Path_Chunk: 
-            case Tags_Chunk: 
+                v.name.length = WORD(len(v.name.data))
+            
+            case Path_Chunk:
+            case Tags_Chunk:
+                v.number = WORD(len(v.tags))
+                for &tag in v.tags {
+                    tag.name.length = WORD(len(tag.name.data))
+                }
+
             case Palette_Chunk:
-            case User_Data_Chunk:
+                v.size = DWORD(len(v.entries))
+                for &e in v.entries {
+                    e.name.length = WORD(len(e.name.data))
+                }
+
+            case User_Data_Chunk: 
+                if (v.flags & 1) == 1 {
+                    v.text.length = WORD(len(v.text.data))
+                }
+                if (v.flags & 4) == 4 {
+                    v.properties.size += 0 // TODO: ya no
+                    v.properties.num = DWORD(len(v.properties.properties_map))
+
+                }
+            
             case Slice_Chunk:
+                v.num_of_keys = DWORD(len(v.data))
+                v.name.length = WORD(len(v.name.data))
+
             case Tileset_Chunk:
-            case:
+                v.name.length = WORD(len(v.name.data))
+                if (v.flags & 2) == 2 && v.compressed.did_com {
+                    v.compressed.length = DWORD(len(v.compressed.tiles))
+                }
             }
         }
     }
-    doc.header.size = auto_cast size
+    doc.header.size = DWORD(size)
     return
 }
 
-upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err: ASE_Unmarshal_Error) {
+upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err: Doc_Upgrade_Error) {
     for &frame in doc.frames {
         frame.header.num_of_chunks = DWORD(frame.header.old_num_of_chunks)
         frame.header.old_num_of_chunks = 0xFFFF
@@ -232,43 +268,62 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
                 entries := make([dynamic]Palette_Entry, allocator=allocator) or_return
                 defer delete(entries)
 
-                for &e, pos in entries { // TODO: Rework to support skips
-                    e.red = 0
-                    e.green = 0
-                    e.blue = 0
-                    e.alpha = 255
+                for pak in v.packets {
+                    for c in pak.colors {
+                        pal: Palette_Entry
+                        pal.red = c[0]
+                        pal.green = c[1]
+                        pal.blue = c[2]
+                        pal.alpha = 255
+                        append(&entries)
+                    }
                 }
 
                 new_chunk.entries = make([]Palette_Entry, len(entries), allocator) or_return
                 copy(new_chunk.entries[:], entries[:])
+
                 new_chunk.size = DWORD(len(entries))
+                new_chunk.last_index = DWORD(len(entries) - 1)
+
                 chunk.data = new_chunk
                 
             case Old_Palette_64_Chunk:
+                scale :: proc(c: BYTE) -> (res: BYTE, err: Doc_Upgrade_Error) {
+                    if c > 63 {
+                        return c, .Palette_Color_To_Big
+                    }
+                    return c << 2 | c >> 4, nil
+                }
+
                 chunk.type = .palette
                 new_chunk: Palette_Chunk
 
                 entries := make([dynamic]Palette_Entry, allocator=allocator) or_return
                 defer delete(entries)
 
-                for &e, pos in entries { // TODO: Rework to support skips
-                    e.red = 0
-                    e.green = 0
-                    e.blue = 0
-                    e.alpha = 255
-                } 
+                for pak in v.packets {
+                    for c in pak.colors {
+                        pal: Palette_Entry
+                        pal.red = scale(c[0]) or_return
+                        pal.green = scale(c[1]) or_return
+                        pal.blue = scale(c[2]) or_return
+                        pal.alpha = 255
+                        append(&entries)
+                    }
+                }
 
                 new_chunk.entries = make([]Palette_Entry, len(entries), allocator) or_return
                 copy(new_chunk.entries[:], entries[:])
+
                 new_chunk.size = DWORD(len(entries))
+                new_chunk.last_index = DWORD(len(entries) - 1)
+
                 chunk.data = new_chunk
                 
             case Color_Profile_Chunk:
                 if v.type == 0 {
                     v.type = 1
                 }
-                
-            case:
             }
         }
     }
