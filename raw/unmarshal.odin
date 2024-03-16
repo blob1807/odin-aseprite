@@ -154,16 +154,20 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
             // ============ Chunks =============
             switch c.type {
             case .old_palette_256:
+                skip: int
+                ct: Old_Palette_256_Chunk
+
                 last = pos
                 pos += size_of(WORD)
-                ct: Old_Palette_256_Chunk
                 ct.size, _ = endian.get_u16(data[last:pos], .Little)
                 ct.packets = make_slice([]Old_Palette_Packet, int(ct.size)) or_return
 
-                for p in 0..<int(ct.size) { // TODO: Rework to support skips
+                
+                for p in 0..<int(ct.size) {
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].entries_to_skip = data[last]
+                    skip += int(data[last])
 
                     last = pos
                     pos += size_of(BYTE)
@@ -175,7 +179,8 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     ct.packets[p].colors = make_slice([][3]BYTE, count, allocator) or_return
 
-                    for c in 0..<count{
+                    count += skip
+                    for c in skip..<count{
                         last = pos
                         pos += size_of(BYTE)
                         ct.packets[p].colors[c][2] = data[last]
@@ -193,15 +198,18 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 c.data = ct
 
             case .old_palette_64:
+                skip: int
+                ct: Old_Palette_64_Chunk
                 last = pos
                 pos += size_of(WORD)
-                ct: Old_Palette_64_Chunk
+                
                 ct.size, _ = endian.get_u16(data[last:pos], .Little)
 
-                for p in 0..<ct.size {// TODO: Rework to support skips
+                for p in 0..<ct.size {
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].entries_to_skip = data[last]
+                    skip += int(data[last])
                     
                     last = pos
                     pos += size_of(BYTE)
@@ -212,8 +220,11 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     }
 
                     ct.packets[p].colors = make_slice([][3]BYTE, count) or_return
-
-                    for color in 0..<count{
+                    
+                    count += skip
+                    // TODO: Needs to be scaled
+                    // https://github.com/alpine-alpaca/asefile/blob/78d3a5669465c22031094baa0c1e5c3015c24699/src/palette.rs#L134
+                    for color in skip..<count{ 
                         last = pos
                         pos += size_of(BYTE)
                         ct.packets[p].colors[color][2] = data[last]
@@ -355,6 +366,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                         log.errorf("Unable to Uncompressed Image. Writing raw data of %v bytes.", pos-last)
                     } else {
                         //cel.pixel = make_slice([]u8, expected_size, allocator) or_return
+                        //copy(cel.pixel[:], buf.buf[:])
                         cel.pixel = slice.clone(buf.buf[:], allocator) or_return
                         cel.did_com = true
                     }
@@ -468,6 +480,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 pos += size_of(BYTE)*8
 
                 if ct.type == 2 {
+
                     last = pos
                     pos += size_of(DWORD)
                     ct.icc.length, _ = endian.get_u32(data[last:pos], .Little)
@@ -475,6 +488,8 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += int(ct.icc.length)
                     ct.icc.data = data[last:pos]
+
+                    log.warnf("Embedded ICC Color Profiles are currently not supported. Writing %v raw byte instead.", ct.icc.length)
                 }
 
                 c.data = ct
