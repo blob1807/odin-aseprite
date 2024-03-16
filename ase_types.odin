@@ -18,7 +18,6 @@ LONG64 :: i64
 
 BYTE_N :: [dynamic]BYTE
 
-// TODO: See if adding #packed is better
 // https://odin-lang.org/docs/overview/#packed 
 POINT :: struct {
     x,y: LONG
