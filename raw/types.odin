@@ -16,6 +16,11 @@ ASE_Marshal_Errors :: enum {
 }
 ASE_Marshal_Error :: union #shared_nil {ASE_Marshal_Errors, runtime.Allocator_Error}
 
+Doc_Upgrade_Errors :: enum {
+    Palette_Color_To_Big,
+}
+Doc_Upgrade_Error :: union #shared_nil {Doc_Upgrade_Errors, runtime.Allocator_Error}
+
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
 // all write in le
