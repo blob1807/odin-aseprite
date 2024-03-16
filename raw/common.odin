@@ -91,7 +91,7 @@ destroy_doc :: proc(doc: ^ASE_Document) {
 update_doc :: proc(doc: ^ASE_Document) {
     update_flags(doc)
     update_types(doc)
-    update_size(doc)
+    update_sizes(doc)
 }
 
 update_flags :: proc(doc: ^ASE_Document) {
@@ -157,7 +157,7 @@ update_types :: proc(doc: ^ASE_Document) {
     }
 }
 
-update_size :: proc(doc: ^ASE_Document) -> (size: int) {
+update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
     for &frame in doc.frames {
         if frame.header.num_of_chunks == 0 && len(frame.chunks) < 0xFFFF {
             frame.header.old_num_of_chunks = WORD(len(frame.chunks))
@@ -228,31 +228,39 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
             case Old_Palette_256_Chunk:
                 chunk.type = .palette
                 new_chunk: Palette_Chunk
-                new_chunk.size = DWORD(len(v.packets))
-                new_chunk.entries = make([]Palette_Entry, len(v.packets), allocator) or_return
 
-                for &e, pos in new_chunk.entries {
+                entries := make([dynamic]Palette_Entry, allocator=allocator) or_return
+                defer delete(entries)
+
+                for &e, pos in entries { // TODO: Rework to support skips
                     e.red = 0
                     e.green = 0
                     e.blue = 0
                     e.alpha = 255
                 }
 
+                new_chunk.entries = make([]Palette_Entry, len(entries), allocator) or_return
+                copy(new_chunk.entries[:], entries[:])
+                new_chunk.size = DWORD(len(entries))
                 chunk.data = new_chunk
                 
             case Old_Palette_64_Chunk:
                 chunk.type = .palette
                 new_chunk: Palette_Chunk
-                new_chunk.size = DWORD(len(v.packets))
-                new_chunk.entries = make([]Palette_Entry, len(v.packets), allocator) or_return
 
-                for &e, pos in new_chunk.entries {
+                entries := make([dynamic]Palette_Entry, allocator=allocator) or_return
+                defer delete(entries)
+
+                for &e, pos in entries { // TODO: Rework to support skips
                     e.red = 0
                     e.green = 0
                     e.blue = 0
                     e.alpha = 255
-                }
+                } 
 
+                new_chunk.entries = make([]Palette_Entry, len(entries), allocator) or_return
+                copy(new_chunk.entries[:], entries[:])
+                new_chunk.size = DWORD(len(entries))
                 chunk.data = new_chunk
                 
             case Color_Profile_Chunk:
