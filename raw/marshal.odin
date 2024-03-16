@@ -19,12 +19,9 @@ import vzlib "vendor:zlib"
 // equal to `doc.header.file_size`
 //
 // pos: Size fo buf writen to buf
-ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, allocator := context.allocator) -> (pos: int, err: ASE_Marshal_Error) {
-    fmt.println("hi")
-    if len(buf) < int(doc.header.size) {
-        err = ASE_Marshal_Errors.Buffer_Not_Big_Enough
-        return
-    }
+ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator := context.allocator) -> (pos: int, err: ASE_Marshal_Error) {
+    if update { update_doc(doc) }
+    if len(buf) < int(doc.header.size) { return 0, .Buffer_Not_Big_Enough }
 
     next := size_of(DWORD)
     endian.put_u32(buf[pos:next], .Little, doc.header.size)
@@ -140,7 +137,7 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, allocator := context.alloca
                 next += size_of(WORD)
                 endian.put_u16(buf[pos:next], .Little, value.size)
 
-                for p in value.packets {
+                for p in value.packets { // TODO: Rework to support skips
                     pos = next
                     next += size_of(BYTE)
                     buf[pos] = p.entries_to_skip
@@ -185,7 +182,7 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, allocator := context.alloca
                         buf[pos] = p.num_colors
                     }
 
-                    for c in p.colors{
+                    for c in p.colors{ // TODO: Rework to support skips
                         pos = next
                         next += size_of(BYTE)
                         buf[pos] = c[2]
