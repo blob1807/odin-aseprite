@@ -160,7 +160,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 ct.size, _ = endian.get_u16(data[last:pos], .Little)
                 ct.packets = make_slice([]Old_Palette_Packet, int(ct.size)) or_return
 
-                for p in 0..<int(ct.size) {
+                for p in 0..<int(ct.size) { // TODO: Rework to support skips
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].entries_to_skip = data[last]
@@ -198,7 +198,11 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 ct: Old_Palette_64_Chunk
                 ct.size, _ = endian.get_u16(data[last:pos], .Little)
 
-                for p in 0..<ct.size {
+                for p in 0..<ct.size {// TODO: Rework to support skips
+                    last = pos
+                    pos += size_of(BYTE)
+                    ct.packets[p].entries_to_skip = data[last]
+                    
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].num_colors = data[last]
