@@ -167,7 +167,6 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].entries_to_skip = data[last]
-                    skip += int(data[last])
 
                     last = pos
                     pos += size_of(BYTE)
@@ -179,8 +178,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     ct.packets[p].colors = make_slice([][3]BYTE, count, allocator) or_return
 
-                    count += skip
-                    for c in skip..<count{
+                    for c in 0..<count{
                         last = pos
                         pos += size_of(BYTE)
                         ct.packets[p].colors[c][2] = data[last]
@@ -209,7 +207,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     last = pos
                     pos += size_of(BYTE)
                     ct.packets[p].entries_to_skip = data[last]
-                    skip += int(data[last])
+                    //skip += int(data[last])
                     
                     last = pos
                     pos += size_of(BYTE)
@@ -221,10 +219,10 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     ct.packets[p].colors = make_slice([][3]BYTE, count) or_return
                     
-                    count += skip
+                    //count += skip
                     // TODO: Needs to be scaled
                     // https://github.com/alpine-alpaca/asefile/blob/78d3a5669465c22031094baa0c1e5c3015c24699/src/palette.rs#L134
-                    for color in skip..<count{ 
+                    for color in 0..<count{ 
                         last = pos
                         pos += size_of(BYTE)
                         ct.packets[p].colors[color][2] = data[last]
@@ -474,7 +472,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(FIXED)
                 t, _ := endian.get_i32(data[last:pos], .Little)
-                ct.fixed_gamma = auto_cast t
+                ct.fixed_gamma = FIXED(t)
 
                 last = pos
                 pos += size_of(BYTE)*8
@@ -901,6 +899,8 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                         img_set.tiles = slice.clone(buf.buf[:], allocator) or_return
                         img_set.did_com = true
                     }
+
+                    ct.compressed = img_set
                     
                 }
                 c.data = ct
