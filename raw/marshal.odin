@@ -137,7 +137,7 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                 next += size_of(WORD)
                 endian.put_u16(buf[pos:next], .Little, value.size)
 
-                for p in value.packets { // TODO: Rework to support skips
+                for p in value.packets { // TODO: Rework to support skips??
                     pos = next
                     next += size_of(BYTE)
                     buf[pos] = p.entries_to_skip
@@ -176,13 +176,14 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
 
                     pos = next
                     next += size_of(BYTE)
+                    
                     if len(p.colors) == 256 {
                         buf[pos] = 0
                     } else {
                         buf[pos] = p.num_colors
                     }
 
-                    for c in p.colors{ // TODO: Rework to support skips
+                    for c in p.colors{ // TODO: Rework to support skips??
                         pos = next
                         next += size_of(BYTE)
                         buf[pos] = c[2]
