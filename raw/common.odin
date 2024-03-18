@@ -288,6 +288,7 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
                 chunk.data = new_chunk
                 
             case Old_Palette_64_Chunk:
+                // https://github.com/alpine-alpaca/asefile/blob/main/src/palette.rs#L134
                 scale :: proc(c: BYTE) -> (res: BYTE, err: Doc_Upgrade_Error) {
                     if c > 63 {
                         return c, .Palette_Color_To_Big
