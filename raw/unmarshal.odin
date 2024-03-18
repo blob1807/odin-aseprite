@@ -220,8 +220,6 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                     ct.packets[p].colors = make_slice([][3]BYTE, count) or_return
                     
                     //count += skip
-                    // TODO: Needs to be scaled
-                    // https://github.com/alpine-alpaca/asefile/blob/78d3a5669465c22031094baa0c1e5c3015c24699/src/palette.rs#L134
                     for color in 0..<count{ 
                         last = pos
                         pos += size_of(BYTE)
