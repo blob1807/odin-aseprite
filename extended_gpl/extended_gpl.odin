@@ -170,3 +170,8 @@ gpl_marshal :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: 
 gpl_marshal_string  :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
     return string(gpl_marshal(pal, allocator) or_return), .None
 }
+
+destroy_gpl :: proc(pal: ^gpl_palette) {
+    delete(pal.colors)
+    pal.colors = nil
+}
