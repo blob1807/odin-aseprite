@@ -88,8 +88,11 @@ destroy_doc :: proc(doc: ^ASE_Document) {
     delete(doc.frames)
 }
 
+// FIXME: Needs to be finished before use.
+// Unable to update flags. You'll have to set them manually.
+// Will update most types & sizes.
 update_doc :: proc(doc: ^ASE_Document) {
-    update_flags(doc)
+    // update_flags(doc)
     update_types(doc)
     update_sizes(doc)
 }
@@ -97,67 +100,135 @@ update_doc :: proc(doc: ^ASE_Document) {
 update_flags :: proc(doc: ^ASE_Document) {
     for &frame in doc.frames {
         for &chunk in frame.chunks {
-            switch &v in chunk.data {
-            case Old_Palette_256_Chunk:
-            case Old_Palette_64_Chunk:
-            case Layer_Chunk:
-            case Cel_Chunk:
-            case Cel_Extra_Chunk:
-            case Color_Profile_Chunk: 
-            case External_Files_Chunk:
-            case Mask_Chunk:
-            case Path_Chunk: 
-            case Tags_Chunk: 
+            #partial switch &v in chunk.data {
             case Palette_Chunk:
+                for &entry in v.entries {
+                    if len(entry.name.data) != 0 {
+                        entry.flags = 1
+                    } else {
+                        entry.flags = 0
+                    }
+                }
+
             case User_Data_Chunk:
-            case Slice_Chunk:
+                if len(v.text.data) != 0 {
+                    v.flags |= 1
+                } else {
+                    v.flags &~= 1
+                }
+
+                if len(v.properties.properties_map) != 0 {
+                    v.flags |= 4
+                } else {
+                    v.flags &~= 4
+                }
+                
             case Tileset_Chunk:
-            case:
+                if len(v.compressed.tiles) != 0 {
+                    v.flags |= 2
+                } else {
+                    v.flags &~= 2
+                }
             }
         }
     }
 }
 
 update_types :: proc(doc: ^ASE_Document) {
+    update_value :: proc(value: ^UD_Property_Value) -> (prop_type: WORD) {
+        switch &pt in value {
+        case BYTE:   prop_type = 0x0003
+        case SHORT:  prop_type = 0x0004
+        case WORD:   prop_type = 0x0005
+        case LONG:   prop_type = 0x0006
+        case DWORD:  prop_type = 0x0007
+        case LONG64: prop_type = 0x0008
+        case QWORD:  prop_type = 0x0009
+        case FIXED:  prop_type = 0x000A
+        case FLOAT:  prop_type = 0x000B
+        case DOUBLE: prop_type = 0x000C
+        case STRING: prop_type = 0x000D
+        case POINT:  prop_type = 0x000E
+        case SIZE:   prop_type = 0x000F
+        case RECT:   prop_type = 0x0010
+        case UUID:   prop_type = 0x0013
+    
+        case UD_Vec:
+            prop_type = 0x0011
+            switch &vt in pt.data {
+                case []Vec_Diff:
+                    for &dt in vt {
+                        dt.type = update_value(&dt.data)
+                    }
+                case []UD_Property_Value:
+                    if len(vt) != 0 {
+                        pt.type = update_value(&vt[0])
+                    }
+            }
+    
+        case UD_Properties_Map:
+            prop_type = 0x0012
+            for &prop in pt.properties {
+                prop.type = update_value(&prop.data)
+            }
+        }
+        return
+    }
+
     for &frame in doc.frames {
         for &chunk in frame.chunks {
             switch &v in chunk.data {
-            case Old_Palette_256_Chunk:
-                chunk.type = .old_palette_256
-            case Old_Palette_64_Chunk:
-                chunk.type = .old_palette_64
-            case Layer_Chunk:
-                chunk.type = .layer
+            case Old_Palette_256_Chunk: chunk.type = .old_palette_256
+            case Old_Palette_64_Chunk:  chunk.type = .old_palette_64
+            case Layer_Chunk:      chunk.type = .layer
+            case Cel_Extra_Chunk:  chunk.type = .cel_extra
+            case External_Files_Chunk: chunk.type = .external_files
+            case Mask_Chunk:    chunk.type = .mask
+            case Path_Chunk:    chunk.type = .path
+            case Tags_Chunk:    chunk.type = .tags
+            case Palette_Chunk: chunk.type = .palette
+            case Slice_Chunk:   chunk.type = .slice
+            case Tileset_Chunk: chunk.type = .tileset
                 
             case Cel_Chunk:
                 chunk.type = .cel
-            case Cel_Extra_Chunk:
-                chunk.type = .cel_extra
+                switch cel in v.cel {
+                case Raw_Cel: v.type = 0
+                case Linked_Cel: v.type = 1
+                case Com_Image_Cel: v.type = 2
+                case Com_Tilemap_Cel: v.type = 3
+                }
+
             case Color_Profile_Chunk: 
                 chunk.type = .color_profile
-            case External_Files_Chunk:
-                chunk.type = .external_files
-            case Mask_Chunk:
-                chunk.type = .mask
-            case Path_Chunk: 
-                chunk.type = .path
-            case Tags_Chunk: 
-                chunk.type = .tags
-            case Palette_Chunk:
-                chunk.type = .palette
+                if len(v.icc.data) != 0 {
+                    v.type = 2
+                } else {
+                    v.type = 0
+                }            
+
             case User_Data_Chunk:
                 chunk.type = .user_data
-            case Slice_Chunk:
-                chunk.type = .slice
-            case Tileset_Chunk:
-                chunk.type = .tileset
-            case:
+
+                if (v.flags & 4) == 4 {
+                    for &pmap in v.properties.properties_map {
+                        for &prop in pmap.properties {
+                            prop.type = update_value(&prop.data)
+                        }
+                    }
+                }
             }
         }
     }
 }
+   
 
+// doc: raw.ASE_Document to update
+// size: New total size in bytes
 update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
+    size += FILE_HEADER_SIZE
+    doc.header.frames = WORD(len(doc.frames))
+
     for &frame in doc.frames {
         if frame.header.num_of_chunks == 0 && len(frame.chunks) < 0xFFFF {
             frame.header.old_num_of_chunks = WORD(len(frame.chunks))
@@ -166,6 +237,7 @@ update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
             frame.header.old_num_of_chunks = 0xFFFF
             frame.header.num_of_chunks = DWORD(len(frame.chunks))
         }
+        frame_size := FRAME_HEADER_SIZE
         
         for &chunk in frame.chunks {
             chunk.size = DWORD(size_of(DWORD))
