@@ -195,7 +195,7 @@ Cel_Chunk :: struct {
     opacity_level: BYTE,
     type: WORD,
     z_index: SHORT, //0=default, pos=show n layers later, neg=back
-    cel: union{ Raw_Cel, Linked_Cel, Com_Image_Cel, Com_Tilemap_Cel}
+    cel: union{ Raw_Cel, Linked_Cel, Com_Image_Cel, Com_Tilemap_Cel }
 }
 
 Cel_Extra_Chunk :: struct {
