@@ -904,7 +904,9 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 c.data = ct
 
             case .none:
-            case: unreachable()
+            case: 
+                fmt.println(last, pos, c.type)
+                unreachable()
             }
             last = pos
             pos = t_pos + int(c.size)
@@ -1105,6 +1107,7 @@ _read_property_value :: proc(old_last, old_pos: int, type: WORD, data: []u8, all
     return
 }
 
+// TODO: Move upto where to it's only use
 @(private="file")
 _read_ud_map :: proc(old_last, old_pos: int, data: []u8, allocator := context.allocator) -> 
     (p_map: UD_Properties_Map, last, pos: int, err: ASE_Unmarshal_Error) 
