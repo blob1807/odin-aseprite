@@ -20,7 +20,9 @@ import vzlib "vendor:zlib"
 //
 // pos: Size fo buf writen to buf
 ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator := context.allocator) -> (pos: int, err: ASE_Marshal_Error) {
-    if update { update_doc(doc) }
+    // TODO: update is causing issues a lot of issues.
+    // if update { update_doc(doc) }
+
     if len(buf) < int(doc.header.size) { return 0, .Buffer_Not_Big_Enough }
 
     next := size_of(DWORD)
@@ -305,10 +307,7 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     endian.put_u16(buf[pos:next], .Little, cel.height)
 
                     if cel.did_com {
-                        pos = next
-                        next = t_next + int(chunk.size)
-
-                        com_buf := make_slice([]byte, len(cel.pixel), allocator) or_return
+                        com_buf := make_slice([]byte, len(cel.pixel) + 64, allocator) or_return
                         defer delete(com_buf)
                         data_rd: [^]u8 = raw_data(cel.pixel[:])
 
@@ -325,6 +324,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                         vzlib.deflate(&config, vzlib.FINISH)
                         vzlib.deflateEnd(&config)
 
+                        pos = next
+                        next += int(config.total_out)
                         copy_slice(buf[pos:next], com_buf[:])
 
                     } else {
@@ -367,10 +368,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     next += size_of(BYTE)*10
 
                     if cel.did_com {
-                        pos = next
-                        next = t_next + int(chunk.size)
 
-                        com_buf := make_slice([]byte, len(cel.tiles), allocator) or_return
+                        com_buf := make_slice([]byte, len(cel.tiles) + 64, allocator) or_return
                         defer delete(com_buf)
                         data_rd: [^]u8 = raw_data(cel.tiles[:])
 
@@ -387,6 +386,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                         vzlib.deflate(&config, vzlib.FINISH)
                         vzlib.deflateEnd(&config)
 
+                        pos = next
+                        next += int(config.total_out)
                         copy_slice(buf[pos:next], com_buf[:])
 
                     } else {
@@ -784,10 +785,7 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     endian.put_u32(buf[pos:next], .Little, value.compressed.length)
 
                     if value.compressed.did_com {
-                        pos = next
-                        next = t_next + int(chunk.size)
-
-                        com_buf := make_slice([]byte, len(value.compressed.tiles), allocator) or_return
+                        com_buf := make_slice([]byte, len(value.compressed.tiles) + 64, allocator) or_return
                         defer delete(com_buf)
                         data_rd: [^]u8 = raw_data(value.compressed.tiles[:])
 
@@ -804,6 +802,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                         vzlib.deflate(&config, vzlib.FINISH)
                         vzlib.deflateEnd(&config)
 
+                        pos = next
+                        next += int(config.total_out)
                         copy_slice(buf[pos:next], com_buf[:])
 
                     } else {
