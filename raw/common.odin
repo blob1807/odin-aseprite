@@ -89,10 +89,8 @@ destroy_doc :: proc(doc: ^ASE_Document) {
 }
 
 // FIXME: Needs to be finished before use.
-// Unable to update flags. You'll have to set them manually.
-// Will update most types & sizes.
-update_doc :: proc(doc: ^ASE_Document) {
-    // update_flags(doc)
+update_doc :: proc(doc: ^ASE_Document, assume_flags := false) {
+    if assume_flags { update_flags(doc) }
     update_types(doc)
     update_sizes(doc)
 }
@@ -226,6 +224,42 @@ update_types :: proc(doc: ^ASE_Document) {
 // doc: raw.ASE_Document to update
 // size: New total size in bytes
 update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
+    update_value :: proc(value: ^UD_Property_Value) -> (size: DWORD) {
+        switch &pt in value {
+        case BYTE: size = 1
+        case SHORT, WORD: size = 2
+        case LONG, DWORD, FIXED, FLOAT: size = 4
+        case LONG64, QWORD, DOUBLE: size = 8
+        case STRING: size = 2 + DWORD(len(pt.data))
+        case POINT, SIZE: size = 4+4
+        case RECT: size = 4*4
+        case UUID: size = 16
+    
+        case UD_Vec:
+            size += 4 + 2
+            switch &vt in pt.data {
+            case []Vec_Diff:
+                pt.num = DWORD(len(vt))
+                for &dt in vt {
+                    size += update_value(&dt.data)
+                }
+            case []UD_Property_Value:
+                pt.num = DWORD(len(vt))
+                if len(vt) != 0 {
+                    size += update_value(&vt[0]) * pt.num
+                }
+            }
+    
+        case UD_Properties_Map:
+            size = 4
+            pt.num = DWORD(len(pt.properties))
+            for &prop in pt.properties {
+                size += update_value(&prop.data)
+            }
+        }
+        return
+    }
+    
     size += FILE_HEADER_SIZE
     doc.header.frames = WORD(len(doc.frames))
 
@@ -237,7 +271,7 @@ update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
             frame.header.old_num_of_chunks = 0xFFFF
             frame.header.num_of_chunks = DWORD(len(frame.chunks))
         }
-        frame_size := FRAME_HEADER_SIZE
+        frame.header.size = DWORD(FRAME_HEADER_SIZE)
         
         for &chunk in frame.chunks {
             chunk.size = DWORD(size_of(DWORD))
@@ -271,56 +305,116 @@ update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
 
             case Layer_Chunk:
                 v.name.length = WORD(len(v.name.data))
+                chunk.size += 2*6 + 1*4 + 2 + DWORD(len(v.name.data)) + 4
             
             case Cel_Chunk:
+                chunk.size += 2*5 + 1 + 5
+                switch cel in v.cel {
+                case Raw_Cel:
+                    chunk.size += 2*2 + DWORD(len(cel.pixel))
+                case Linked_Cel:
+                    chunk.size += 2
+                case Com_Image_Cel:
+                    chunk.size += 2*2 + DWORD(len(cel.pixel))
+                case Com_Tilemap_Cel:
+                    chunk.size += 2*3 + 4*4 + 10 + DWORD(len(cel.tiles))
+                }
+
             case Cel_Extra_Chunk:
+                chunk.size += 2 + 4*4 + 16
 
             case Color_Profile_Chunk:
                 v.icc.length = DWORD(len(v.icc.data))
+                chunk.size += 2*2 + 4 + 8 + 4 + v.icc.length
 
             case External_Files_Chunk:
                 v.length = DWORD(len(v.entries))
+                chunk.size += 4 + 8 
                 for &e in v.entries {
                     e.file_name_or_id.length = WORD(len(e.file_name_or_id.data))
+                    chunk.size += 4 + 1 + 7 + 2 + DWORD(e.file_name_or_id.length)
                 }
 
             case Mask_Chunk:
                 v.name.length = WORD(len(v.name.data))
+                chunk.size += 4*4 + 8 + 2 + + DWORD(v.name.length)
             
             case Path_Chunk:
+
             case Tags_Chunk:
                 v.number = WORD(len(v.tags))
+                chunk.size += 2 + 8
                 for &tag in v.tags {
                     tag.name.length = WORD(len(tag.name.data))
+                    chunk.size += 2*2 + 1 + 2 + 6 + 3 + 1 + 2 + DWORD(tag.name.length)
                 }
 
             case Palette_Chunk:
                 v.size = DWORD(len(v.entries))
+                chunk.size += 4*3 + 8
                 for &e in v.entries {
                     e.name.length = WORD(len(e.name.data))
+                    chunk.size += 2 + 1*4
+                    if (e.flags * 1) == 1 {
+                        chunk.size += 2 + DWORD(len(e.name.data))
+                    }
                 }
 
             case User_Data_Chunk: 
                 if (v.flags & 1) == 1 {
                     v.text.length = WORD(len(v.text.data))
+                    chunk.size += 2 + DWORD(len(v.text.data))
+                }
+                if (v.flags & 2) == 2 {
+                    chunk.size += 1*4
                 }
                 if (v.flags & 4) == 4 {
-                    v.properties.size += 0 // TODO: ya no
                     v.properties.num = DWORD(len(v.properties.properties_map))
+                    v.properties.size += 4*2
+
+                    for &pmap in v.properties.properties_map {
+                        v.properties.size += 4*2
+                        pmap.num += DWORD(len(pmap.properties))
+                        for &prop in pmap.properties {
+                            prop.name.length = WORD(len(prop.name.data))
+                            v.properties.size += 2 + DWORD(len(prop.name.data)) + 2
+                            v.properties.size += update_value(&prop.data)
+                        }
+                    }
+                    chunk.size += v.properties.size
 
                 }
             
             case Slice_Chunk:
                 v.num_of_keys = DWORD(len(v.data))
                 v.name.length = WORD(len(v.name.data))
+                chunk.size += 4*3 + 2 + DWORD(len(v.name.data))
+
+                for key in v.data {
+                    chunk.size += 4*5
+                    if (v.flags & 1) == 1 {
+                        chunk.size += 4*4
+                    }
+                    if (v.flags & 2) == 2 {
+                        chunk.size += 4+4
+                    }
+                }
 
             case Tileset_Chunk:
                 v.name.length = WORD(len(v.name.data))
-                if (v.flags & 2) == 2 && v.compressed.did_com {
+                chunk.size += 4*3 + 2*3 + 14 + 2 + DWORD(len(v.name.data))
+                if (v.flags & 1) == 1 {
+                    chunk.size += 4+4
+                }
+                // Can only update compressed.length when failed to uncompress 
+                if (v.flags & 2) == 2 && !v.compressed.did_com {
                     v.compressed.length = DWORD(len(v.compressed.tiles))
+                    chunk.size += 4 + v.compressed.length
                 }
             }
+            frame.header.size += chunk.size
         }
+        size += int(frame.header.size)
     }
     doc.header.size = DWORD(size)
     return
