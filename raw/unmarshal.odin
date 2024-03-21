@@ -1,16 +1,11 @@
 package raw_aseprite_file_handler
 
-import "base:runtime"
 import "core:fmt"
-import "core:io"
-import "core:os"
-import "core:strings"
-import "core:unicode/utf8"
 import "core:encoding/endian"
 import "core:slice"
 import "core:log"
-import "core:compress/zlib"
 import "core:bytes"
+import "core:compress/zlib"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
@@ -891,7 +886,7 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
 
                     if com_err != nil {
                         img_set.tiles = data[last:pos]
-                        log.errorf("Unable to Uncompressed Tilemap. Writing raw data of %v bytes.", pos-last)
+                        log.errorf("Unable to Uncompress Tilemap. Writing raw data of %v bytes.", pos-last)
                     } else {
                         //cel.tiles = make_slice([]u8, expected_size, allocator) or_return
                         img_set.tiles = slice.clone(buf.buf[:], allocator) or_return
