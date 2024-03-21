@@ -177,7 +177,8 @@ Com_Image_Cel :: struct{
 } // raw cel ZLIB compressed
 
 Com_Tilemap_Cel :: struct{
-    width, height: WORD,
+    width: WORD, 
+    height: WORD,
     bits_per_tile: WORD, // always 32
     bitmask_id: DWORD,
     bitmask_x: DWORD,
@@ -200,8 +201,10 @@ Cel_Chunk :: struct {
 
 Cel_Extra_Chunk :: struct {
     flags: WORD,
-    x,y: FIXED,
-    width, height: FIXED,
+    x: FIXED,
+    y: FIXED,
+    width: FIXED,
+    height: FIXED,
 }
 
 Color_Profile_Chunk :: struct {
