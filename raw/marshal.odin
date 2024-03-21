@@ -16,12 +16,15 @@ import vzlib "vendor:zlib"
 
 
 // The size of buf is expectd to be greater than or
-// equal to `doc.header.file_size`
+// equal to `doc.header.size`
 //
-// pos: Size fo buf writen to buf
-ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator := context.allocator) -> (pos: int, err: ASE_Marshal_Error) {
-    // TODO: update is causing issues a lot of issues.
-    // if update { update_doc(doc) }
+// pos: Size of bytes writen to buf
+ase_marshal :: proc(
+    buf: []byte, doc: ^ASE_Document, update := false, allocator := context.allocator
+) -> (pos: int, err: ASE_Marshal_Error) 
+{
+    // TODO: update is causing issues, a lot of issues.
+    if update { update_doc(doc) }
 
     if len(buf) < int(doc.header.size) { return 0, .Buffer_Not_Big_Enough }
 
@@ -298,6 +301,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     endian.put_u16(buf[pos:next], .Little, u16(cel))
 
                 case Com_Image_Cel:
+                    // TODO: Needs reworking???
+                    //      Write length after compressing data???
                     pos = next
                     next += size_of(WORD)
                     endian.put_u16(buf[pos:next], .Little, cel.width)
@@ -336,6 +341,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     }
 
                 case Com_Tilemap_Cel:
+                    // TODO: Needs reworking???
+                    //      Write length after compressing data???
                     pos = next
                     next += size_of(WORD)
                     endian.put_u16(buf[pos:next], .Little, cel.width)
@@ -780,6 +787,8 @@ ase_marshal :: proc(buf: []byte, doc: ^ASE_Document, update := true, allocator :
                     endian.put_u32(buf[pos:next], .Little, value.external.file_id)
                 }
                 if (value.flags & 2) == 2 {
+                    // FIXME: Will not work
+                    //      We need to write the length of the data after we've commpressed the data.
                     pos = next
                     next += size_of(DWORD)
                     endian.put_u32(buf[pos:next], .Little, value.compressed.length)
