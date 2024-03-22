@@ -430,22 +430,22 @@ ase_unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.all
                 last = pos
                 pos += size_of(FIXED)
                 t, _ := endian.get_i32(data[last:pos], .Little)
-                ct.x = auto_cast t
+                ct.x = cast(FIXED)t
 
                 last = pos
                 pos += size_of(FIXED)
                 t, _ = endian.get_i32(data[last:pos], .Little)
-                ct.y = auto_cast t
+                ct.y = cast(FIXED)t
 
                 last = pos
                 pos += size_of(FIXED)
                 t, _ = endian.get_i32(data[last:pos], .Little)
-                ct.width = auto_cast t
+                ct.width = cast(FIXED)t
 
                 last = pos
                 pos += size_of(FIXED)
                 t, _ = endian.get_i32(data[last:pos], .Little)
-                ct.height = auto_cast t
+                ct.height = cast(FIXED)t
 
                 last = pos
                 pos += size_of(BYTE)*16
