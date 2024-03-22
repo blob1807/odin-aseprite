@@ -79,10 +79,14 @@ write_tile :: proc(data: TILE) -> (size: int) {
     return 
 }
 
+write_bytes :: proc(data: []u8) -> (size: int) {
+    return len(data)
+}
+
 write :: proc{
     write_byte, write_word, write_short, write_dword, write_long, write_fixed, 
     write_float, write_double, write_qword, write_long64, write_string, 
-    write_point, write_size, write_rect, write_uuid, write_tile, // write_pixel
+    write_point, write_size, write_rect, write_uuid, write_tile, write_bytes,
 }
 
 
@@ -152,4 +156,8 @@ read_pixel :: proc() -> (data: PIXEL) {
 
 read_tile :: proc() -> (data: TILE) { 
     return 
+}
+
+read_bytes :: proc() -> (data: []u8) {
+    return
 }
