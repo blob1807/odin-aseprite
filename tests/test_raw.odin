@@ -57,7 +57,7 @@ raw_unmarshal :: proc(t: ^testing.T) {
                     doc: raw.ASE_Document
                     defer raw.destroy_doc(&doc)
 
-                    err := raw.ase_unmarshal(data[:], &doc)
+                    err := raw.unmarshal(data[:], &doc)
 
                     expect(t, err == nil, fmt.tprintf("%s Error: %v, File: %v", #procedure, err, s.fullpath))
 
@@ -87,7 +87,7 @@ raw_marshal :: proc(t: ^testing.T) {
     doc: raw.ASE_Document
     defer raw.destroy_doc(&doc)
 
-    uerr := raw.ase_unmarshal(data[:], &doc)
+    uerr := raw.unmarshal(data[:], &doc)
 
     ok := expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
     if !ok {
@@ -96,7 +96,7 @@ raw_marshal :: proc(t: ^testing.T) {
 
     buf := make_slice([]byte, int(doc.header.size), context.temp_allocator)
     defer delete(buf)
-    n, merr := raw.ase_marshal(buf[:], &doc)
+    n, merr := raw.marshal(buf[:], &doc)
 
     ok = expect(t, merr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, merr))
     if !ok {
