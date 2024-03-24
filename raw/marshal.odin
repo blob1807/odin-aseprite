@@ -19,7 +19,7 @@ import vzlib "vendor:zlib"
 // equal to `doc.header.size`
 //
 // pos: Size of bytes writen to buf
-ase_marshal :: proc(
+marshal :: proc(
     buf: []byte, doc: ^ASE_Document, update := false, allocator := context.allocator
 ) -> (pos: int, err: ASE_Marshal_Error) 
 {
