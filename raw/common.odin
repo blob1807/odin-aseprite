@@ -92,7 +92,8 @@ destroy_doc :: proc(doc: ^ASE_Document) {
 update_doc :: proc(doc: ^ASE_Document, assume_flags := false) {
     if assume_flags { update_flags(doc) }
     update_types(doc)
-    update_sizes(doc)
+    //update_sizes(doc)
+    // Compiler Assertion Failure on WIN11. Can't use.
 }
 
 update_flags :: proc(doc: ^ASE_Document) {
@@ -223,7 +224,8 @@ update_types :: proc(doc: ^ASE_Document) {
 
 // doc: raw.ASE_Document to update
 // size: New total size in bytes
-update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
+/*update_sizes :: proc(doc: ^ASE_Document) -> (size: int) {
+    // Compiler Assertion Failure. Can't use.
     update_value :: proc(value: ^UD_Property_Value) -> (size: DWORD) {
         switch &pt in value {
         case BYTE: size = 1
@@ -496,4 +498,4 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
     }
 
     return
-}
+}*/
