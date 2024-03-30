@@ -255,14 +255,15 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                 next += size_of(WORD)
                 ct.blend_mode, _ = endian.get_u16(data[pos:next], .Little)
 
-                pos = next
-                next += size_of(BYTE)*3
-
+                // TODO: don't check for flag. Always read.
                 if (h.flags & 1) == 1 {
                     pos = next
                     next += size_of(BYTE)
                     ct.opacity = data[pos]
                 }
+
+                pos = next
+                next += size_of(BYTE)*3
 
                 pos = next
                 next += size_of(WORD)
