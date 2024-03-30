@@ -227,14 +227,15 @@ marshal :: proc(
                 next += size_of(WORD)
                 endian.put_u16(buf[pos:next], .Little, value.blend_mode)
 
-                pos = next
-                next += size_of(BYTE)*3
-
+                // TODO: don't check for flag. Always write.
                 if (doc.header.flags & 1) == 1 {
                     pos = next
                     next += size_of(BYTE)
                     buf[pos] = value.opacity
                 }
+
+                pos = next
+                next += size_of(BYTE)*3
 
                 pos = next
                 next += size_of(WORD)
@@ -318,20 +319,21 @@ marshal :: proc(
 
                         com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
-                        config := vzlib.z_stream{
+                        config := vzlib.z_stream {
                             avail_in=vzlib.uInt(len(cel.pixel)), 
                             next_in=&data_rd[0],
                             avail_out=vzlib.uInt(len(cel.pixel)),
                             next_out=&com_buf_rd[0],
                         }
 
-                        vzlib.deflateInit(&config, vzlib.BEST_COMPRESSION)
+                        vzlib.deflateInit(&config, vzlib.DEFAULT_COMPRESSION)
                         vzlib.deflate(&config, vzlib.FINISH)
                         vzlib.deflateEnd(&config)
 
                         pos = next
                         next += int(config.total_out)
                         copy_slice(buf[pos:next], com_buf[:])
+
 
                     } else {
                         pos = next
@@ -827,6 +829,7 @@ marshal :: proc(
                 err = ASE_Marshal_Errors.Invalid_Chunk_Type
                 return
             }
+            //fmt.println(chunk.type, buf[t_next:t_next+int(chunk.size)])
             pos = next
             next = t_next + int(chunk.size)
         }
