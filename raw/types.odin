@@ -255,7 +255,10 @@ Tags_Chunk :: struct {
 
 Palette_Entry :: struct {
     flags: WORD,
-    red, green, blue, alpha: BYTE,
+    red: BYTE, 
+    green: BYTE, 
+    blue: BYTE, 
+    alpha: BYTE,
     name: STRING,
 }
 
