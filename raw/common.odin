@@ -29,7 +29,7 @@ destroy_doc :: proc(doc: ^ASE_Document) {
 
     for &frame in doc.frames {
         for &chunk in frame.chunks {
-            #partial switch c in chunk.data {
+            #partial switch &c in chunk.data {
             case Old_Palette_256_Chunk:
                 for pal in c.packets {
                     delete(pal.colors)
@@ -43,7 +43,7 @@ destroy_doc :: proc(doc: ^ASE_Document) {
                 delete(c.packets)
 
             case Cel_Chunk:
-                #partial switch cel in c.cel {
+                #partial switch &cel in c.cel {
                 case Com_Tilemap_Cel:
                     delete(cel.tiles)
                 case Com_Image_Cel:
