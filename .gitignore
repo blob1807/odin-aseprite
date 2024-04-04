@@ -2,11 +2,12 @@
 \main.odin
 \buf.aseprite
 
+\build\*
+\_main
 
 *.exe
 *.ll
 *.obj
-\build\*
 *.a
 *.o
 *.pdb
