@@ -376,8 +376,10 @@ marshal :: proc(
                     pos = next
                     next += size_of(BYTE)*10
 
+                    // TODO: Always assume it commpressed. Error if unable to uncommpress
+                    // TODO: NO REALLY DON'T FORGET TO DO THIS ONE! IT NEEDS TO BE DONE!!
                     if cel.did_com {
-
+                        fmt.println(cel)
                         com_buf := make_slice([]byte, len(cel.tiles) + 64, allocator) or_return
                         defer delete(com_buf)
                         data_rd: [^]u8 = raw_data(cel.tiles[:])
