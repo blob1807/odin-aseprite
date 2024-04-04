@@ -43,7 +43,5 @@ marshal :: proc{
 }
 
 marshal_to_writer :: proc(w: io.Writer, doc: ^Document, allocator := context.allocator)-> (err: Unmarshal_Error) { 
-    buf: [8]byte
-
     return
 }

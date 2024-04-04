@@ -39,6 +39,5 @@ unmarshal :: proc{
 }
 
 unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
-    buf: [8]byte
     return
 }
