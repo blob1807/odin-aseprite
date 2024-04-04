@@ -1,12 +1,41 @@
 package aseprite_file_handler
 
 import "core:math/fixed"
+import "base:runtime"
+import "core:io"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
 // TODO: Whole File rework.
 // Anything set by a flag should be a Maybe(). 
 // Only Size/Lengths that can't be gotten by len() are set.
+
+Unmarshal_Errors :: enum {
+    Bad_File_Magic_Number,
+    Bad_Frame_Magic_Number,
+    Bad_User_Data_Type,
+}
+Unmarshal_Error :: union #shared_nil {Unmarshal_Errors, runtime.Allocator_Error}
+
+Marshal_Errors :: enum {
+    Buffer_Not_Big_Enough,
+    Invalid_Chunk_Type,
+}
+Marshal_Error :: union #shared_nil {Marshal_Errors, runtime.Allocator_Error}
+
+Read_Errors :: enum {
+    Unable_To_Decode_Data,
+    Wrong_Read_Size,
+    Array_To_Small,
+}
+Read_Error :: union #shared_nil {Read_Errors, io.Error, runtime.Allocator_Error}
+
+Write_Errors :: enum {
+    Unable_To_Encode_Data,
+    Wrong_Write_Size,
+    Array_To_Small,
+}
+Write_Error :: union #shared_nil {Write_Errors, io.Error, runtime.Allocator_Error}
 
 // all writen in le
 BYTE   :: u8
@@ -50,7 +79,7 @@ UUID :: [16]BYTE
 Color_RGB :: struct{r,g,b: BYTE} // == [3]BYTE
 Color_RGBA :: struct{r,g,b,a: BYTE} // == [4]BYTE
 
-ASE_Document :: struct {
+Document :: struct {
     header: File_Header,
     frames: []Frame,
 }
@@ -181,10 +210,12 @@ Layer_Chunk :: struct {
 Raw_Cel :: struct{width, height: WORD, pixel: []PIXEL}
 Linked_Cel :: distinct WORD
 Com_Image_Cel :: struct{width, height: WORD, pixel: []PIXEL} // raw cel ZLIB compressed
+
+Tile_ID :: enum { byte=0xfffffff1, word=0xffff1fff, dword=0x1fffffff }
 Com_Tilemap_Cel :: struct{
     width, height: WORD,
     bits_per_tile: WORD, // always 32
-    bitmask_id: DWORD,
+    bitmask_id: Tile_ID,
     bitmask_x: DWORD,
     bitmask_y: DWORD,
     bitmask_diagonal: DWORD,
