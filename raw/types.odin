@@ -188,7 +188,7 @@ Com_Tilemap_Cel :: struct{
     tiles: []BYTE,
     did_com: bool,
 }
-
+Cel_Type :: union{ Raw_Cel, Linked_Cel, Com_Image_Cel, Com_Tilemap_Cel }
 Cel_Chunk :: struct {
     layer_index: WORD,
     x: SHORT,
@@ -196,7 +196,7 @@ Cel_Chunk :: struct {
     opacity_level: BYTE,
     type: WORD,
     z_index: SHORT, //0=default, pos=show n layers later, neg=back
-    cel: union{ Raw_Cel, Linked_Cel, Com_Image_Cel, Com_Tilemap_Cel }
+    cel: Cel_Type
 }
 
 Cel_Extra_Chunk :: struct {
