@@ -383,6 +383,7 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(DWORD)
                     cel.bitmask_id, _ = endian.get_u32(data[pos:next], .Little)
+                    fmt.println(cel.bitmask_id)
 
                     pos = next
                     next += size_of(DWORD)
@@ -408,6 +409,8 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     expected_size := int(h.color_depth / 8 * cel.height * cel.width)
                     com_err := zlib.inflate(data[pos:next], &buf, expected_output_size=expected_size)
 
+                    // TODO: Always assume it commpressed. Error if unable to uncommpress
+                    // TODO: NO REALLY DON'T FORGET TO DO THIS ONE! IT NEEDS TO BE DONE!!
                     if com_err != nil {
                         cel.tiles = data[pos:next]
                         log.errorf("Unable to Uncompressed Tilemap. Writing raw data of %v bytes.", next-pos)
