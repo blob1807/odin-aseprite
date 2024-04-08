@@ -349,10 +349,11 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
 
                     buf: bytes.Buffer
                     defer bytes.buffer_destroy(&buf)
-
                     expected_size := int(h.color_depth / 8 * cel.height * cel.width)
                     com_err := zlib.inflate(data[pos:next], &buf, expected_output_size=expected_size)
 
+                    // TODO: Always assume it commpressed. Error if unable to uncommpress
+                    // TODO: NO REALLY DON'T FORGET TO DO THIS ONE! IT NEEDS TO BE DONE!!
                     if com_err != nil {
                         cel.pixel = data[pos:next]
                         log.errorf("Unable to Uncompressed Image. Writing raw data of %v bytes.", next-pos)
@@ -383,7 +384,6 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(DWORD)
                     cel.bitmask_id, _ = endian.get_u32(data[pos:next], .Little)
-                    fmt.println(cel.bitmask_id)
 
                     pos = next
                     next += size_of(DWORD)
@@ -475,7 +475,6 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                 next += size_of(BYTE)*8
 
                 if ct.type == 2 {
-
                     pos = next
                     next += size_of(DWORD)
                     ct.icc.length, _ = endian.get_u32(data[pos:next], .Little)
@@ -645,14 +644,10 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(WORD)
                     ct.entries[entry].flags, _ = endian.get_u16(data[pos:next], .Little)
-
+                    
                     pos = next
                     next += size_of(BYTE)
-                    ct.entries[entry].red = data[pos]
-
-                    pos = next
-                    next += size_of(BYTE)
-                    ct.entries[entry].green = data[pos]
+                    ct.entries[entry].alpha = data[pos]
 
                     pos = next
                     next += size_of(BYTE)
@@ -660,7 +655,12 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
 
                     pos = next
                     next += size_of(BYTE)
-                    ct.entries[entry].alpha = data[pos]
+                    ct.entries[entry].green = data[pos]
+
+                    pos = next
+                    next += size_of(BYTE)
+                    ct.entries[entry].red = data[pos]
+
 
                     if (ct.entries[entry].flags & 1) == 1 {
                         pos = next
@@ -713,6 +713,7 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(BYTE)
                     color[0] = data[pos]
+                    ct.color = color
                 }
                 
                 if (ct.flags & 4) == 4 {
@@ -724,7 +725,7 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(DWORD)
                     bit_4.num, _ = endian.get_u32(data[pos:next], .Little)
-                    bit_4.properties_map = make_slice([]UD_Properties_Map, int(bit_4.size), allocator) or_return
+                    bit_4.properties_map = make_slice([]UD_Properties_Map, int(bit_4.num), allocator) or_return
 
                     for n in 0..<int(bit_4.num) {
                         bit_4.properties_map[n], pos, next = _read_ud_map(pos, next, data[:], allocator) or_return
@@ -880,7 +881,6 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
 
                     pos = next
                     next += int(img_set.length)
-                    img_set.tiles = data[pos:next]
 
                     buf: bytes.Buffer
                     defer bytes.buffer_destroy(&buf)
@@ -926,6 +926,8 @@ _read_property_value :: proc(old_pos, old_next: int, type: WORD, data: []u8, all
     next = old_next
     
     switch type {
+    case 0x0000:
+
     case 0x0001, 0x0002, 0x0003:
         pos = next
         next += size_of(BYTE)
