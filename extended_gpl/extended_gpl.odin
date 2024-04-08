@@ -21,12 +21,12 @@ gpl_palette :: struct {
 }
 
 gpl_color :: struct {
-    using color: struct{r,g,b,a: int},
-    //using color: [4]int,
+    //using color: struct{r,g,b,a: int},
+    using color: [4]int,
     name: string
 }
 
-GPL_Unmarshal_Error :: enum {
+GPL_Error :: enum {
     None,
     Invalid_Palette,
     Bad_Magic_Number,
@@ -34,7 +34,7 @@ GPL_Unmarshal_Error :: enum {
     Cant_Parse_Color,
 }
 
-gpl_unmarshal_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Unmarshal_Error) {
+from_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Error) {
     parsed.raw = data
     s := parsed.raw
     index := strings.index(s, "\n")
@@ -123,14 +123,14 @@ gpl_unmarshal_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Unm
     return
 }
 
-gpl_unmarshal_bytes :: proc(data: []byte) -> (parsed: gpl_palette, err: GPL_Unmarshal_Error) {
-    return gpl_unmarshal_string(string(data))
+from_bytes :: proc(data: []byte) -> (parsed: gpl_palette, err: GPL_Error) {
+    return from_string(string(data))
 }
 
-gpl_unmarshal :: proc {gpl_unmarshal_string, gpl_unmarshal_bytes}
+unmarshal :: proc {from_string, from_bytes}
 
 
-gpl_marshal :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []byte, err: runtime.Allocator_Error) {
+to_bytes :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []byte, err: runtime.Allocator_Error) {
     sb: strings.Builder
     // len("GIMP Palette\nName: \nChannels: RGBA\nColums: 255\n") == 47
     strings.builder_init_len_cap(&sb, 0, 47 + len(pal.colors) + len(pal.name), allocator) or_return
@@ -167,8 +167,8 @@ gpl_marshal :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: 
     return
 }
 
-gpl_marshal_string  :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
-    return string(gpl_marshal(pal, allocator) or_return), .None
+to_string  :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
+    return string(to_bytes(pal, allocator) or_return), .None
 }
 
 destroy_gpl :: proc(pal: ^gpl_palette) {
