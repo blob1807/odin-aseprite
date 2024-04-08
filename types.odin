@@ -195,9 +195,7 @@ Old_Palette_Packet :: struct {
     num_colors: BYTE, // 0 == 256
     colors: []Color_RGB
 }
-
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
-
 Old_Palette_64_Chunk :: distinct []Old_Palette_Packet
 
 Layer_Chunk_Flag :: enum(WORD) {
@@ -236,7 +234,6 @@ Layer_Blend_Mode :: enum(WORD) {
     Subtract,
     Divide,
 }
-
 Layer_Chunk :: struct {
     flags: Layer_Chunk_Flags, // to WORD -> transmute(WORD)layer_chunk.flags
     type: Layer_Types,
@@ -261,7 +258,6 @@ Com_Image_Cel :: struct{
     height: WORD, 
     pixel: []PIXEL
 }
-
 Tile_ID :: enum(DWORD) { byte=0xfffffff1, word=0xffff1fff, dword=0x1fffffff }
 Com_Tilemap_Cel :: struct{
     width, height: WORD,
@@ -272,16 +268,13 @@ Com_Tilemap_Cel :: struct{
     bitmask_diagonal: DWORD,
     tiles: []TILE, // ZLIB compressed
 }
-
 Cel_Types :: enum(WORD){
     Raw,
     Linked_Cel,
     Compressed_Image,
     Compressed_Tilemap,
 }
-
 Cel_Type :: union{ Raw_Cel, Linked_Cel, Com_Image_Cel, Com_Tilemap_Cel}
-
 Cel_Chunk :: struct {
     layer_index: WORD,
     x,y: SHORT,
@@ -371,7 +364,6 @@ Palette_Chunk :: struct {
 // Vec_Diff :: struct{type: WORD, data: UD_Property_Value}
 // UD_Vec :: union {[]UD_Property_Value, []Vec_Diff}
 UD_Vec :: []UD_Property_Value
-
 UD_Property_Type :: enum(WORD) {
     Null, Bool, I8, U8, I16, U16, I32, U32, I64, U64,
     Fixed, F32, F64, String, Point, Size, Rect, 
@@ -382,13 +374,7 @@ UD_Property_Value :: union {
     DOUBLE, STRING, POINT, SIZE, RECT, UUID,  
     UD_Vec, UD_Properties, 
 }
-UD_Property :: struct {
-    name: string,
-    value: UD_Property_Value,
-}
 UD_Properties :: map[string]UD_Property_Value
-UD_Properties_Map :: map[DWORD]UD_Property_Value
-
 UD_Flag :: enum(DWORD) {
     Text,
     Color,
@@ -456,5 +442,4 @@ Tileset_Chunk :: struct {
     name: string,
     external: Maybe(Tileset_External), 
     compressed: Maybe(Tileset_Compressed),
-
 }
