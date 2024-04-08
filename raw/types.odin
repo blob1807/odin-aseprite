@@ -285,7 +285,6 @@ UD_Property_Value :: union {
     UD_Vec, UD_Properties_Map,
 }
 
-
 UD_Property :: struct {
     name: STRING,
     type: WORD,
