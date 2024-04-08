@@ -9,10 +9,9 @@ import "core:unicode/utf8"
 import "core:encoding/endian"
 import "core:slice"
 import "core:log"
-import "core:compress/zlib"
 import "core:compress/gzip"
 import "core:bytes"
-import vzlib "vendor:zlib"
+import "vendor:zlib"
 
 
 // The size of buf is expectd to be greater than or
@@ -103,6 +102,7 @@ marshal :: proc(
     next += size_of(BYTE)*84
 
     for frame in doc.frames {
+        temp_pos := next
         pos = next
         next += size_of(DWORD)
         endian.put_u32(buf[pos:next], .Little, frame.header.size)
@@ -319,16 +319,16 @@ marshal :: proc(
 
                         com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
-                        config := vzlib.z_stream {
-                            avail_in=vzlib.uInt(len(cel.pixel)), 
+                        config := zlib.z_stream {
+                            avail_in=zlib.uInt(len(cel.pixel)), 
                             next_in=&data_rd[0],
-                            avail_out=vzlib.uInt(len(cel.pixel)),
+                            avail_out=zlib.uInt(len(cel.pixel)),
                             next_out=&com_buf_rd[0],
                         }
 
-                        vzlib.deflateInit(&config, vzlib.DEFAULT_COMPRESSION)
-                        vzlib.deflate(&config, vzlib.FINISH)
-                        vzlib.deflateEnd(&config)
+                        zlib.deflateInit(&config, zlib.DEFAULT_COMPRESSION)
+                        zlib.deflate(&config, zlib.FINISH)
+                        zlib.deflateEnd(&config)
 
                         pos = next
                         next += int(config.total_out)
@@ -386,16 +386,16 @@ marshal :: proc(
 
                         com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
-                        config := vzlib.z_stream{
-                            avail_in=vzlib.uInt(len(cel.tiles)), 
+                        config := zlib.z_stream{
+                            avail_in=zlib.uInt(len(cel.tiles)), 
                             next_in=&data_rd[0],
-                            avail_out=vzlib.uInt(len(cel.tiles)),
+                            avail_out=zlib.uInt(len(cel.tiles)),
                             next_out=&com_buf_rd[0],
                         }
 
-                        vzlib.deflateInit(&config, vzlib.BEST_COMPRESSION)
-                        vzlib.deflate(&config, vzlib.FINISH)
-                        vzlib.deflateEnd(&config)
+                        zlib.deflateInit(&config, zlib.BEST_COMPRESSION)
+                        zlib.deflate(&config, zlib.FINISH)
+                        zlib.deflateEnd(&config)
 
                         pos = next
                         next += int(config.total_out)
@@ -598,11 +598,7 @@ marshal :: proc(
 
                     pos = next
                     next += size_of(BYTE)
-                    buf[pos] = entry.red
-
-                    pos = next
-                    next += size_of(BYTE)
-                    buf[pos]= entry.green
+                    buf[pos]= entry.alpha
 
                     pos = next
                     next += size_of(BYTE)
@@ -610,7 +606,11 @@ marshal :: proc(
 
                     pos = next
                     next += size_of(BYTE)
-                    buf[pos]= entry.alpha
+                    buf[pos]= entry.green
+
+                    pos = next
+                    next += size_of(BYTE)
+                    buf[pos] = entry.red
 
                     if (entry.flags & 1) == 1 {
                         pos = next
@@ -625,9 +625,9 @@ marshal :: proc(
                 }
 
             case User_Data_Chunk: 
+                // TODO: Add check against ref. There's a bug here. See .\_main\diff_report.html
                 pos = next
                 next += size_of(DWORD)
-                ct: User_Data_Chunk
                 endian.put_u32(buf[pos:next], .Little, value.flags)
 
                 if (value.flags & 1) == 1 {
@@ -788,7 +788,7 @@ marshal :: proc(
 
                     pos = next
                     next += size_of(DWORD)
-                    endian.put_u32(buf[pos:next], .Little, value.external.file_id)
+                    endian.put_u32(buf[pos:next], .Little, value.external.tileset_id)
                 }
                 if (value.flags & 2) == 2 {
                     // FIXME: Will not work
@@ -804,16 +804,16 @@ marshal :: proc(
 
                         com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
-                        config := vzlib.z_stream{
-                            avail_in=vzlib.uInt(len(value.compressed.tiles)), 
+                        config := zlib.z_stream{
+                            avail_in=zlib.uInt(len(value.compressed.tiles)), 
                             next_in=&data_rd[0],
-                            avail_out=vzlib.uInt(len(value.compressed.tiles)),
+                            avail_out=zlib.uInt(len(value.compressed.tiles)),
                             next_out=&com_buf_rd[0],
                         }
 
-                        vzlib.deflateInit(&config, vzlib.BEST_COMPRESSION)
-                        vzlib.deflate(&config, vzlib.FINISH)
-                        vzlib.deflateEnd(&config)
+                        zlib.deflateInit(&config, zlib.BEST_COMPRESSION)
+                        zlib.deflate(&config, zlib.FINISH)
+                        zlib.deflateEnd(&config)
 
                         pos = next
                         next += int(config.total_out)
@@ -847,6 +847,7 @@ _write_property_value :: proc(prop: UD_Property_Value, old_pos, old_next: int, b
     next = old_next
     
     switch pt in prop {
+    case nil:
     case BYTE:
         pos = next
         next += size_of(BYTE)
@@ -898,7 +899,6 @@ _write_property_value :: proc(prop: UD_Property_Value, old_pos, old_next: int, b
         endian.put_f64(buf[pos:next], .Little, pt)
 
     case STRING:
-        st: STRING
         pos = next
         next += size_of(WORD)
         endian.put_u16(buf[pos:next], .Little, pt.length)
@@ -917,7 +917,6 @@ _write_property_value :: proc(prop: UD_Property_Value, old_pos, old_next: int, b
         endian.put_i32(buf[pos:next], .Little, pt.y)
 
     case SIZE:
-        st: SIZE
         pos = next
         next += size_of(LONG)
         endian.put_i32(buf[pos:next], .Little, pt.w)
@@ -927,7 +926,6 @@ _write_property_value :: proc(prop: UD_Property_Value, old_pos, old_next: int, b
         endian.put_i32(buf[pos:next], .Little, pt.h)
 
     case RECT:
-        rt: RECT
         pos = next
         next += size_of(LONG)
         endian.put_i32(buf[pos:next], .Little, pt.origin.x)
