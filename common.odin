@@ -1,7 +1,6 @@
 package aseprite_file_handler
 
 destroy_doc :: proc(doc: ^Document) {
-
     for &frame in doc.frames {
         for &chunk in frame.chunks {
             #partial switch &v in chunk {
@@ -18,7 +17,7 @@ destroy_doc :: proc(doc: ^Document) {
                 case Tileset_Chunk:
             }
         }
-        delete(frame.chunks)
+        //delete(frame.chunks)
     }
-    delete(doc.frames)
+    //delete(doc.frames)
 }
