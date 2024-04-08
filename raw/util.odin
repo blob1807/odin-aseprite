@@ -152,3 +152,4 @@ ase_document_equal :: proc(x, y: ASE_Document) -> (a: any, b: any, c: typeid, eq
     eq = true
     return
 }
+
