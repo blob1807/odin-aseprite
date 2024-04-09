@@ -1,12 +1,17 @@
 package example
 
+import "core:os"
+import "core:log"
 import "core:fmt"
 import "core:slice"
-import "core:os"
 
 import ase ".."
 
 main :: proc() {
+    logger := log.create_console_logger()
+    defer log.destroy_console_logger(logger)
+    context.logger = logger
+
     data := #load("../tests/blob/geralt.aseprite")
     doc: ase.Document
     defer ase.destroy_doc(&doc)

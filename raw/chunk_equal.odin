@@ -1,8 +1,8 @@
 //+private
 package raw_aseprite_file_handler
 
-import "core:reflect"
 import "core:slice"
+import "core:reflect"
 
 _old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if x.size != y.size {

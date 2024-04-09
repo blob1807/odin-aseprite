@@ -1,10 +1,10 @@
 package aseprite_extentions 
 
+import "core:os"
+import "core:fmt"
 import "core:c/libc"
 import "core:strings"
-import "core:fmt"
 import "core:reflect"
-import "core:os"
 
 
 read_file :: proc(path: string, ext: ext_type) {

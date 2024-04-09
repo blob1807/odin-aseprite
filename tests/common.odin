@@ -1,9 +1,9 @@
 package tests
 
-import "core:testing"
-import "core:fmt"
 import "core:os"
+import "core:fmt"
 import "core:strings"
+import "core:testing"
 
 TEST_count := 0
 TEST_fail  := 0
