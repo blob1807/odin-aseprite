@@ -9,6 +9,7 @@ import ase ".."
 import "core:mem"
 import "core:slice"
 import "core:log"
+import "base:runtime"
 
 
 @(test)
@@ -116,6 +117,7 @@ ase_full_test :: proc(t: ^testing.T) {
         delete(base_f)
     }
     os.close(fd)
+    runtime.print_rune('\n')
 
     for f in base_f {
         if f.is_dir {
@@ -179,6 +181,7 @@ ase_full_test :: proc(t: ^testing.T) {
                     }*/
                 }
             }
+            runtime.print_rune('\n')
         }
     }
 }
