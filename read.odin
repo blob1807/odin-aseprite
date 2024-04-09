@@ -1,6 +1,7 @@
 package aseprite_file_handler
 
 import "core:io"
+import "core:fmt"
 import "core:math/fixed"
 import "core:encoding/endian"
 
@@ -194,11 +195,11 @@ read_pixels :: proc(r: io.Reader, data: []PIXEL) -> (err: Read_Error) {
 read_tile :: proc(r: io.Reader, type: Tile_ID) -> (data: TILE, err: Read_Error) { 
     switch type {
     case .byte:
-        data, err = read_byte(r)
+        data = read_byte(r) or_return
     case .word:
-        data, err = read_word(r)
+        data = read_word(r) or_return
     case .dword:
-        data, err = read_dword(r)
+        data = read_dword(r) or_return
     }
     return 
 }
@@ -208,20 +209,8 @@ read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID) -> (err: Read_Erro
     if len(data) == 0 {
         return
     }
-
-    switch type {
-    case .byte:
-        for i in 0..<size {
-            data[i] = read_byte(r) or_return
-        }
-    case .word:
-        for i in 0..<size {
-            data[i] = read_word(r) or_return
-        }
-    case .dword:
-        for i in 0..<size {
-            data[i] = read_dword(r) or_return
-        }
+    for i in 0..<size {
+        data[i] = read_tile(r, type) or_return
     }
     return 
 }
@@ -229,6 +218,7 @@ read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID) -> (err: Read_Erro
 read_bytes :: proc(r: io.Reader, data: []byte) -> (err: Read_Error) {
     n := io.read(r, data[:]) or_return
     if n != len(data) {
+        fmt.println(n, len(data))
         err = .Wrong_Read_Size
     }
     return 
@@ -289,6 +279,7 @@ read_ud_value :: proc(r: io.Reader, type: UD_Property_Type, allocator := context
 
     case .Properties:
         size := int(read_dword(r) or_return)
+        // FIXME: Is leaking. Not writing data?
         val = make(UD_Properties, size, allocator) or_return
 
         #partial switch &v in val {
@@ -297,7 +288,6 @@ read_ud_value :: proc(r: io.Reader, type: UD_Property_Type, allocator := context
                 key := read_string(r, allocator) or_return
                 type := UD_Property_Type(read_word(r) or_return)
                 v[key] = read_ud_value(r, type, allocator) or_return
-                delete(key)
             }
         }
     }
