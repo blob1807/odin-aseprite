@@ -33,8 +33,8 @@ main :: proc() {
     sus := os.write_entire_file("./out.aseprite", buf[:])
     if !sus {
         fmt.eprintln("Failed to Write my beloved, geralt.")
-		return
+        return
     }
-	
-	fmt.println("Successfully Wrote my beloved, geralt.")
+    
+    fmt.println("Successfully Wrote my beloved, geralt.")
 }
