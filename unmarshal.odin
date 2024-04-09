@@ -46,14 +46,14 @@ unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, allocator := context
     return unmarshal(rr, doc, allocator)
 }
 
-unmarshal_from_buff :: proc(b: []byte, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
+unmarshal_from_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
     r: bytes.Reader
     bytes.reader_init(&r, b[:])
     return unmarshal(&r, doc, allocator)
 }
 
 unmarshal :: proc{
-    unmarshal_from_bytes_buff, unmarshal_from_buff, unmarshal_from_handle, 
+    unmarshal_from_bytes_buff, unmarshal_from_slice, unmarshal_from_handle, 
     unmarshal_from_filename, unmarshal_from_bufio, unmarshal_from_reader,
 }
 

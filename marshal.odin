@@ -32,6 +32,9 @@ marshal_to_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocat
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
     marshal(&buf, doc, allocator) or_return
+    if len(b) < len(buf.buf[off:]) {
+        return Marshal_Errors.Buffer_Not_Big_Enough
+    }
     copy_slice(b[:], buf.buf[buf.off:])
     return
 }
