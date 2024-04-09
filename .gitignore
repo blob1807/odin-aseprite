@@ -4,6 +4,7 @@
 
 \build\*
 \_main
+!\tests\other
 
 *.exe
 *.ll
