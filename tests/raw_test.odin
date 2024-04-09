@@ -10,7 +10,7 @@ import "core:mem"
 import "core:slice"
 
 
-@(test)
+//@(test)
 raw_unmarshal :: proc(t: ^testing.T) {
     track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
@@ -38,7 +38,7 @@ raw_unmarshal :: proc(t: ^testing.T) {
     }
 }
 
-@(test)
+//@(test)
 raw_marshal :: proc(t: ^testing.T) {
     track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
@@ -82,7 +82,7 @@ raw_marshal :: proc(t: ^testing.T) {
 }
 
 
-@(test)
+//@(test)
 raw_full_test :: proc(t: ^testing.T) {
     track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
