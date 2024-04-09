@@ -1,5 +1,7 @@
 package aseprite_file_handler
 
+import "core:fmt"
+
 destroy_doc :: proc(doc: ^Document) {
     destroy_value :: proc(p: UD_Property_Value) {
         #partial switch val in p {
@@ -17,9 +19,9 @@ destroy_doc :: proc(doc: ^Document) {
         }
     }
 
-    for frame in doc.frames {
-        for chunk in frame.chunks {
-            #partial switch v in chunk {
+    for &frame in doc.frames {
+        for &chunk in frame.chunks {
+            #partial switch &v in chunk {
             case Old_Palette_256_Chunk:
                 for pack in v {
                     delete(pack.colors)
@@ -32,71 +34,53 @@ destroy_doc :: proc(doc: ^Document) {
                 }
                 delete(v)
 
-            case Layer_Chunk:
-                // Badly frees???
-                //delete(v.name)
-
             case Cel_Chunk:
-                #partial switch cel in v.cel {
-                    case Raw_Cel:
-                        delete(cel.pixel)
-                    case Com_Image_Cel:
-                        delete(cel.pixel)
-                    case Com_Tilemap_Cel:
-                        delete(cel.tiles)
+                switch &cel in v.cel {
+                case Linked_Cel:
+                case Raw_Cel:
+                    delete(cel.pixel)
+                case Com_Image_Cel:
+                    delete(cel.pixel)
+                case Com_Tilemap_Cel:
+                    // FIXME: Fails to free.
+                    delete(cel.tiles)
                 }
 
             case Color_Profile_Chunk:
-                if v.icc != nil {
-                    delete(v.icc.(ICC_Profile))
+                switch icc in v.icc {
+                case ICC_Profile:
+                    delete(icc)
                 }
 
             case External_Files_Chunk:
-                for e in v {
-                    delete(e.file_name_or_id)
-                }
                 delete(v)
                 
             case Mask_Chunk:
-                delete(v.name)
                 delete(v.bit_map_data)
 
             case Tags_Chunk:
-                for tag in v {
-                    delete(tag.name)
-                }
                 delete(v)
 
             case Palette_Chunk:
-                for pal in v.entries {
-                    switch n in pal.name {
-                    case string:
-                        delete(n)
-                    }
-                }
                 delete(v.entries)
 
             case User_Data_Chunk:
-                switch t in v.text {
-                case string:
-                    delete(t)
-                }
-
-                switch m in v.maps {
+                // FIXME: Fails to free.
+                switch &m in v.maps {
                 case UD_Properties:
-                    for _, val in m {
+                    for k, &val in m {
                         destroy_value(val)
                     }
+                    fmt.println("l")
                     delete(m)
                 }
 
             case Slice_Chunk:
-                delete(v.name)
                 delete(v.keys)
 
             case Tileset_Chunk:
-                delete(v.name)
-                switch c in v.compressed {
+                // FIXME: Fails to free.
+                switch &c in v.compressed {
                 case Tileset_Compressed:
                     delete(c)
                 }
