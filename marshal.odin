@@ -476,7 +476,6 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
             case:
                 return .Invalid_Chunk_Type
             }
-            //fmt.println(Chunk_Types(chunk_type), chunk_size, len(cb.buf), cb.buf[:])
             write(fw, DWORD(chunk_size + 4), fs) or_return
             write(fw, cb.buf[:chunk_size], fs) or_return
         }
@@ -488,7 +487,6 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
     file_size += 4
     write(ww, DWORD(file_size), &written) or_return
     write(ww, b.buf[:file_size-4], &written) or_return
-    fmt.println(file_size, written)
     if written != file_size {
         return Marshal_Errors.Wrong_Write_Size
     }
