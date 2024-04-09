@@ -29,6 +29,15 @@ unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, allocator := cont
     return unmarshal(rr, doc, allocator)
 }
 
+unmarshal_from_filename :: proc(name: string, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
+    fd, err_no := os.open(name, os.O_RDONLY, 0)
+    if err_no != 0 {
+        return .Unable_To_Open_File
+    }
+    defer os.close(fd)
+    return unmarshal(fd, doc, allocator)
+}
+
 unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(os.stream_from_handle(h))
     if !ok {
@@ -45,7 +54,7 @@ unmarshal_from_buff :: proc(b: []byte, doc: ^Document, allocator := context.allo
 
 unmarshal :: proc{
     unmarshal_from_bytes_buff, unmarshal_from_buff, unmarshal_from_handle, 
-    unmarshal_from_bufio, unmarshal_from_reader,
+    unmarshal_from_filename, unmarshal_from_bufio, unmarshal_from_reader,
 }
 
 unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (err: Unmarshal_Error) {
@@ -65,7 +74,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
         return .Bad_File_Magic_Number
     } 
 
-    frames := cast(int)read_word(r) or_return
+    frames := read_word(r) or_return
 
     h.width = read_word(r) or_return
     h.height = read_word(r) or_return
@@ -85,14 +94,13 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
     read_skip(r, 84) or_return
 
     doc.header = h
-    doc.frames = make([]Frame, frames, allocator) or_return
+    doc.frames = make([]Frame, int(frames), allocator) or_return
 
     for &frame in doc.frames {
         fh: Frame_Header
         frame_size := read_dword(r) or_return
         frame_magic := read_word(r) or_return
         if frame_magic != FRAME_MAGIC_NUM {
-            fmt.println(frame_magic)
             return .Bad_Frame_Magic_Number
         }
         fh.old_num_of_chunks = read_word(r) or_return
@@ -109,7 +117,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
         frame.chunks = make([]Chunk, chunks, allocator) or_return
 
         for &chunk in frame.chunks {
-            c_size := read_dword(r) or_return
+            c_size := int(read_dword(r) or_return)
             c_type := cast(Chunk_Types)read_word(r) or_return
 
             switch c_type {
@@ -231,8 +239,8 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
                     buf: bytes.Buffer
                     defer bytes.buffer_destroy(&buf)
-
-                    com_size := c_size-32
+                    // size_of(DWORD*5, WORD*6, SHORT*3, BYTE, SKIPED*15)-1
+                    com_size := c_size-54
                     if com_size <= 0 {
                         return .Invalid_Compression_Size
                     }
@@ -248,7 +256,8 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     rr, ok := io.to_reader(bytes.reader_to_stream(&br))
                     if !ok { return .Unable_Make_Reader }
 
-                    cel.tiles = make([]TILE, exp_size, allocator) or_return
+                    // FIXME: Is leaking. Not writing data?
+                    cel.tiles = make([]TILE, cel.height * cel.width, allocator) or_return
                     read_tiles(rr, cel.tiles[:], cel.bitmask_id) or_return
 
                     c.cel = cel
@@ -358,6 +367,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                 chunk = pal
 
             case .user_data:
+                // FIXME: This isn't working. Very annoying.
                 ud: User_Data_Chunk
                 flags := transmute(UD_Flags)read_dword(r) or_return
 
@@ -373,16 +383,27 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     ud.color = colour
                 }
                 if .Properties in flags {
-                    total_size := read_dword(r) or_return
-                    map_num := read_dword(r) or_return
+                    log.warnf("User Data Maps are currently not supported.")
+                    return Unmarshal_Errors.User_Data_Maps_Not_Supported
 
+                    /*total_size := read_dword(r) or_return
+                    map_num := read_dword(r) or_return
+                    fmt.println("-1")
+                    // FIXME: Is leaking. Not writing data?
                     maps := make(UD_Properties, map_num, allocator) or_return
 
-                    for i in 0..<map_num {
+                    for i in 0..<int(map_num) {
                         key := read_string(r) or_return
-                        maps[key] = read_ud_value(r, .Properties, allocator) or_return
+                        val, e := read_ud_value(r, .Properties, allocator)
+                        if e != nil {
+                            fmt.eprintln(val, e, ud)
+                            return
+                        }
+                        maps[key] = val
+                        fmt.println(i)
                     }
-                    ud.maps = maps
+                    fmt.println("-2")
+                    ud.maps = maps*/
                 }
 
                 chunk = ud
@@ -454,6 +475,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
                     tc = make(Tileset_Compressed, exp_size, allocator) or_return
                     copy(tc[:], cast(Tileset_Compressed)buf.buf[:])
+                    ts.compressed = tc
 
                 }
                 chunk = ts
