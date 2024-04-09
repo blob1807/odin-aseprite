@@ -5,6 +5,7 @@ import "base:runtime"
 import "core:io"
 import "core:compress/zlib"
 import vzlib "vendor:zlib"
+import "core:os"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
@@ -13,6 +14,7 @@ import vzlib "vendor:zlib"
 // Only Size/Lengths that can't be gotten by len() are set.
 
 Unmarshal_Errors :: enum {
+    Unable_To_Open_File,
     Unable_Make_Reader,
     Bad_File_Magic_Number,
     Bad_Frame_Magic_Number,
@@ -21,6 +23,8 @@ Unmarshal_Errors :: enum {
     Invalid_Chunk_Type,
     Invalid_Cel_Type,
     Invalid_Compression_Size,
+
+    User_Data_Maps_Not_Supported,
 }
 Unmarshal_Error :: union #shared_nil {
     Unmarshal_Errors, 
@@ -389,7 +393,6 @@ User_Data_Chunk :: struct {
 
 }
 
-
 Slice_Center :: struct{
     x: LONG,
     y: LONG, 
@@ -431,6 +434,7 @@ Tileset_External :: struct{
     file_id, tileset_id: DWORD
 }
 Tileset_Compressed :: distinct []PIXEL
+// Tileset_Compressed :: []PIXEL
 // TODO: Remove need for flags.
 Tileset_Chunk :: struct {
     id: DWORD,
