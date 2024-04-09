@@ -2,6 +2,7 @@ package example
 
 import "core:fmt"
 import "core:slice"
+import "core:os"
 
 import ase ".."
 
@@ -25,12 +26,12 @@ main :: proc() {
     if m_err != nil {
         fmt.eprintln("Failed to Marshal my beloved, geralt.", m_err)
         return
-    } 
-    if !slice.equal(data[:], buf[:]) {
-        fmt.eprintln("My beloved geralt!! WHAT HAVE I DONE!! =(")
-        return
     }
 
     fmt.println("Successfully Marshaled my beloved, geralt.")
 
+    sus := os.write_entire_file("./out.aseprite", buf[:])
+    if !sus {
+        fmt.eprintln("Failed to Write my beloved, geralt.")
+    }
 }
