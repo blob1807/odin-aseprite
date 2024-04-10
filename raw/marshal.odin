@@ -1,16 +1,15 @@
 package raw_aseprite_file_handler
 
 import "base:runtime"
-import "core:fmt"
 import "core:io"
 import "core:os"
+import "core:log"
+import "core:fmt"
+import "core:bytes"
+import "core:slice"
 import "core:strings"
 import "core:unicode/utf8"
 import "core:encoding/endian"
-import "core:slice"
-import "core:log"
-import "core:compress/gzip"
-import "core:bytes"
 import "vendor:zlib"
 
 

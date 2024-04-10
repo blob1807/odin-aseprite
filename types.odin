@@ -1,11 +1,12 @@
 package aseprite_file_handler
 
-import "core:math/fixed"
+
 import "base:runtime"
 import "core:io"
+import "core:os"
+import "core:math/fixed"
 import "core:compress/zlib"
 import vzlib "vendor:zlib"
-import "core:os"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 

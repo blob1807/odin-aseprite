@@ -1,13 +1,11 @@
 package extended_gpl_handler
 
-import "core:fmt"
+import "base:runtime"
 import "core:io"
 import "core:os"
+import "core:fmt"
 import "core:strings"
-import "core:unicode/utf8"
-import "base:runtime"
 import "core:strconv"
-import "core:math/linalg"
 
 // https://github.com/aseprite/aseprite/blob/main/docs/gpl-palette-extension.md
 // https://developer.gimp.org/core/standards/gpl/
@@ -161,7 +159,6 @@ to_bytes :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []b
         strings.write_string(&sb, color.name)
         strings.write_byte(&sb, '\n')
 
-        //fmt.sbprintln(&sb, color.r, color.g, color.b, color.a, color.name)
     }
     data = sb.buf[:]
     return

@@ -1,15 +1,15 @@
 package tests
 
+import "base:runtime"
 import "core:os"
-import fp "core:path/filepath"
-import "core:testing"
 import "core:fmt"
-import "core:strings"
-import ase ".."
+import "core:log"
 import "core:mem"
 import "core:slice"
-import "core:log"
-import "base:runtime"
+import "core:testing"
+import "core:strings"
+import fp "core:path/filepath"
+import ase ".."
 
 
 @(test)

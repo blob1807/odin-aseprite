@@ -1,13 +1,13 @@
 package tests
 
 import "core:os"
-import fp "core:path/filepath"
-import "core:testing"
 import "core:fmt"
-import "core:strings"
-import "../raw"
 import "core:mem"
 import "core:slice"
+import "core:testing"
+import "core:strings"
+import fp "core:path/filepath"
+import "../raw"
 
 
 //@(test)

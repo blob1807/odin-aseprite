@@ -1,11 +1,11 @@
 package raw_aseprite_file_handler
 
 import "core:fmt"
-import "core:encoding/endian"
-import "core:slice"
 import "core:log"
 import "core:bytes"
+import "core:slice"
 import "core:compress/zlib"
+import "core:encoding/endian"
 import "base:intrinsics"
 
 

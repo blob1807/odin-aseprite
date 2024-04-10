@@ -1,6 +1,5 @@
 package raw_aseprite_file_handler
 
-import "core:math/fixed"
 import "base:runtime"
 
 ASE_Unmarshal_Errors :: enum {
