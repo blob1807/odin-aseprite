@@ -95,7 +95,7 @@ ase_full_test :: proc(t: ^testing.T) {
     context.logger = log.create_console_logger()
     defer log.destroy_console_logger(context.logger)
 
-    track: mem.Tracking_Allocator
+    /*track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
 	context.allocator = mem.tracking_allocator(&track)
     defer {
@@ -106,7 +106,7 @@ ase_full_test :: proc(t: ^testing.T) {
 		for bad_free in track.bad_free_array {
 			fmt.printf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory)
 		}
-    }
+    }*/
 
     fd, f_err := os.open("./tests", os.O_RDONLY, 0)
     base_f, FF_err := os.read_dir(fd, 0)
@@ -162,8 +162,8 @@ ase_full_test :: proc(t: ^testing.T) {
                         errorf(t, "%s: Marshal Error: %v, File: %v", #procedure, merr, s.name)
                         continue
                     }
-                    /*if !slice.equal(data[:], buf[:]) {
-                        errorf(t, "Full Test: Marshal data don't equal OG data.", )
+                    if !slice.equal(data[:], buf[:]) {
+                        errorf(t, "Full Test: Marshal data doesn't equal OG data. %s", s.name)
                         continue
                     }
 
@@ -173,7 +173,7 @@ ase_full_test :: proc(t: ^testing.T) {
                     if unerr2 != nil {
                         errorf(t, "Full Test: Unmarshal Error 2: %v, File: %v", unerr2, s.name)
                         continue
-                    }*/
+                    }
 
                     /*if !ase.equal(doc, doc2) {
                         errorf(t, "Full Test: Unmarshaled Doc don't equal OG Doc.")
