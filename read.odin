@@ -1,26 +1,28 @@
 package aseprite_file_handler
 
+import "base:runtime"
 import "core:io"
 import "core:fmt"
+import "core:strings"
 import "core:math/fixed"
 import "core:encoding/endian"
 
-read_bool :: proc(r: io.Reader) -> (data: bool, err: Read_Error) {
-    return bool(read_byte(r) or_return), nil
+read_bool :: proc(r: io.Reader, n: ^int) -> (data: bool, err: Read_Error) {
+    return bool(read_byte(r, n) or_return), nil
 }
 
-read_i8 :: proc(r: io.Reader) -> (data: i8, err: Read_Error) {
-    return i8(read_byte(r) or_return), nil
+read_i8 :: proc(r: io.Reader, n: ^int) -> (data: i8, err: Read_Error) {
+    return i8(read_byte(r, n) or_return), nil
 }
 
-read_byte :: proc(r: io.Reader) -> (data: BYTE, err: Read_Error) {
-    return io.read_byte(r)
+read_byte :: proc(r: io.Reader, n: ^int) -> (data: BYTE, err: Read_Error) {
+    return io.read_byte(r, n)
 }
 
-read_word :: proc(r: io.Reader) -> (data: WORD, err: Read_Error) { 
+read_word :: proc(r: io.Reader, n: ^int) -> (data: WORD, err: Read_Error) { 
     buf: [2]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 2 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 2 {
         return 0, .Wrong_Read_Size
     }
 
@@ -31,10 +33,10 @@ read_word :: proc(r: io.Reader) -> (data: WORD, err: Read_Error) {
     return v, err
 }
 
-read_short :: proc(r: io.Reader) -> (data: SHORT, err: Read_Error) { 
+read_short :: proc(r: io.Reader, n: ^int) -> (data: SHORT, err: Read_Error) { 
     buf: [2]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 2 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 2 {
         return 0, .Wrong_Read_Size
     }
 
@@ -45,10 +47,10 @@ read_short :: proc(r: io.Reader) -> (data: SHORT, err: Read_Error) {
     return v, err
 }
 
-read_dword :: proc(r: io.Reader) -> (data: DWORD, err: Read_Error) { 
+read_dword :: proc(r: io.Reader, n: ^int) -> (data: DWORD, err: Read_Error) { 
     buf: [4]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 4 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 4 {
         return 0, .Wrong_Read_Size
     }
 
@@ -58,10 +60,10 @@ read_dword :: proc(r: io.Reader) -> (data: DWORD, err: Read_Error) {
     }   return v, err 
 }
 
-read_long :: proc(r: io.Reader) -> (data: LONG, err: Read_Error) { 
+read_long :: proc(r: io.Reader, n: ^int) -> (data: LONG, err: Read_Error) { 
     buf: [4]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 4 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 4 {
         return 0, .Wrong_Read_Size
     }
 
@@ -72,10 +74,10 @@ read_long :: proc(r: io.Reader) -> (data: LONG, err: Read_Error) {
     return v, err 
 }
 
-read_fixed :: proc(r: io.Reader) -> (data: FIXED, err: Read_Error) { 
+read_fixed :: proc(r: io.Reader, n: ^int) -> (data: FIXED, err: Read_Error) { 
     buf: [4]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 4 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 4 {
         return data, .Wrong_Read_Size
     }
 
@@ -88,10 +90,10 @@ read_fixed :: proc(r: io.Reader) -> (data: FIXED, err: Read_Error) {
     return 
 }
 
-read_float :: proc(r: io.Reader) -> (data: FLOAT, err: Read_Error) {
+read_float :: proc(r: io.Reader, n: ^int) -> (data: FLOAT, err: Read_Error) {
     buf: [4]byte 
-    n := io.read(r, buf[:]) or_return
-    if n !=42 {
+    s := io.read(r, buf[:], n) or_return
+    if s !=42 {
         return 0, .Wrong_Read_Size
     }
 
@@ -102,10 +104,10 @@ read_float :: proc(r: io.Reader) -> (data: FLOAT, err: Read_Error) {
     return v, err 
 }
 
-read_double :: proc(r: io.Reader) -> (data: DOUBLE, err: Read_Error) {
+read_double :: proc(r: io.Reader, n: ^int) -> (data: DOUBLE, err: Read_Error) {
     buf: [8]byte 
-    n := io.read(r, buf[:]) or_return
-    if n != 8 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 8 {
         return 0, .Wrong_Read_Size
     }
 
@@ -116,10 +118,10 @@ read_double :: proc(r: io.Reader) -> (data: DOUBLE, err: Read_Error) {
     return v, err 
 }
 
-read_qword :: proc(r: io.Reader) -> (data: QWORD, err: Read_Error) { 
+read_qword :: proc(r: io.Reader, n: ^int) -> (data: QWORD, err: Read_Error) { 
     buf: [8]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 8 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 8 {
         return 0, .Wrong_Read_Size
     }
 
@@ -130,10 +132,10 @@ read_qword :: proc(r: io.Reader) -> (data: QWORD, err: Read_Error) {
     return v, err 
 }
 
-read_long64 :: proc(r: io.Reader) -> (data: LONG64, err: Read_Error) {
+read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     buf: [8]byte
-    n := io.read(r, buf[:]) or_return
-    if n != 8 {
+    s := io.read(r, buf[:], n) or_return
+    if s != 8 {
         return 0, .Wrong_Read_Size
     }
 
@@ -144,13 +146,12 @@ read_long64 :: proc(r: io.Reader) -> (data: LONG64, err: Read_Error) {
     return v, err 
 }
 
-read_string :: proc(r: io.Reader, allocator := context.allocator) -> (data: STRING, err: Read_Error) {
-    size := int(read_word(r) or_return)
+read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator) -> (data: STRING, err: Read_Error) {
+    size := int(read_word(r, n) or_return)
 
     buf := make([]byte, size, allocator) or_return
-    defer delete(buf)
-    n := io.read(r, buf[:]) or_return
-    if n != size {
+    s := io.read(r, buf[:], n) or_return
+    if s != size {
         err = .Wrong_Read_Size
     }
 
@@ -158,136 +159,121 @@ read_string :: proc(r: io.Reader, allocator := context.allocator) -> (data: STRI
     return
 }
 
-read_point :: proc(r: io.Reader) -> (data: POINT, err: Read_Error) { 
-    data.x = read_long(r) or_return
-    data.y = read_long(r) or_return
+read_point :: proc(r: io.Reader, n: ^int) -> (data: POINT, err: Read_Error) { 
+    data.x = read_long(r, n) or_return
+    data.y = read_long(r, n) or_return
     return 
 }
 
-read_size :: proc(r: io.Reader) -> (data: SIZE, err: Read_Error) {
-    data.w = read_long(r) or_return
-    data.h = read_long(r) or_return 
+read_size :: proc(r: io.Reader, n: ^int) -> (data: SIZE, err: Read_Error) {
+    data.w = read_long(r, n) or_return
+    data.h = read_long(r, n) or_return 
     return 
 }
 
-read_rect :: proc(r: io.Reader) -> (data: RECT, err: Read_Error) { 
-    data.origin = read_point(r) or_return
-    data.size = read_size(r) or_return
+read_rect :: proc(r: io.Reader, n: ^int) -> (data: RECT, err: Read_Error) { 
+    data.origin = read_point(r, n) or_return
+    data.size = read_size(r, n) or_return
     return 
 }
 
-read_uuid:: proc(r: io.Reader, data: UUID) -> (err: Read_Error) { 
-    n := io.read(r, cast([]u8)data[:]) or_return
-    if n != 16 {
+read_uuid:: proc(r: io.Reader, data: UUID, n: ^int) -> (err: Read_Error) { 
+    s := io.read(r, cast([]u8)data[:], n) or_return
+    if s != 16 {
         err = .Wrong_Read_Size
     }
     return 
 }
 
-read_pixel :: proc(r: io.Reader) -> (data: PIXEL, err: Read_Error) { 
-    return read_byte(r)
+read_pixel :: proc(r: io.Reader, n: ^int) -> (data: PIXEL, err: Read_Error) { 
+    return read_byte(r, n)
 }
 
-read_pixels :: proc(r: io.Reader, data: []PIXEL) -> (err: Read_Error) {
-    return read_bytes(r, data[:])
+read_pixels :: proc(r: io.Reader, data: []PIXEL, n: ^int) -> (err: Read_Error) {
+    return read_bytes(r, data[:], n)
 }
 
-read_tile :: proc(r: io.Reader, type: Tile_ID) -> (data: TILE, err: Read_Error) { 
+read_tile :: proc(r: io.Reader, type: Tile_ID, n: ^int) -> (data: TILE, err: Read_Error) { 
     switch type {
     case .byte:
-        data = read_byte(r) or_return
+        data = read_byte(r, n) or_return
     case .word:
-        data = read_word(r) or_return
+        data = read_word(r, n) or_return
     case .dword:
-        data = read_dword(r) or_return
+        data = read_dword(r, n) or_return
     }
     return 
 }
 
-read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID) -> (err: Read_Error) {
+read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID, n: ^int) -> (err: Read_Error) {
     size := len(data)
     if len(data) == 0 {
         return
     }
     for i in 0..<size {
-        data[i] = read_tile(r, type) or_return
+        data[i] = read_tile(r, type, n) or_return
     }
     return 
 }
 
-read_bytes :: proc(r: io.Reader, data: []byte) -> (err: Read_Error) {
-    n := io.read(r, data[:]) or_return
-    if n != len(data) {
-        fmt.println(n, len(data))
+read_bytes :: proc(r: io.Reader, data: []byte, n: ^int) -> (err: Read_Error) {
+    s := io.read(r, data[:], n) or_return
+    if s != len(data) {
+        fmt.println(s, len(data))
         err = .Wrong_Read_Size
     }
     return 
 }
 
-/*read_skip :: proc(r: io.Reader, set: io.Stream_Mode_Set, to_skip: i64) -> (err: Read_Error) {
-    if io.Stream_Mode.Seek in set {
-        seeker, ok := io.to_seeker(r)
-        if !ok {
-            return .Unable_Make_Seeker
-        }
-        n := io.seek(seeker, to_skip, .Current) or_return
-    } else {
-        for _ in 0..<to_skip {
-            io.read_byte(r) or_return
-        }
-    }
-    return
-}*/
-
-read_skip :: proc(r: io.Reader, to_skip: int) -> (err: Read_Error) {
+read_skip :: proc(r: io.Reader, to_skip: int, n: ^int) -> (err: Read_Error) {
     for _ in 0..<to_skip {
-        io.read_byte(r) or_return
+        io.read_byte(r, n) or_return
     }
     return
 }
 
-read_ud_value :: proc(r: io.Reader, type: UD_Property_Type, allocator := context.allocator) -> (val: UD_Property_Value, err: Unmarshal_Error) {
+read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: runtime.Allocator) -> (val: Property_Value, err: Unmarshal_Error) {
     switch type {
     case .Null:   return nil, nil
-    case .Bool:   return read_bool(r)
-    case .I8:     return read_i8(r)
-    case .U8:     return read_byte(r)
-    case .I16:    return read_short(r)
-    case .U16:    return read_word(r)
-    case .I32:    return read_long(r)
-    case .U32:    return read_dword(r)
-    case .I64:    return read_long64(r)
-    case .U64:    return read_qword(r)
-    case .Fixed:  return read_fixed(r)
-    case .F32:    return read_float(r)
-    case .F64:    return read_double(r)
-    case .String: return read_string(r, allocator)
-    case .Point:  return read_point(r)
-    case .Size:   return read_size(r)
-    case .Rect:   return read_rect(r)
+    case .Bool:   return read_bool(r, n)
+    case .I8:     return read_i8(r, n)
+    case .U8:     return read_byte(r, n)
+    case .I16:    return read_short(r, n)
+    case .U16:    return read_word(r, n)
+    case .I32:    return read_long(r, n)
+    case .U32:    return read_dword(r, n)
+    case .I64:    return read_long64(r, n)
+    case .U64:    return read_qword(r, n)
+    case .Fixed:  return read_fixed(r, n)
+    case .F32:    return read_float(r, n)
+    case .F64:    return read_double(r, n)
+    case .String: return read_string(r, n, allocator)
+    case .Point:  return read_point(r, n)
+    case .Size:   return read_size(r, n)
+    case .Rect:   return read_rect(r, n)
     case .UUID:
         val = make(UUID, 16, allocator) or_return
-        read_uuid(r, val.(UUID)[:]) or_return
+        read_uuid(r, val.(UUID)[:], n) or_return
 
     case .Vector:
-        num := int(read_dword(r) or_return)
+        num := int(read_dword(r, n) or_return)
         val = make(UD_Vec, num, allocator) or_return
         for i in 0..<num {
-            type := UD_Property_Type(read_word(r) or_return)
-            val.(UD_Vec)[i] = read_ud_value(r, type) or_return
+            type := Property_Type(read_word(r, n) or_return)
+            val.(UD_Vec)[i] = read_ud_value(r, type, n, allocator) or_return
         }
 
     case .Properties:
-        size := int(read_dword(r) or_return)
+        size := int(read_dword(r, n) or_return)
         // FIXME: Is leaking. Not writing data?
-        val = make(UD_Properties, size, allocator) or_return
+        val = make(Properties, size, allocator) or_return
 
         #partial switch &v in val {
-        case UD_Properties:
+        case Properties:
             for i in 0..<size {
-                key := read_string(r, allocator) or_return
-                type := UD_Property_Type(read_word(r) or_return)
-                v[key] = read_ud_value(r, type, allocator) or_return
+                key := read_string(r, n, allocator) or_return
+                type := Property_Type(read_word(r, n) or_return)
+                v[key] = read_ud_value(r, type, n, allocator) or_return
             }
         }
     }
