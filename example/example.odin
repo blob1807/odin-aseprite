@@ -16,7 +16,10 @@ main :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    un_err := ase.unmarshal(data[:], &doc)
+    read, un_err := ase.unmarshal(data[:], &doc)
+    if read != int(doc.header.size) {
+        fmt.eprintln("Failed to Unmarshal my beloved, geralt.", read, doc.header.size)
+    }
     if un_err != nil {
         fmt.eprintln("Failed to Unmarshal my beloved, geralt.", un_err)
         return
@@ -27,7 +30,7 @@ main :: proc() {
     buf: [dynamic]byte
     defer delete(buf)
 
-    m_err := ase.marshal(&buf, &doc)
+    written, m_err := ase.marshal(&buf, &doc)
     if m_err != nil {
         fmt.eprintln("Failed to Marshal my beloved, geralt.", m_err)
         return
