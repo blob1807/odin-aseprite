@@ -1,10 +1,10 @@
 package raw_aseprite_file_handler
 
 import "base:runtime"
-import gpl "../extended_gpl"
+import "../gpl"
 
 
-from_old_256_to_gpl :: proc(data: Old_Palette_256_Chunk, pal: ^gpl.gpl_palette) -> (err: runtime.Allocator_Error) {
+from_old_256_to_gpl :: proc(data: Old_Palette_256_Chunk, pal: ^gpl.GPL_Palette) -> (err: runtime.Allocator_Error) {
     pal.rgba = true
     size: int
     for pak in data.packets {
@@ -14,7 +14,7 @@ from_old_256_to_gpl :: proc(data: Old_Palette_256_Chunk, pal: ^gpl.gpl_palette) 
 
     for pak in data.packets {
         for c in pak.colors {
-            color: gpl.gpl_color
+            color: gpl.Color
             color.r = int(c[0])
             color.g = int(c[1])
             color.b = int(c[2])
@@ -25,7 +25,7 @@ from_old_256_to_gpl :: proc(data: Old_Palette_256_Chunk, pal: ^gpl.gpl_palette) 
     return
 }
 
-from_old_64_to_gpl :: proc(data: Old_Palette_64_Chunk, pal: ^gpl.gpl_palette) -> (err: runtime.Allocator_Error) {
+from_old_64_to_gpl :: proc(data: Old_Palette_64_Chunk, pal: ^gpl.GPL_Palette) -> (err: runtime.Allocator_Error) {
     pal.rgba = true
     size: int
     for pak in data.packets {
@@ -35,7 +35,7 @@ from_old_64_to_gpl :: proc(data: Old_Palette_64_Chunk, pal: ^gpl.gpl_palette) ->
 
     for pak in data.packets {
         for c in pak.colors {
-            color: gpl.gpl_color
+            color: gpl.Color
             color.r = int(c[0])
             color.g = int(c[1])
             color.b = int(c[2])
@@ -45,12 +45,12 @@ from_old_64_to_gpl :: proc(data: Old_Palette_64_Chunk, pal: ^gpl.gpl_palette) ->
     }
     return
 }
-from_palette_to_gpl:: proc(data: Palette_Chunk, pal: ^gpl.gpl_palette) -> (err: runtime.Allocator_Error){
+from_palette_to_gpl:: proc(data: Palette_Chunk, pal: ^gpl.GPL_Palette) -> (err: runtime.Allocator_Error){
     pal.rgba = true
     reserve_dynamic_array(&pal.colors, len(data.entries)) or_return
 
     for c in data.entries {
-        color: gpl.gpl_color
+        color: gpl.Color
         color.r = int(c.red)
         color.g = int(c.green)
         color.b = int(c.blue)
@@ -64,7 +64,7 @@ from_palette_to_gpl:: proc(data: Palette_Chunk, pal: ^gpl.gpl_palette) -> (err: 
 to_gpl :: proc{from_old_256_to_gpl, from_old_64_to_gpl, from_palette_to_gpl}
 
 
-from_gpl_to_old_256 :: proc(data: gpl.gpl_palette, pal: ^Old_Palette_256_Chunk, allocator := context.allocator)-> (err: runtime.Allocator_Error) {
+from_gpl_to_old_256 :: proc(data: gpl.GPL_Palette, pal: ^Old_Palette_256_Chunk, allocator := context.allocator)-> (err: runtime.Allocator_Error) {
     size := len(data.colors)
     pals := size / 256 + 1
     cols := size % 256
@@ -90,7 +90,7 @@ from_gpl_to_old_256 :: proc(data: gpl.gpl_palette, pal: ^Old_Palette_256_Chunk, 
     return
 }
 
-from_gpl_to_old_64 :: proc(data: gpl.gpl_palette, pal: ^Old_Palette_64_Chunk, allocator := context.allocator) -> (err: runtime.Allocator_Error) {
+from_gpl_to_old_64 :: proc(data: gpl.GPL_Palette, pal: ^Old_Palette_64_Chunk, allocator := context.allocator) -> (err: runtime.Allocator_Error) {
     size := len(data.colors)
     pals := size / 256 + 1
     cols := size % 256
@@ -115,7 +115,7 @@ from_gpl_to_old_64 :: proc(data: gpl.gpl_palette, pal: ^Old_Palette_64_Chunk, al
 
     return
 }
-from_gpl_to_palette :: proc(data: gpl.gpl_palette, pal: ^Palette_Chunk, allocator := context.allocator) -> (err: runtime.Allocator_Error) {
+from_gpl_to_palette :: proc(data: gpl.GPL_Palette, pal: ^Palette_Chunk, allocator := context.allocator) -> (err: runtime.Allocator_Error) {
     pal.entries = make_slice([]Palette_Entry, len(data.colors), allocator) or_return
     pal.size = DWORD(len(data.colors))
 

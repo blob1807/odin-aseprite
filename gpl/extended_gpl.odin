@@ -10,15 +10,15 @@ import "core:strconv"
 // https://github.com/aseprite/aseprite/blob/main/docs/gpl-palette-extension.md
 // https://developer.gimp.org/core/standards/gpl/
 
-gpl_palette :: struct {
+GPL_Palette :: struct {
     raw: string,
     name: string,
     colums: int,
     rgba: bool,
-    colors: [dynamic]gpl_color
+    colors: [dynamic]Color
 }
 
-gpl_color :: struct {
+Color :: struct {
     //using color: struct{r,g,b,a: int},
     using color: [4]int,
     name: string
@@ -32,11 +32,13 @@ GPL_Error :: enum {
     Cant_Parse_Color,
 }
 
-from_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Error) {
+from_string :: proc(data: string) -> (parsed: GPL_Palette, err: GPL_Error) {
     parsed.raw = data
     s := parsed.raw
     index := strings.index(s, "\n")
-    if index == -1 || s[:index] != "GIMP Palette" { return {}, .Bad_Magic_Number }
+    if index == -1 || s[:index] != "GIMP Palette" { 
+        return {}, .Bad_Magic_Number 
+    }
 
     s = s[index+1:]
     index = strings.index(s, "\n")
@@ -78,7 +80,7 @@ from_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Error) {
         index = strings.index(s, "\n")
         if index == -1 { index = len(s) }
         if s[0] != '#' { 
-            color: gpl_color
+            color: Color
             color.a = 255
             line := strings.trim_left_space(s[:index])
 
@@ -121,14 +123,14 @@ from_string :: proc(data: string) -> (parsed: gpl_palette, err: GPL_Error) {
     return
 }
 
-from_bytes :: proc(data: []byte) -> (parsed: gpl_palette, err: GPL_Error) {
+from_bytes :: proc(data: []byte) -> (parsed: GPL_Palette, err: GPL_Error) {
     return from_string(string(data))
 }
 
-unmarshal :: proc {from_string, from_bytes}
+parse :: proc {from_string, from_bytes}
 
 
-to_bytes :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []byte, err: runtime.Allocator_Error) {
+to_bytes :: proc(pal: GPL_Palette, allocator := context.allocator) -> (data: []byte, err: runtime.Allocator_Error) {
     sb: strings.Builder
     // len("GIMP Palette\nName: \nChannels: RGBA\nColums: 255\n") == 47
     strings.builder_init_len_cap(&sb, 0, 47 + len(pal.colors) + len(pal.name), allocator) or_return
@@ -164,11 +166,11 @@ to_bytes :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: []b
     return
 }
 
-to_string  :: proc(pal: gpl_palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
+to_string  :: proc(pal: GPL_Palette, allocator := context.allocator) -> (data: string, err: runtime.Allocator_Error) {
     return string(to_bytes(pal, allocator) or_return), .None
 }
 
-destroy_gpl :: proc(pal: ^gpl_palette) {
+destroy_gpl :: proc(pal: ^GPL_Palette) {
     delete(pal.colors)
     pal.colors = nil
 }
