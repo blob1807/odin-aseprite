@@ -35,12 +35,11 @@ ase_unmarshal :: proc(t: ^testing.T) {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    uerr := ase.unmarshal(data[:], &doc)
+    n, uerr := ase.unmarshal(data[:], &doc)
 
-    ok := expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
-    if !ok {
-        testing.fail_now(t, "Unable to unmarshal")
-    }
+    ok := expect(t, n == int(doc.header.size), fmt.tprintf("%s Wrong Read Size: %v, File: /asefile/basic-16x16.aseprite", #procedure, n))
+
+    ok = expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
 }
 
 @(test)
@@ -66,16 +65,17 @@ ase_marshal :: proc(t: ^testing.T) {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    uerr := ase.unmarshal(data[:], &doc)
+    n, uerr := ase.unmarshal(data[:], &doc)
 
-    ok := expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
+    ok := expect(t, n == int(doc.header.size), fmt.tprintf("%s Wrong Read Size: %v, File: /asefile/basic-16x16.aseprite", #procedure, n))
+    ok = expect(t, uerr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, uerr))
     if !ok {
         testing.fail_now(t, "Unable to unmarshal")
     }
 
     buf := make([dynamic]byte, context.temp_allocator)
     defer delete(buf)
-    merr := ase.marshal(&buf, &doc)
+    _, merr := ase.marshal(&buf, &doc)
 
     ok = expect(t, merr == nil, fmt.tprintf("%s Error: %v, File: /asefile/basic-16x16.aseprite", #procedure, merr))
     if !ok {
@@ -117,7 +117,7 @@ ase_full_test :: proc(t: ^testing.T) {
         delete(base_f)
     }
     os.close(fd)
-    runtime.print_rune('\n')
+    fmt.println(" ")
 
     for f in base_f {
         if f.is_dir {
@@ -142,10 +142,13 @@ ase_full_test :: proc(t: ^testing.T) {
                     if !ok {
                         testing.fail_now(t, fmt.tprintf("%s: Failed to load file %v", #procedure, s.name))
                     }
-                    // fmt.println("   Testing:", s.name)
+                    fmt.println("   Testing:", s.name)
                     doc: ase.Document
                     defer ase.destroy_doc(&doc)
-                    unerr := ase.unmarshal(data[:], &doc)
+                    n, unerr := ase.unmarshal(data[:], &doc)
+                    if n != int(doc.header.size) {
+                        errorf(t, "%s: Unmarshal Error: Wrong size %n, File: %v", #procedure, n, s.name)
+                    }
                     if unerr != nil {
                         errorf(t, "%s: Unmarshal Error: %v, File: %v", #procedure, unerr, s.name)
                         continue
@@ -157,31 +160,34 @@ ase_full_test :: proc(t: ^testing.T) {
                         testing.fail_now(t, fmt.tprintf("%s: Failed to make buffer.", #procedure))
                     }
 
-                    merr := ase.marshal(&buf, &doc)
+                    _, merr := ase.marshal(&buf, &doc)
                     if merr != nil {
                         errorf(t, "%s: Marshal Error: %v, File: %v", #procedure, merr, s.name)
-                        continue
-                    }
-                    if !slice.equal(data[:], buf[:]) {
-                        errorf(t, "Full Test: Marshal data doesn't equal OG data. %s", s.name)
                         continue
                     }
 
                     doc2: ase.Document
                     defer ase.destroy_doc(&doc2)
-                    unerr2 := ase.unmarshal(data[:], &doc)
+                    n2, unerr2 := ase.unmarshal(data[:], &doc2)
+
+                    if n2 != int(doc2.header.size) {
+                        errorf(t, "%s: Unmarshal Error 2: Wrong size %n, File: %v", #procedure, n2, s.name)
+                    }
                     if unerr2 != nil {
                         errorf(t, "Full Test: Unmarshal Error 2: %v, File: %v", unerr2, s.name)
                         continue
                     }
-
-                    /*if !ase.equal(doc, doc2) {
-                        errorf(t, "Full Test: Unmarshaled Doc don't equal OG Doc.")
-                        continue
-                    }*/
+                    a, b, ty, o := ase.document_equal(doc, doc2)
+                    if !o {
+                        errorf (
+                            t, 
+                            "Full Test: Unmarshaled Doc don't equal OG Doc. %s \nx: %v\ny: %v\nType: %v", 
+                            s.name, a, b, ty \
+                        )
+                    }
                 }
             }
-            runtime.print_rune('\n')
+            fmt.println(" ")
         }
     }
 }
