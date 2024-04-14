@@ -376,7 +376,6 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                 ud: User_Data_Chunk
                 readed := read_dword(r, rt) or_return
                 flags := transmute(UD_Flags)readed
-                //fmt.println(readed, flags)
 
                 if .Text in flags {
                     ud.text = read_string(r, rt, allocator) or_return
@@ -395,20 +394,24 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
                     total_size := read_dword(r, rt) or_return
                     map_num := read_dword(r, rt) or_return
-                    fmt.println(total_read, total_size, map_num)
+                    //fmt.println(total_read, total_size, map_num)
                     // FIXME: Is leaking. Not writing data?
                     maps := make(Properties_Map, map_num, allocator) or_return
                     for i in 0..<int(map_num) {
                         key := read_dword(r, rt) or_return
+                        //maps[key] = read_ud_value(r, .Properties, rt, allocator) or_return
+
                         prop_num := int(read_dword(r, rt) or_return)
                         val := make(Properties, prop_num, allocator) or_return
+
                         for n in 0..<prop_num {
                             name := read_string(r, rt, allocator) or_return
+                            defer delete(name)
                             type := Property_Type(read_word(r, rt) or_return)
                             val[name] = read_ud_value(r, type, rt, allocator) or_return
                         }
+
                         maps[key] = val
-                        //maps[key] = read_ud_value(r, .Properties, allocator, rt) or_return
                     }
                     ud.maps = maps
                 }

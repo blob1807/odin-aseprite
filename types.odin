@@ -386,7 +386,7 @@ Properties_Map :: map[DWORD]Property_Value
 UD_Flag :: enum(DWORD) {
     Text,
     Color,
-    Properties = 4,
+    Properties,
 }
 UD_Flags :: bit_set[UD_Flag; DWORD]
 User_Data_Chunk :: struct {

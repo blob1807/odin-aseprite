@@ -93,7 +93,6 @@ destroy_doc :: proc(doc: ^Document) {
                     for k, &val in m {
                         destroy_value(val)
                     }
-                    fmt.println("l")
                     delete(m)
                 }
 

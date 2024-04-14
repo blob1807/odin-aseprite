@@ -153,6 +153,7 @@ read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator) -> (dat
     s := io.read(r, buf[:], n) or_return
     if s != size {
         err = .Wrong_Read_Size
+        return
     }
 
     data = string(buf[:])
@@ -264,14 +265,16 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: run
         }
 
     case .Properties:
-        size := int(read_dword(r, n) or_return)
+        size := read_dword(r, n) or_return
+        fmt.println(size)
         // FIXME: Is leaking. Not writing data?
         val = make(Properties, size, allocator) or_return
 
         #partial switch &v in val {
         case Properties:
-            for i in 0..<size {
+            for _ in 0..<size {
                 key := read_string(r, n, allocator) or_return
+                defer delete(key)
                 type := Property_Type(read_word(r, n) or_return)
                 v[key] = read_ud_value(r, type, n, allocator) or_return
             }

@@ -1075,6 +1075,7 @@ _read_property_value :: proc(old_pos, old_next: int, type: WORD, data: []u8, all
         next += size_of(DWORD)
         pmt.num, _ = endian.get_u32(data[pos:next], .Little)
         pmt.properties = make_slice([]UD_Property, int(pmt.num), allocator) or_return
+        fmt.println(pmt.num)
 
         for n in 0..<int(pmt.num) {
             pos = next
