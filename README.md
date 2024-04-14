@@ -64,4 +64,4 @@ main :: proc() {
 
 
 ### Warnings
-User Data for ase files that is contaned within maps my not parce currently.
+User Data for ase files that is contained within maps my not parse currently.
