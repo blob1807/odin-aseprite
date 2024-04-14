@@ -12,6 +12,10 @@ main :: proc() {
     defer log.destroy_console_logger(logger)
     context.logger = logger
 
+    ase_example()
+}
+
+ase_example :: proc() {
     data := #load("../tests/blob/geralt.aseprite")
     doc: ase.Document
     defer ase.destroy_doc(&doc)
