@@ -45,9 +45,13 @@ destroy_doc :: proc(doc: ^ASE_Document) {
             case Cel_Chunk:
                 #partial switch &cel in c.cel {
                 case Com_Tilemap_Cel:
-                    delete(cel.tiles)
+                    if cel.did_com {
+                        delete(cel.tiles)
+                    }
                 case Com_Image_Cel:
-                    delete(cel.pixel)
+                    if cel.did_com {
+                        delete(cel.pixel)
+                    }
                 case Raw_Cel:
                     delete(cel.pixel)
                 }

@@ -687,7 +687,6 @@ unmarshal :: proc(data: []byte, doc: ^ASE_Document, allocator := context.allocat
                     pos = next
                     next += size_of(WORD)
                     str.length, _ = endian.get_u16(data[pos:next], .Little)
-                    // str.data = make_slice([]u8, int(str.length), allocator) or_return
 
                     pos = next
                     next += int(str.length)

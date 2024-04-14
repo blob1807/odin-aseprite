@@ -91,8 +91,8 @@ _layer_equal :: proc(x, y: Layer_Chunk) -> (a: any, b: any, c: typeid, eq: bool)
     if x.default_height != y.default_height {
         return x.default_height, y.default_height, typeid_of(Layer_Chunk), false
     }
-    if x.name.length != x.name.length {
-        return x.name.length, x.name.length, typeid_of(Layer_Chunk), false
+    if x.name.length != y.name.length {
+        return x.name.length, y.name.length, typeid_of(Layer_Chunk), false
     }
     if !slice.equal(x.name.data[:], y.name.data[:]) {
         return x.name.data[:], y.name.data[:], typeid_of(Layer_Chunk), false
@@ -367,8 +367,8 @@ _palette_equal :: proc(x, y: Palette_Chunk) -> (a: any, b: any, c: typeid, eq: b
         if xp.flags != yp.flags {
             return xp.flags, yp.flags, typeid_of(Palette_Entry), false
         }
-        if xp.name.length != xp.name.length {
-            return xp.name.length, xp.name.length, typeid_of(Palette_Entry), false
+        if xp.name.length != yp.name.length {
+            return xp.name.length, yp.name.length, typeid_of(Palette_Entry), false
         }
         if !slice.equal(xp.name.data[:], yp.name.data[:]) {
             return xp.name.data[:], yp.name.data[:], typeid_of(Palette_Entry), false
