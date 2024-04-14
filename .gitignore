@@ -1,6 +1,7 @@
 \ols.json
 \main.odin
 \buf.aseprite
+\example\out.aseprite
 
 \build\*
 \_main
