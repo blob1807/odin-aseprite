@@ -95,7 +95,7 @@ ase_full_test :: proc(t: ^testing.T) {
     context.logger = log.create_console_logger()
     defer log.destroy_console_logger(context.logger)
 
-    /*track: mem.Tracking_Allocator
+    track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
 	context.allocator = mem.tracking_allocator(&track)
     defer {
@@ -106,7 +106,7 @@ ase_full_test :: proc(t: ^testing.T) {
 		for bad_free in track.bad_free_array {
 			fmt.printf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory)
 		}
-    }*/
+    }
 
     fd, f_err := os.open("./tests", os.O_RDONLY, 0)
     base_f, FF_err := os.read_dir(fd, 0)
