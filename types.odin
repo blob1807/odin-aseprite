@@ -33,6 +33,7 @@ Unmarshal_Error :: union #shared_nil {
     io.Error,
     Read_Error,
     zlib.Error,
+    ZLIB_Errors,
 }
 
 Read_Errors :: enum {
@@ -50,6 +51,7 @@ Marshal_Errors :: enum {
     Wrong_Write_Size,
     Invalid_Old_Palette,
     Invalid_Cel_Type,
+    Invalid_Property_Type,
 }
 Marshal_Error :: union #shared_nil {
     Marshal_Errors, 
@@ -368,29 +370,29 @@ Palette_Chunk :: struct {
 
 // Vec_Diff :: struct{type: WORD, data: UD_Property_Value}
 // UD_Vec :: union {[]UD_Property_Value, []Vec_Diff}
-UD_Vec :: []UD_Property_Value
-UD_Property_Type :: enum(WORD) {
+UD_Vec :: []Property_Value
+Property_Type :: enum(WORD) {
     Null, Bool, I8, U8, I16, U16, I32, U32, I64, U64,
     Fixed, F32, F64, String, Point, Size, Rect, 
     Vector, Properties, UUID 
 }
-UD_Property_Value :: union {
+Property_Value :: union {
     bool, i8, BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
     DOUBLE, STRING, POINT, SIZE, RECT, UUID,  
-    UD_Vec, UD_Properties, 
+    UD_Vec, Properties, 
 }
-UD_Properties :: map[string]UD_Property_Value
+Properties :: map[string]Property_Value
+Properties_Map :: map[DWORD]Property_Value
 UD_Flag :: enum(DWORD) {
     Text,
     Color,
-    Properties,
+    Properties = 4,
 }
 UD_Flags :: bit_set[UD_Flag; DWORD]
 User_Data_Chunk :: struct {
     text: Maybe(string), 
     color: Maybe(Color_RGBA), 
-    // maps: Maybe(UD_Properties_Map),
-    maps: Maybe(UD_Properties),
+    maps: Maybe(Properties_Map),
 
 }
 
