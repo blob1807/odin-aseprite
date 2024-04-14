@@ -3,16 +3,18 @@ package aseprite_file_handler
 import "core:fmt"
 
 destroy_doc :: proc(doc: ^Document) {
-    destroy_value :: proc(p: UD_Property_Value) {
+    destroy_value :: proc(p: Property_Value) {
         #partial switch val in p {
+        case STRING:
+            delete(val)
         case UD_Vec:
-            for v in val {
+            for &v in val {
                 destroy_value(v)
             }
             delete(val)
 
-        case UD_Properties:
-            for k, v in val {
+        case Properties:
+            for k, &v in val {
                 destroy_value(v)
             }
             delete(val)
@@ -33,6 +35,8 @@ destroy_doc :: proc(doc: ^Document) {
                     delete(pack.colors)
                 }
                 delete(v)
+            case Layer_Chunk:
+                delete(v.name)
 
             case Cel_Chunk:
                 switch &cel in v.cel {
@@ -53,21 +57,39 @@ destroy_doc :: proc(doc: ^Document) {
                 }
 
             case External_Files_Chunk:
+                for &e in v {
+                    delete(e.file_name_or_id)
+                }
                 delete(v)
                 
             case Mask_Chunk:
+                delete(v.name)
                 delete(v.bit_map_data)
 
             case Tags_Chunk:
+                for &t in v {
+                    delete(t.name)
+                }
                 delete(v)
 
             case Palette_Chunk:
+                for &e in v.entries {
+                    switch &s in e.name {
+                    case string:
+                        delete(s)
+                    }
+                }
                 delete(v.entries)
 
             case User_Data_Chunk:
+                switch &s in v.text {
+                case string:
+                    delete(s)
+                }
+
                 // FIXME: Fails to free.
                 switch &m in v.maps {
-                case UD_Properties:
+                case Properties_Map:
                     for k, &val in m {
                         destroy_value(val)
                     }
@@ -76,9 +98,11 @@ destroy_doc :: proc(doc: ^Document) {
                 }
 
             case Slice_Chunk:
+                delete(v.name)
                 delete(v.keys)
 
             case Tileset_Chunk:
+                delete(v.name)
                 // FIXME: Fails to free.
                 switch &c in v.compressed {
                 case Tileset_Compressed:
