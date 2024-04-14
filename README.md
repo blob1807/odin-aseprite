@@ -51,12 +51,14 @@ main :: proc() {
     palette, err := gpl.parse(data[:])
     if err != nil {
         fmt.println(err)
+        return
     }
     defer destroy_gpl(&palette)
 
     buf, err2 := gpl.to_bytes(palette)
     if err2 != nil {
         fmt.println(err2)
+        return
     } 
     defer delete(buf)
 }
