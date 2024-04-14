@@ -131,7 +131,8 @@ write_string :: proc(w: io.Writer, data: STRING, size: ^int) -> (written: int, e
         return 0, .Wrong_Write_Size
     }
 
-    written += write_bytes(w, transmute([]u8)data, size) or_return
+    str := transmute([]u8)data
+    written += write_bytes(w, str[:], size) or_return
     if written != 2 + len(data) {
         err = .Wrong_Write_Size
     }
@@ -253,9 +254,8 @@ write_skip :: proc(w: io.Writer, to_skip: int, size: ^int) -> (written: int, err
     return
 }
 
-write_ud_value :: proc(w: io.Writer, data: UD_Property_Value, size: ^int) -> (err: Marshal_Error) {
-    type := get_property_type(data) or_return
-    write(w, type, size) or_return
+write_ud_value :: proc(w: io.Writer, data: Property_Value, size: ^int) -> (err: Marshal_Error) {
+    write(w, get_property_type(data) or_return, size) or_return
 
     switch v in data {
     case nil:
@@ -281,7 +281,7 @@ write_ud_value :: proc(w: io.Writer, data: UD_Property_Value, size: ^int) -> (er
         for vec in v {
             write(w, vec, size) or_return
         }
-    case UD_Properties:
+    case Properties:
         write(w, DWORD(len(v)), size) or_return
         for key, val in v {
             write(w, key, size) or_return
