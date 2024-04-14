@@ -3,7 +3,7 @@ Handler for Aseprite's `.ase`/`.aseprite`, `.aseprite-extension` &amp; extended 
 
 * `.\`: Main un/marshaler for `.ase`
 * `.\raw`: un/marshals `.ase` exactly as given by the spec
-* `.\extended_gpl`: extended & normal .gpl   
+* `.\gpl`: extended & normal .gpl   
 * `.\extensions`: .aseprite-extension. WIP   
 * `.\tests`: test files
 
