@@ -3,19 +3,19 @@ package aseprite_file_handler
 import "core:fmt"
 
 destroy_doc :: proc(doc: ^Document) {
-    destroy_value :: proc(p: Property_Value) {
-        #partial switch val in p {
+    destroy_value :: proc(p: ^Property_Value) {
+        #partial switch &val in p {
         case STRING:
             delete(val)
         case UD_Vec:
             for &v in val {
-                destroy_value(v)
+                destroy_value(&v)
             }
             delete(val)
 
         case Properties:
             for k, &v in val {
-                destroy_value(v)
+                destroy_value(&v)
             }
             delete(val)
         }
@@ -87,14 +87,20 @@ destroy_doc :: proc(doc: ^Document) {
                     delete(s)
                 }
 
-                // FIXME: Fails to free.
+                if m, ok := v.maps.?; ok {
+                    for k, &val in m {
+                        destroy_value(&val)
+                    }
+                    delete_map(m)
+                }
+                /*// FIXME: Fails to free.
                 switch &m in v.maps {
                 case Properties_Map:
                     for k, &val in m {
-                        destroy_value(val)
+                        destroy_value(&val)
                     }
-                    delete(m)
-                }
+                    delete_map(m)
+                }*/
 
             case Slice_Chunk:
                 delete(v.name)
