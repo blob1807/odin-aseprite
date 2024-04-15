@@ -4,6 +4,7 @@ import "base:runtime"
 import "core:io"
 import "core:os"
 import "core:fmt"
+import "core:log"
 import "core:bytes"
 import "core:slice"
 import "core:bufio"
@@ -64,6 +65,7 @@ marshal :: proc{
 }
 
 marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
+    ud_map_warn: bool
     s := &file_size
     b: bytes.Buffer
     defer bytes.buffer_destroy(&b)
@@ -381,7 +383,14 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
 
                 #partial switch m in val.maps {
                 case Properties_Map:
-                    mb: bytes.Buffer
+                    if !ud_map_warn {
+                        log.warn("Writing User Data Maps isn't supported rn.")
+                        ud_map_warn = true
+                    }
+                    write(cw, DWORD(8), cs) or_return
+                    write(cw, DWORD(0), cs) or_return 
+
+                    /*mb: bytes.Buffer
                     defer bytes.buffer_destroy(&mb)
                     mw, ok4 := io.to_writer(bytes.buffer_to_stream(&mb))
                     if !ok4 {
@@ -395,17 +404,16 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
                     for key, val in m {
                         write(mw, key, ms) or_return
                         val := val.(Properties)
-                        write(mw, DWORD(len(val)), ms) or_return
+                        //write(mw, val, ms) or_return
                         for name, type in val {
                             write(mw, name, ms) or_return
                             write(mw, type, ms) or_return
                         }
-                        //write(mw, val, ms) or_return
                     }
 
                     map_size += 4
                     write(cw, DWORD(map_size), cs) or_return
-                    write(cw, mb.buf[:map_size-4], cs) or_return
+                    write(cw, mb.buf[:map_size-4], cs) or_return*/
                 }
 
             case Slice_Chunk:
