@@ -67,7 +67,7 @@ main :: proc() {
 
 ## Warnings
 User Data that is contained within maps can only be read not written rn.   
-ICC Colour Profiles aren't support & the raw data will be saved to doc.   
+ICC Colour Profiles aren't & will never be supported. The raw data will be saved to doc.   
 
 ## Errors
 Any errors please make an issue or DM them to me, `blob1807`, on the [Odin Discord](https://discord.com/invite/sVBPHEv).  
