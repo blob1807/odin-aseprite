@@ -1,17 +1,19 @@
 # Files
+Files in this folder DO NOT fall under the license of this project but of their repective projects. Who's licenses have being provided in each folder.
 
 ### Taken from [asefile](https://github.com/alpine-alpaca/asefile/tree/main/tests/data)
-Found in `./test_sprites/asefile`.   
+Found in `./tests/asefile`.   
 Too many files to list.
 
 ### Provided by Blob
-Found in `./test_sprites/blob`.
+Full copyright of blob1807. All files can only be used for & in this project.  
+Found in `./tests/blob`.
 * `geralt.aseprite`
 * `mango-panda.aseprite`
 * `marshmallow.aseprite`
 
 ### Taken from  [Aseprite GitHub](https://github.com/aseprite/aseprite/tree/main/tests/sprites)
-Found in `./test_sprites/aseprite`.
+Found in `./tests/aseprite`.
 * `abcd.aseprite`: Indexed, 32x32, four layers ("a", "b", "c", "d")
 * `1empty3.aseprite`: RGB, 32x32, two layers ("fg", "bg"), 2nd frame
     completelly empty, two tags ("a", "b")
