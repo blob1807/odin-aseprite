@@ -2,6 +2,7 @@ package aseprite_file_handler
 
 import "base:runtime"
 import "core:io"
+import "core:log"
 import "core:fmt"
 import "core:strings"
 import "core:math/fixed"
@@ -96,7 +97,7 @@ read_float :: proc(r: io.Reader, n: ^int) -> (data: FLOAT, err: Read_Error) {
     if s !=42 {
         return 0, .Wrong_Read_Size
     }
-
+    
     v, ok := endian.get_f32(buf[:], .Little)
     if !ok {
         err = .Unable_To_Decode_Data
@@ -146,10 +147,10 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     return v, err 
 }
 
-read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator) -> (data: STRING, err: Read_Error) {
+read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
     size := int(read_word(r, n) or_return)
 
-    buf := make([]byte, size, allocator) or_return
+    buf := make([]byte, size, allocator, loc) or_return
     s := io.read(r, buf[:], n) or_return
     if s != size {
         err = .Wrong_Read_Size
@@ -220,7 +221,7 @@ read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID, n: ^int) -> (err: 
 read_bytes :: proc(r: io.Reader, data: []byte, n: ^int) -> (err: Read_Error) {
     s := io.read(r, data[:], n) or_return
     if s != len(data) {
-        fmt.println(s, len(data))
+        log.error("Could read all the bytes asked.", s, len(data))
         err = .Wrong_Read_Size
     }
     return 
@@ -259,14 +260,21 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: run
     case .Vector:
         num := int(read_dword(r, n) or_return)
         val = make(UD_Vec, num, allocator) or_return
-        for i in 0..<num {
-            type := Property_Type(read_word(r, n) or_return)
-            val.(UD_Vec)[i] = read_ud_value(r, type, n, allocator) or_return
+        vec_type := Property_Type(read_word(r, n) or_return)
+
+        if vec_type == .Null {
+            for i in 0..<num {
+                type := Property_Type(read_word(r, n) or_return)
+                val.(UD_Vec)[i] = read_ud_value(r, type, n, allocator) or_return
+            }
+        } else {
+            for i in 0..<num {
+                val.(UD_Vec)[i] = read_ud_value(r, vec_type, n, allocator) or_return
+            }
         }
 
     case .Properties:
         size := read_dword(r, n) or_return
-        fmt.println(size)
         // FIXME: Is leaking. Not writing data?
         val = make(Properties, size, allocator) or_return
 
