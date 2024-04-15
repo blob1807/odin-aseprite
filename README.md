@@ -1,5 +1,5 @@
 # Odin Aseprite
-Handler for Aseprite's `.ase`/`.aseprite`, `.aseprite-extension` &amp; extended `.gpl` files writen in Odin.   
+Unmarshaler & Marshaler for Aseprite's `.ase`/`.aseprite`, `.aseprite-extension` &amp; extended `.gpl` files writen in Odin.   
 
 * `.\`: Main un/marshaler for `.ase`
 * `.\raw`: un/marshals `.ase` exactly as given by the spec
@@ -65,5 +65,6 @@ main :: proc() {
 ```
 
 
-### Warnings
-User Data for ase files that is contained within maps my not parse correctly.
+## Warnings
+User Data for ase files that is contained within maps can only be read not written rn.   
+ICC Colour Profiles aren't support & the raw data will be saved to doc.   un/marshaler
