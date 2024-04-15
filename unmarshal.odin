@@ -59,6 +59,7 @@ unmarshal :: proc{
 }
 
 unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+    ud_map_warn, icc_profile_warn: bool
     rt := &total_read
     set := io.query(r)
     h: File_Header
@@ -292,7 +293,10 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     icc_size := cast(int)read_dword(r, rt) or_return
                     cp.icc = make(ICC_Profile, icc_size, allocator) or_return
                     read_bytes(r, cast([]u8)cp.icc.(ICC_Profile)[:], rt) or_return
-                    log.warn("Embedded ICC Color Profiles are currently not supported.")
+                    if !icc_profile_warn {
+                        log.warn("Embedded ICC Color Profiles are currently not supported.")
+                        icc_profile_warn = true
+                    }
                 }
                 chunk = cp
 
@@ -374,8 +378,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
             case .user_data:
                 // FIXME: This isn't working. Very annoying.
                 ud: User_Data_Chunk
-                readed := read_dword(r, rt) or_return
-                flags := transmute(UD_Flags)readed
+                flags := transmute(UD_Flags)read_dword(r, rt) or_return
 
                 if .Text in flags {
                     ud.text = read_string(r, rt, allocator) or_return
@@ -389,12 +392,13 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     ud.color = colour
                 }
                 if .Properties in flags {
-                    log.warn("User Data Maps may not fully work.")
-                    // return total_read, Unmarshal_Errors.User_Data_Maps_Not_Supported
+                    if !ud_map_warn {
+                        log.warn("Only Reading User Data Maps is supported rn.")
+                        ud_map_warn = true
+                    }
 
                     total_size := read_dword(r, rt) or_return
                     map_num := read_dword(r, rt) or_return
-                    //fmt.println(total_read, total_size, map_num)
                     // FIXME: Is leaking. Not writing data?
                     maps := make(Properties_Map, map_num, allocator) or_return
                     for i in 0..<int(map_num) {
@@ -493,7 +497,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
             case .none:
                 fallthrough
             case:
-                fmt.println(chunk)
+                log.error("Invalid Chunk Type", chunk)
                 return total_read, .Invalid_Chunk_Type
             }
         }
