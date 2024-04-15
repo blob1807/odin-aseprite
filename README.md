@@ -71,6 +71,6 @@ ICC Colour Profiles aren't & will never be supported. The raw data will be saved
 
 ## Errors
 Any errors please make an issue or DM them to me, `blob1807`, on the [Odin Discord](https://discord.com/invite/sVBPHEv).  
-If you DM me please include the affending file/s.   
+If you DM me please include the offending file/s.   
    
 If you want to test your own files for errors. Add them to a new folder in `./tests` and run `odin test .` in the `./tests` directory.
