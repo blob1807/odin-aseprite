@@ -255,8 +255,6 @@ write_skip :: proc(w: io.Writer, to_skip: int, size: ^int) -> (written: int, err
 }
 
 write_ud_value :: proc(w: io.Writer, data: Property_Value, size: ^int) -> (err: Marshal_Error) {
-    write(w, get_property_type(data) or_return, size) or_return
-
     switch v in data {
     case nil:
     case bool:   write(w, v, size) or_return
@@ -278,13 +276,16 @@ write_ud_value :: proc(w: io.Writer, data: Property_Value, size: ^int) -> (err: 
     case UUID:   write(w, v, size) or_return
     case UD_Vec:
         write(w, DWORD(len(v)), size) or_return
+        write(w, WORD(0), size) or_return
         for vec in v {
+            write(w, get_property_type(vec) or_return, size) or_return
             write(w, vec, size) or_return
         }
     case Properties:
         write(w, DWORD(len(v)), size) or_return
         for key, val in v {
             write(w, key, size) or_return
+            write(w, get_property_type(val) or_return, size) or_return
             write(w, val, size) or_return
         }
     }
