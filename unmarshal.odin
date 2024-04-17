@@ -224,7 +224,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     defer delete(data)
                     read_bytes(r, data[:], rt) or_return
 
-                    exp_size := int(WORD(h.color_depth) / 8 * cel.height * cel.width)
+                    exp_size := int(WORD(h.color_depth)) / 8 * int(cel.height) * int(cel.width)
                     zlib.inflate(data[:], &buf, expected_output_size=exp_size) or_return
 
                     cel.pixel = make([]byte, exp_size, allocator) or_return
@@ -254,7 +254,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     data := make([]byte, com_size, allocator) or_return
                     defer delete(data)
                     read_bytes(r, data[:], rt) or_return
-                    exp_size := int(WORD(h.color_depth) / 8 * cel.height * cel.width)
+                    exp_size := int(WORD(h.color_depth)) / 8 * int(cel.height) * int(cel.width)
                     zlib.inflate(data[:], &buf, expected_output_size=exp_size) or_return
 
                     br: bytes.Reader
