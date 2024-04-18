@@ -173,6 +173,22 @@ ase_full_test :: proc(t: ^testing.T) {
                         errorf(t, "Full Test: Unmarshal Error 2: %v, File: %v", unerr2, s.name)
                         continue
                     }
+
+                    for frame in doc2.frames {
+                        for chunk in frame.chunks {
+                            #partial switch chunk in chunk {
+                                case ase.Cel_Chunk: {
+                                    #partial switch cel in chunk.cel {
+                                        case ase.Com_Image_Cel: {
+                                            if cel.width > 0 && cel.height > 0 && len(cel.pixel) == 0 {
+                                                testing.fail_now(t, fmt.tprintf("No pixel generated for cel.", #procedure))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     
                     // Removed check because User Data is only being read rn
                     // So they will always be differant
