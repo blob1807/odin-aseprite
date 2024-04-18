@@ -1,16 +1,27 @@
 # Files
-Files in this folder DO NOT fall under the license of this project but of their repective projects. Who's licenses have being provided in each folder.
+
+### Provided by Blob
+Found in `./tests/blob`.   
+Full copyright of blob1807. All files can only be used for & in this project.  
+* `geralt.aseprite`
+* `mango-panda.aseprite`
+* `marshmallow.aseprite`
+* `black-dot.aseprite`
+
+### Provided by The Community
+Found in `./tests/community`.    
+Full copyright is held by the file's contributor or creator.   
+When adding a file include your name in the file name and add it to the list below in this format;   
+`File Name`; License if different from BSD 3
+* `geralt-blob1807.aseprite`; Can only be used for & in this project.
+
+
+## Third party
+Files in thses folder DO NOT fall under the license of this project but of their repective projects. Each licenses has been provided the respective folder.
 
 ### Taken from [asefile](https://github.com/alpine-alpaca/asefile/tree/main/tests/data)
 Found in `./tests/asefile`.   
 Too many files to list.
-
-### Provided by Blob
-Full copyright of blob1807. All files can only be used for & in this project.  
-Found in `./tests/blob`.
-* `geralt.aseprite`
-* `mango-panda.aseprite`
-* `marshmallow.aseprite`
 
 ### Taken from  [Aseprite GitHub](https://github.com/aseprite/aseprite/tree/main/tests/sprites)
 Found in `./tests/aseprite`.
