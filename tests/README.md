@@ -14,6 +14,7 @@ Full copyright is held by the file's contributor or creator.
 When adding a file include your name in the file name and add it to the list below in this format;   
 `File Name`; License if different from BSD 3
 * `geralt-blob1807.aseprite`; Can only be used for & in this project.
+* `512x512-colinbellino.aseprite`: RGBA, 512x512, 1 frame. Provided by [colinbellino](https://github.com/colinbellino) as a test case to ensure that files larger than u16 number of pixels are unmarshalled correctly (ie: 256x256+); License: WTFPL
 
 
 ## Third party
@@ -61,7 +62,3 @@ Found in `./tests/aseprite`.
     different position/size).
 * `2x2tilemap2x2tile.aseprite`: RGB, 6x6, 2x2 tilemap layer, 5 tiles tileset,
     2x2 tile size, 1 frame.
-
-### Community
-Found in `./tests/community`.
-* `512x512.aseprite`: RGBA, 512x512, 1 frame. Provided by [colinbellino](https://github.com/colinbellino) as a test case to ensure that files larger than u16 number of pixels are unmarshalled correctly (ie: 256x256+). License: WTFPL
