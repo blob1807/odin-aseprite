@@ -3,7 +3,6 @@ package aseprite_file_handler
 
 import "base:runtime"
 import "core:io"
-import "core:os"
 import "core:math/fixed"
 import "core:compress/zlib"
 import vzlib "vendor:zlib"
