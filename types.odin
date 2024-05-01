@@ -196,6 +196,24 @@ Chunk_Types :: enum(WORD) {
     tileset = 0x2023,
 }
 
+Chunk_Types_Set :: enum {
+    old_palette_256,
+    old_palette_64,
+    layer,
+    cel,
+    cel_extra,
+    color_profile,
+    external_files,
+    mask, // no longer in use
+    path, // not in use
+    tags,
+    palette,
+    user_data,
+    slice,
+    tileset,
+}
+Chunk_Set :: bit_set[Chunk_Types_Set]
+
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors: BYTE, // 0 == 256
