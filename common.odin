@@ -14,7 +14,7 @@ destroy_doc :: proc(doc: ^Document) {
             delete(val)
 
         case Properties:
-            for k, &v in val {
+            for _, &v in val {
                 destroy_value(&v)
             }
             delete(val)
@@ -88,7 +88,7 @@ destroy_doc :: proc(doc: ^Document) {
                 }
 
                 if m, ok := v.maps.?; ok {
-                    for k, &val in m {
+                    for _, &val in m {
                         destroy_value(&val)
                     }
                     delete_map(m)

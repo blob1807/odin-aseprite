@@ -461,9 +461,6 @@ _ud_prop_val_eq :: proc(x,y: Property_Value) -> (a: any, b: any, c: typeid, eq: 
         if !ok {
             return typeid_of(type_of(xv)), reflect.union_variant_typeid(y), typeid_of(Property_Value), false
         }
-        if xv == yv {
-            return xv, yv, typeid_of(STRING), false
-        }
         if xv != yv {
             return xv, yv, typeid_of(STRING), false
         } 
@@ -538,6 +535,7 @@ _ud_prop_val_eq :: proc(x,y: Property_Value) -> (a: any, b: any, c: typeid, eq: 
 
 _ud_props_eq :: proc(x, y: Properties) -> (a: any, b: any, c: typeid, eq: bool) {
     if len(x) != len(y) {
+        log.error("len(x) != len(y)")
         return len(x), len(y), typeid_of(Properties), false
     }
 
@@ -581,6 +579,7 @@ _user_data_equal :: proc(x, y: User_Data_Chunk) -> (a: any, b: any, c: typeid, e
     ym := y.maps.(Properties_Map)
 
     if len(xm) != len(ym) {
+        log.error("len(xm) != len(ym)")
         return len(xm), len(ym), typeid_of(Properties), false
     }
     

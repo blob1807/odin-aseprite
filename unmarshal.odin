@@ -1,17 +1,13 @@
 package aseprite_file_handler
 
-import "base:runtime"
+import "base:intrinsics"
 import "core:io"
 import "core:os"
 import "core:fmt"
 import "core:log"
 import "core:bytes"
 import "core:bufio"
-import "core:strings"
 import "core:compress/zlib"
-import "core:encoding/endian"
-
-import vzlib "vendor:zlib"
 
 
 unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, allocator := context.allocator)-> (total_read: int, err: Unmarshal_Error) {
@@ -33,6 +29,7 @@ unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, allocator := cont
 unmarshal_from_filename :: proc(name: string, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     fd, err_no := os.open(name, os.O_RDONLY, 0)
     if err_no != 0 {
+        log.error("Unable to read because of:", err_no)
         return total_read, .Unable_To_Open_File
     }
     defer os.close(fd)
@@ -59,7 +56,9 @@ unmarshal :: proc{
 }
 
 unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
-    ud_map_warn, icc_profile_warn: bool
+    // TODO: do below and remove all unneeded passing of allocator
+    // context.allocator = allocator
+    icc_profile_warn: bool
     rt := &total_read
     set := io.query(r)
     h: File_Header
@@ -101,7 +100,8 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
     for &frame in doc.frames {
         fh: Frame_Header
-        frame_size := read_dword(r, rt) or_return
+        //frame_size := read_dword(r, rt) or_return
+        read_dword(r, rt) or_return
         frame_magic := read_word(r, rt) or_return
         if frame_magic != FRAME_MAGIC_NUM {
             return total_read, .Bad_Frame_Magic_Number
@@ -378,7 +378,8 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
             case .user_data:
                 // FIXME: This isn't working. Very annoying.
                 ud: User_Data_Chunk
-                flags := transmute(UD_Flags)read_dword(r, rt) or_return
+                f := read_dword(r, rt) or_return
+                flags := transmute(UD_Flags)f
 
                 if .Text in flags {
                     ud.text = read_string(r, rt, allocator) or_return
@@ -392,23 +393,20 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                     ud.color = colour
                 }
                 if .Properties in flags {
-                    if !ud_map_warn {
-                        log.warn("Only Reading User Data Maps is supported rn.")
-                        ud_map_warn = true
-                    }
 
-                    total_size := read_dword(r, rt) or_return
+                    //total_size := read_dword(r, rt) or_return
+                    map_size := read_dword(r, rt) or_return
                     map_num := read_dword(r, rt) or_return
                     // FIXME: Is leaking. Not writing data?
                     maps := make(Properties_Map, map_num, allocator) or_return
-                    for i in 0..<int(map_num) {
+                    for _ in 0..<int(map_num) {
                         key := read_dword(r, rt) or_return
                         //maps[key] = read_ud_value(r, .Properties, rt, allocator) or_return
 
                         prop_num := int(read_dword(r, rt) or_return)
                         val := make(Properties, prop_num, allocator) or_return
 
-                        for n in 0..<prop_num {
+                        for _ in 0..<prop_num {
                             name := read_string(r, rt, allocator) or_return
                             defer delete(name)
                             type := Property_Type(read_word(r, rt) or_return)
@@ -417,6 +415,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
                         maps[key] = val
                     }
+                    //fmt.println(map_size, map_num, len(maps))
                     ud.maps = maps
                 }
 
@@ -502,5 +501,15 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
             }
         }
     }
+    return
+}
+
+
+// TODO: Complete below Procs
+unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+    return
+}
+unmarshal_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error)
+where intrinsics.type_is_variant_of(Chunk, T) {
     return
 }
