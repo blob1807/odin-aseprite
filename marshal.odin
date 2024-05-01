@@ -1,15 +1,11 @@
 package aseprite_file_handler
 
-import "base:runtime"
 import "core:io"
 import "core:os"
 import "core:fmt"
 import "core:log"
 import "core:bytes"
-import "core:slice"
 import "core:bufio"
-import "core:strings"
-import "core:encoding/endian"
 import "vendor:zlib"
 
 
@@ -65,6 +61,8 @@ marshal :: proc{
 }
 
 marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
+    // TODO: do below and remove all unneeded passing of allocator
+    // context.allocator = allocator
     ud_map_warn: bool
     s := &file_size
     b: bytes.Buffer
@@ -363,17 +361,17 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
                 }if val.color != nil {
                     flags += {.Color}
                 }if val.maps != nil {
-                    flags += {.Properties}                    
+                    flags += {.Properties}
                 }
 
                 write(cw, transmute(DWORD)flags, cs) or_return
 
-                #partial switch v in val.text {
+                switch v in val.text {
                 case string:
                     write(cw, v, cs) or_return
                 }
 
-                #partial switch v in val.color {
+                switch v in val.color {
                 case Color_RGBA:
                     write(cw, v[3], cs) or_return
                     write(cw, v[2], cs) or_return
@@ -381,16 +379,14 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
                     write(cw, v[0], cs) or_return
                 }
 
-                #partial switch m in val.maps {
+                switch m in val.maps {
                 case Properties_Map:
                     if !ud_map_warn {
-                        log.warn("Writing User Data Maps isn't supported rn.")
+                        log.warn("Writing User Data Maps may still have bugs.")
                         ud_map_warn = true
                     }
-                    write(cw, DWORD(8), cs) or_return
-                    write(cw, DWORD(0), cs) or_return 
 
-                    /*mb: bytes.Buffer
+                    mb: bytes.Buffer
                     defer bytes.buffer_destroy(&mb)
                     mw, ok4 := io.to_writer(bytes.buffer_to_stream(&mb))
                     if !ok4 {
@@ -398,22 +394,27 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
                     }
                     map_size: int
                     ms := &map_size
-
                     write(mw, DWORD(len(m)), ms) or_return
 
                     for key, val in m {
                         write(mw, key, ms) or_return
                         val := val.(Properties)
-                        //write(mw, val, ms) or_return
+                        write(mw, DWORD(len(val)), ms)
                         for name, type in val {
-                            write(mw, name, ms) or_return
+                            _, err = write(mw, name, ms)
+                            if err != nil {
+                                log.error("Failed to write key", key)
+                                return
+                            }
+                            write(mw, get_property_type(type) or_return, ms)
                             write(mw, type, ms) or_return
                         }
                     }
 
                     map_size += 4
+                    //fmt.println(map_size, len(m), len(mb.buf))
                     write(cw, DWORD(map_size), cs) or_return
-                    write(cw, mb.buf[:map_size-4], cs) or_return*/
+                    write(cw, mb.buf[:map_size-4], cs) or_return
                 }
 
             case Slice_Chunk:
