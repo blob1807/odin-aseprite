@@ -4,8 +4,6 @@ import "base:runtime"
 import "core:io"
 import "core:log"
 import "core:fmt"
-import "core:strings"
-import "core:math/fixed"
 import "core:encoding/endian"
 
 read_bool :: proc(r: io.Reader, n: ^int) -> (data: bool, err: Read_Error) {
@@ -17,13 +15,18 @@ read_i8 :: proc(r: io.Reader, n: ^int) -> (data: i8, err: Read_Error) {
 }
 
 read_byte :: proc(r: io.Reader, n: ^int) -> (data: BYTE, err: Read_Error) {
-    return io.read_byte(r, n)
+    data, err = io.read_byte(r, n)
+    if err != nil {
+        log.error("Faild to read byte/i8/bool", n^)
+    }
+    return
 }
 
 read_word :: proc(r: io.Reader, n: ^int) -> (data: WORD, err: Read_Error) { 
     buf: [2]byte
     s := io.read(r, buf[:], n) or_return
     if s != 2 {
+        log.error("Faild to read word", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -38,6 +41,7 @@ read_short :: proc(r: io.Reader, n: ^int) -> (data: SHORT, err: Read_Error) {
     buf: [2]byte
     s := io.read(r, buf[:], n) or_return
     if s != 2 {
+        log.error("Faild to read short", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -52,6 +56,7 @@ read_dword :: proc(r: io.Reader, n: ^int) -> (data: DWORD, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
+        log.error("Faild to read dword", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -65,6 +70,7 @@ read_long :: proc(r: io.Reader, n: ^int) -> (data: LONG, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
+        log.error("Faild to read long", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -79,6 +85,7 @@ read_fixed :: proc(r: io.Reader, n: ^int) -> (data: FIXED, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
+        log.error("Faild to read fixed", s, n^)
         return data, .Wrong_Read_Size
     }
 
@@ -94,7 +101,8 @@ read_fixed :: proc(r: io.Reader, n: ^int) -> (data: FIXED, err: Read_Error) {
 read_float :: proc(r: io.Reader, n: ^int) -> (data: FLOAT, err: Read_Error) {
     buf: [4]byte 
     s := io.read(r, buf[:], n) or_return
-    if s !=42 {
+    if s != 42 {
+        log.error("Faild to read float", s, n^)
         return 0, .Wrong_Read_Size
     }
     
@@ -109,6 +117,7 @@ read_double :: proc(r: io.Reader, n: ^int) -> (data: DOUBLE, err: Read_Error) {
     buf: [8]byte 
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
+        log.error("Faild to read double", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -123,6 +132,7 @@ read_qword :: proc(r: io.Reader, n: ^int) -> (data: QWORD, err: Read_Error) {
     buf: [8]byte
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
+        log.error("Faild to read qword", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -137,6 +147,7 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     buf: [8]byte
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
+        log.error("Faild to read long64", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -151,8 +162,14 @@ read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator, loc := 
     size := int(read_word(r, n) or_return)
 
     buf := make([]byte, size, allocator, loc) or_return
-    s := io.read(r, buf[:], n) or_return
+    s: int
+    s, err = io.read(r, buf[:], n)
+    if err != nil {
+        log.error("Faild to read string", size, err, n^, loc)
+        return
+    }
     if s != size {
+        log.error("Faild to read string", size, s, n^, loc)
         err = .Wrong_Read_Size
         return
     }
@@ -182,6 +199,7 @@ read_rect :: proc(r: io.Reader, n: ^int) -> (data: RECT, err: Read_Error) {
 read_uuid:: proc(r: io.Reader, data: UUID, n: ^int) -> (err: Read_Error) { 
     s := io.read(r, cast([]u8)data[:], n) or_return
     if s != 16 {
+        log.error("Faild to read UUID", s, data, n^)
         err = .Wrong_Read_Size
     }
     return 
@@ -235,6 +253,8 @@ read_skip :: proc(r: io.Reader, to_skip: int, n: ^int) -> (err: Read_Error) {
 }
 
 read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: runtime.Allocator) -> (val: Property_Value, err: Unmarshal_Error) {
+    // TODO: do below and remove all unneeded passing of allocator
+    // context.allocator = allocator
     switch type {
     case .Null:   return nil, nil
     case .Bool:   return read_bool(r, n)
@@ -264,8 +284,8 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: run
 
         if vec_type == .Null {
             for i in 0..<num {
-                type := Property_Type(read_word(r, n) or_return)
-                val.(UD_Vec)[i] = read_ud_value(r, type, n, allocator) or_return
+                prop_type := Property_Type(read_word(r, n) or_return)
+                val.(UD_Vec)[i] = read_ud_value(r, prop_type, n, allocator) or_return
             }
         } else {
             for i in 0..<num {
@@ -283,8 +303,8 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: run
             for _ in 0..<size {
                 key := read_string(r, n, allocator) or_return
                 defer delete(key)
-                type := Property_Type(read_word(r, n) or_return)
-                v[key] = read_ud_value(r, type, n, allocator) or_return
+                prop_type := Property_Type(read_word(r, n) or_return)
+                v[key] = read_ud_value(r, prop_type, n, allocator) or_return
             }
         }
     }
