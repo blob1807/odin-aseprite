@@ -178,7 +178,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 }
 
 
-@(warning="This function is new. May have bugs")
+@(warning="This function is new. May have bugs.")
 unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     context.allocator = allocator
     icc_warn: bool
@@ -320,7 +320,7 @@ unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, 
 }
 
 
-@(warning="This function is new. May have bugs")
+@(warning="This function is new. May have bugs.")
 unmarshal_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error)
 where intrinsics.type_is_variant_of(Chunk, T) {
     context.allocator = allocator
