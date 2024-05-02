@@ -61,26 +61,37 @@ read_only :: proc() {
     bytes.reader_init(&r, data[:])
     ir, ok := io.to_reader(bytes.reader_to_stream(&r))
 
-    c_buf := make([dynamic]ase.Cel_Chunk)
+    cs_buf := make([dynamic]ase.Cel_Chunk)
     defer { 
-        for c in c_buf { 
+        for c in cs_buf { 
             ase.destroy_chunk(c) 
         }
-        delete(c_buf)
+        delete(cs_buf)
     }
-    _, cerr := ase.unmarshal_chunk(ir, &c_buf)
+    written, err := ase.unmarshal_single_chunk(ir, &cs_buf)
 
-    cs_buf := make([dynamic]ase.Chunk)
+
+    cm_buf := make([dynamic]ase.Chunk)
     defer {
-        for c in cs_buf {
+        for c in cm_buf {
             #partial switch v in c {
             case ase.Cel_Chunk:       ase.destroy_chunk(v)
             case ase.Cel_Extra_Chunk: ase.destroy_chunk(v)
             case ase.Tileset_Chunk:   ase.destroy_chunk(v)
             }
         }
-        delete(cs_buf)
+        delete(cm_buf)
     }
     set := ase.Chunk_Set{.cel, .cel_extra, .tileset}
-    _, cserr := ase.unmarshal_chunks(ir, &cs_buf, set)
+    written, err = ase.unmarshal_multi_chunks(ir, &cm_buf, set)
+
+
+    c_buf := make([dynamic]ase.Layer_Chunk)
+    defer { 
+        for c in c_buf { 
+            ase.destroy_chunk(c) 
+        }
+        delete(c_buf)
+    }
+    written, err := ase.unmarshal_chunk(ir, &c_buf)
 }
