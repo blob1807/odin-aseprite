@@ -268,7 +268,7 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator := c
     case .Fixed:  return read_fixed(r, n)
     case .F32:    return read_float(r, n)
     case .F64:    return read_double(r, n)
-    case .String: return read_string(r, n)
+    case .String: return read_string(r, n) // FIXME: This isn't getting freed sometimes
     case .Point:  return read_point(r, n)
     case .Size:   return read_size(r, n)
     case .Rect:   return read_rect(r, n)
