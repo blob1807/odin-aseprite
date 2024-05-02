@@ -86,6 +86,7 @@ read_only :: proc() {
     written, err = ase.unmarshal_multi_chunks(ir, &cm_buf, set)
 
 
+
     c_buf := make([dynamic]ase.Layer_Chunk)
     defer { 
         for c in c_buf { 
@@ -93,5 +94,19 @@ read_only :: proc() {
         }
         delete(c_buf)
     }
-    written, err := ase.unmarshal_chunk(ir, &c_buf)
+    written, err = ase.unmarshal_chunks(ir, &c_buf)
+
+
+    cmc_buf := make([dynamic]ase.Chunk)
+    defer {
+        for c in cmc_buf {
+            #partial switch v in c {
+            case ase.Cel_Chunk:       ase.destroy_chunk(v)
+            case ase.Cel_Extra_Chunk: ase.destroy_chunk(v)
+            case ase.Tileset_Chunk:   ase.destroy_chunk(v)
+            }
+        }
+        delete(cmc_buf)
+    }
+    written, err = ase.unmarshal_chunks(ir, &cmc_buf, set)
 }
