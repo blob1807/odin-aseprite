@@ -7,7 +7,8 @@ import "core:fmt"
 import "core:log"
 import "core:bytes"
 import "core:bufio"
-import "core:compress/zlib"
+_::fmt
+_::log
 
 
 unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, allocator := context.allocator)-> (total_read: int, err: Unmarshal_Error) {
@@ -177,6 +178,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 }
 
 
+@(warning="This function is new. May have bugs")
 unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     context.allocator = allocator
     icc_warn: bool
@@ -222,58 +224,86 @@ unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, 
             case .old_palette_256:
                 if .old_palette_256 in chunks {
                     chunk = read_old_palette_256(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .old_palette_64:
                 if .old_palette_64 in chunks {
                     chunk = read_old_palette_64(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .layer:
                 if .layer in chunks {
                     chunk = read_layer(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .cel:
                 if .cel in chunks {
                     chunk = read_cel(r, rt, color_depth, c_size) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .cel_extra:
                 if .cel_extra in chunks {
                     chunk = read_cel_extra(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .color_profile:
                 if .color_profile in chunks {
                     chunk = read_color_profile(r, rt, &icc_warn) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .external_files:
                 if .external_files in chunks {
                     chunk = read_external_files(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .mask:
                 if .mask in chunks {
                     chunk = read_mask(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .path:
                 if .path in chunks {
                     chunk = read_path()
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .tags:
                 if .tags in chunks {
                     chunk = read_tags(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .palette:
                 if .palette in chunks {
                     chunk = read_palette(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .user_data:
                 if .user_data in chunks {
                     chunk = read_user_data(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .slice:
                 if .slice in chunks {
                     chunk = read_slice(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .tileset:
                 if .tileset in chunks {
                     chunk = read_tileset(r, rt) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
             case .none:
                 fallthrough
@@ -289,10 +319,13 @@ unmarshal_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, 
     return
 }
 
+
+@(warning="This function is new. May have bugs")
 unmarshal_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error)
 where intrinsics.type_is_variant_of(Chunk, T) {
     context.allocator = allocator
     icc_warn: bool
+    _ = icc_warn
     rt := &total_read
 
     size := read_dword(r, rt) or_return
@@ -311,6 +344,7 @@ where intrinsics.type_is_variant_of(Chunk, T) {
     frames := read_word(r, rt) or_return
     read_skip(r, 4, rt) or_return
     color_depth := int(read_word(r, rt) or_return)
+    _ = color_depth
     read_skip(r, 114, rt) or_return
 
     for _ in 0..<frames {
@@ -326,70 +360,99 @@ where intrinsics.type_is_variant_of(Chunk, T) {
         if num_of_chunks == 0 {
             num_of_chunks = int(old_num_of_chunks)
         }
+        when T == Old_Palette_256_Chunk {}
         
         for _ in 0..<num_of_chunks {
             c_size := int(read_dword(r, rt) or_return)
+            _ = c_size
             c_type := cast(Chunk_Types)read_word(r, rt) or_return
 
-            switch typeid_of(T) {
-            case Old_Palette_256_Chunk:
-                if c_type == .old_palette_256 {
+            // TODO: This is too dirty for my likeing. Make a proc group for it all.
+            switch c_type {
+            case .old_palette_256: 
+                when T == Old_Palette_256_Chunk {
                     append(buf, read_old_palette_256(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Old_Palette_64_Chunk:
-                if c_type == .old_palette_64 {
+            case .old_palette_64:
+                when T == Old_Palette_64_Chunk {
                     append(buf, read_old_palette_64(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Layer_Chunk:
-                if c_type == .layer {
+            case .layer:
+                when T == Layer_Chunk {
                     append(buf, read_layer(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Cel_Chunk:
-                if c_type == .cel {
+            case .cel:
+                when T == Cel_Chunk {
                     append(buf, read_cel(r, rt, color_depth, c_size) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Cel_Extra_Chunk:
-                if c_type == .cel_extra {
+            case .cel_extra:
+                when T == Cel_Extra_Chunk {
                     append(buf, read_cel_extra(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Color_Profile_Chunk:
-                if c_type == .color_profile {
+            case .color_profile:
+                when T == Color_Profile_Chunk {
                     append(buf, read_color_profile(r, rt, &icc_warn) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case External_Files_Chunk:
-                if c_type == .external_files {
-                    cappend(buf, read_external_files(r, rt) or_return) or_return
+            case .external_files:
+                when T == External_Files_Chunk {
+                    append(buf, read_external_files(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Mask_Chunk:
-                if c_type == .mask {
+            case .mask:
+                when T == Mask_Chunk {
                     append(buf, read_mask(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Path_Chunk:
-                if c_type == .path {
+            case .path:
+                when T == Path_Chunk {
                     append(buf, read_path()) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Tags_Chunk:
-                if c_type == .tags {
+            case .tags:
+                when T == Tags_Chunk {
                     append(buf, read_tags(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Palette_Chunk:
-                if c_type == .palette {
+            case .palette:
+                when T == Palette_Chunk {
                     append(buf, read_palette(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case User_Data_Chunk:
-                if c_type == .user_data {
+            case .user_data:
+                when T == User_Data_Chunk {
                     append(buf, read_user_data(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Slice_Chunk:
-                if c_type == .slice {
+            case .slice:
+                when T == Slice_Chunk {
                     append(buf, read_slice(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            case Tileset_Chunk:
-                if c_type == .tileset {
+            case .tileset:
+                when T == Tileset_Chunk {
                     append(buf, read_tileset(r, rt) or_return) or_return
+                } else { 
+                    read_skip(r, c_size-6, rt) or_return 
                 }
-            }
-            #partial switch c_type{
             case .none: fallthrough
             case:
                 log.error("Invalid Chunk Type", c_type)
@@ -399,3 +462,21 @@ where intrinsics.type_is_variant_of(Chunk, T) {
     }
     return
 }
+
+/*@(private)
+_unmarshal_chunk :: {}
+
+_unmarshal_old_256
+_unmarshal_old_64 :: proc() {}
+_unmarshal_layer
+_unmarshal_cel
+_unmarshal_cel_extra
+_unmarshal_color_profile
+_unmarshal_external_files
+_unmarshal_mask
+_unmarshal_path
+_unmarshal_tags
+_unmarshal_palette
+_unmarshal_user_data
+_unmarshal_slice
+_unmarshal_tileset*/
