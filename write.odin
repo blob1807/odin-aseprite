@@ -1,10 +1,11 @@
 package aseprite_file_handler
 
-import "core:log"
 import "core:io"
-import "core:math/fixed"
-import "core:encoding/endian"
 import "core:fmt"
+import "core:log"
+import "core:encoding/endian"
+_::fmt
+_::log
 
 write_bool :: proc(w: io.Writer, data: bool, size: ^int) -> (written: int, err: Write_Error) { 
     return write_byte(w, u8(data), size)

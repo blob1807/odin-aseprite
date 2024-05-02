@@ -7,6 +7,8 @@ import "core:log"
 import "core:bytes"
 import "core:bufio"
 import "vendor:zlib"
+_::log
+_::fmt
 
 
 marshal_to_bytes_buff :: proc(b: ^bytes.Buffer, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {

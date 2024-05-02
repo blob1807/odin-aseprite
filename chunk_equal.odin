@@ -1,11 +1,12 @@
 //+private
 package aseprite_file_handler
 
-import "base:runtime"
 import "core:fmt"
 import "core:log"
 import "core:slice"
 import "core:reflect"
+_::log
+_::fmt
 
 _old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if len(x) != len(y) {

@@ -2,12 +2,12 @@ package aseprite_file_handler
 
 import "base:intrinsics"
 import "core:io"
-import "core:os"
 import "core:fmt"
 import "core:log"
 import "core:bytes"
-import "core:bufio"
 import "core:compress/zlib"
+_::fmt
+_::log
 
 
 read_old_palette_256 :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: Old_Palette_256_Chunk, err: Unmarshal_Error) {
@@ -278,7 +278,8 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
         chunk.color = colour
     }
     if .Properties in flags {
-        map_size := read_dword(r, rt) or_return
+        //map_size := read_dword(r, rt) or_return
+        read_skip(r, 4, rt) or_return
         map_num := read_dword(r, rt) or_return
         maps := make(Properties_Map, map_num) or_return
         for _ in 0..<int(map_num) {

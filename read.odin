@@ -1,10 +1,11 @@
 package aseprite_file_handler
 
-import "base:runtime"
 import "core:io"
 import "core:log"
 import "core:fmt"
 import "core:encoding/endian"
+_ :: fmt
+_ :: log
 
 read_bool :: proc(r: io.Reader, n: ^int) -> (data: bool, err: Read_Error) {
     return bool(read_byte(r, n) or_return), nil

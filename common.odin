@@ -2,6 +2,8 @@ package aseprite_file_handler
 
 import "core:fmt"
 import "core:log"
+_ :: fmt
+_ :: log
 
 destroy_doc :: proc(doc: ^Document) {
     destroy_value :: proc(p: ^Property_Value) {
