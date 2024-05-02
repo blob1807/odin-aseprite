@@ -1,9 +1,11 @@
 package example
 
+import "core:io"
 import "core:os"
 import "core:log"
 import "core:fmt"
 import "core:slice"
+import "core:bytes"
 
 import ase ".."
 
@@ -49,4 +51,35 @@ ase_example :: proc() {
     }
     
     fmt.println("Successfully Wrote my beloved, geralt.")
+}
+
+read_only :: proc() {
+    data := #load("../tests/blob/geralt.aseprite")
+
+    r: bytes.Reader
+    bytes.reader_init(&r, data[:])
+    ir, ok := io.to_reader(bytes.reader_to_stream(&r))
+
+    c_buf := make([dynamic]ase.Cel_Chunk)
+    defer { 
+        for c in c_buf { 
+            ase.destroy_chunk(c) 
+        }
+        delete(c_buf)
+    }
+    _, cerr := ase.unmarshal_chunk(ir, &c_buf)
+
+    cs_buf := make([dynamic]ase.Chunk)
+    defer {
+        for c in cs_buf {
+            #partial switch v in c {
+            case ase.Cel_Chunk:       ase.destroy_chunk(v)
+            case ase.Cel_Extra_Chunk: ase.destroy_chunk(v)
+            case ase.Tileset_Chunk:   ase.destroy_chunk(v)
+            }
+        }
+        delete(cs_buf)
+    }
+    set := ase.Chunk_Set{.cel, .cel_extra, .tileset}
+    _, cserr := ase.unmarshal_chunks(ir, &cs_buf, set)
 }
