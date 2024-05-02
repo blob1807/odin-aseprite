@@ -15,6 +15,7 @@ main :: proc() {
     context.logger = logger
 
     ase_example()
+    read_only()
 }
 
 ase_example :: proc() {
