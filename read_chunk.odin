@@ -150,7 +150,6 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
         rr, ok := io.to_reader(bytes.reader_to_stream(&br))
         if !ok { err = .Unable_Make_Reader; return }
 
-        // FIXME: Is leaking. Not writing data?
         cel.tiles = make([]TILE, cel.height * cel.width) or_return
         read_tiles(rr, cel.tiles[:], cel.bitmask_id, rt) or_return
 
@@ -337,7 +336,7 @@ read_slice :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (c
 
 read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: Tileset_Chunk, err: Unmarshal_Error) {
     chunk.id = read_dword(r, rt) or_return
-    chunk.flags = transmute(Tileset_Flags)read_dword(r, rt) or_return
+    flags := transmute(Tileset_Flags)read_dword(r, rt) or_return
     chunk.num_of_tiles = read_dword(r, rt) or_return
     chunk.width = read_word(r, rt) or_return
     chunk.height = read_word(r, rt) or_return
@@ -345,13 +344,13 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
     read_skip(r, 14, rt)
     chunk.name = read_string(r, rt) or_return
 
-    if .Include_Link_To_External_File in chunk.flags {
+    if .Include_Link_To_External_File in flags {
         ex: Tileset_External
         ex.file_id = read_dword(r, rt) or_return
         ex.tileset_id = read_dword(r, rt) or_return
         chunk.external = ex
     }
-    if .Include_Tiles_Inside_This_File in chunk.flags {
+    if .Include_Tiles_Inside_This_File in flags {
         tc: Tileset_Compressed
         size := int(read_dword(r, rt) or_return)
 

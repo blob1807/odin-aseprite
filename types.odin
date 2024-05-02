@@ -259,13 +259,13 @@ Layer_Blend_Mode :: enum(WORD) {
     Divide,
 }
 Layer_Chunk :: struct {
-    flags: Layer_Chunk_Flags, // to WORD -> transmute(WORD)layer_chunk.flags
+    flags: Layer_Chunk_Flags,
     type: Layer_Types,
     child_level: WORD,
     default_width: WORD, // Ignored
     default_height: WORD, // Ignored
     blend_mode: Layer_Blend_Mode,
-    opacity: BYTE, // set when header flag is 1
+    opacity: BYTE, // valid when header flag is 1
     name: string,
     tileset_index: DWORD, // set if type == Tilemap
 }
@@ -434,7 +434,6 @@ Slice_Flag :: enum(DWORD) {
     Pivot_Information,
 }
 Slice_Flags :: bit_set[Slice_Flag; DWORD]
-// TODO: Remove need for flags.
 Slice_Chunk :: struct {
     flags: Slice_Flags,
     name: string,
@@ -454,8 +453,6 @@ Tileset_External :: struct{
     file_id, tileset_id: DWORD
 }
 Tileset_Compressed :: distinct []PIXEL
-// Tileset_Compressed :: []PIXEL
-// TODO: Remove need for flags.
 Tileset_Chunk :: struct {
     id: DWORD,
     flags: Tileset_Flags,

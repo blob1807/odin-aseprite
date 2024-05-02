@@ -28,10 +28,7 @@ marshal_to_handle :: proc(h: os.Handle, doc: ^Document, allocator := context.all
 marshal_to_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
-    file_size, err = marshal(&buf, doc, allocator)
-    if err != nil {
-        return
-    }
+    file_size = marshal(&buf, doc, allocator) or_return
     if len(b) < len(buf.buf[buf.off:]) {
         return file_size, Marshal_Errors.Buffer_Not_Big_Enough
     }
@@ -42,7 +39,7 @@ marshal_to_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocat
 marshal_to_dynamic :: proc(b: ^[dynamic]byte, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
-    marshal(&buf, doc, allocator) or_return
+    file_size = marshal(&buf, doc, allocator) or_return
     append(b, ..buf.buf[:])
     return
 }
@@ -61,8 +58,6 @@ marshal :: proc{
 }
 
 marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
-    // TODO: do below and remove all unneeded passing of allocator
-    // context.allocator = allocator
     ud_map_warn: bool
     s := &file_size
     b: bytes.Buffer
@@ -419,7 +414,19 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
 
             case Slice_Chunk:
                 write(cw, DWORD(len(val.keys)), cs) or_return
-                write(cw, transmute(DWORD)val.flags, cs) or_return
+
+                flags := val.flags
+                if len(val.keys) != 0 {
+                    key := val.keys[0]
+                    if key.center != nil {
+                        flags += {.Patched_slice}
+                    }
+                    if key.pivot != nil {
+                        flags += {.Pivot_Information}
+                    }
+                }
+                write(cw, transmute(DWORD)flags, cs) or_return
+
                 write(cw, DWORD(0), cs) or_return
                 write(cw, val.name, cs) or_return
 
@@ -447,7 +454,16 @@ marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.al
 
             case Tileset_Chunk:
                 write(cw, val.id, cs) or_return
-                write(cw, transmute(DWORD)val.flags, cs) or_return
+
+                flags := val.flags
+                if val.compressed != nil {
+                    flags += {.Include_Tiles_Inside_This_File}
+                }
+                if val.external != nil {
+                    flags += {.Include_Link_To_External_File}
+                }
+                write(cw, transmute(DWORD)flags, cs) or_return
+
                 write(cw, val.num_of_tiles, cs) or_return
                 write(cw, val.width, cs) or_return
                 write(cw, val.height, cs) or_return
