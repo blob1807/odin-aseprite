@@ -25,6 +25,7 @@ destroy_value :: proc(p: ^Property_Value) {
     }
 }
 
+// TODO: pass allocator to properally delete slices
 destroy_doc :: proc(doc: ^Document) {
     for &frame in doc.frames {
         for &chunk in frame.chunks {
