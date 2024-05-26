@@ -223,7 +223,8 @@ Old_Palette_Packet :: struct {
 }
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
 Old_Palette_64_Chunk :: distinct []Old_Palette_Packet
-
+// Old_Palette_256_Chunk :: struct{packets: []Old_Palette_Packet}
+// Old_Palette_64_Chunk :: struct{packets: []Old_Palette_Packet}
 
 Layer_Chunk_Flag :: enum(WORD) {
     Visiable,
