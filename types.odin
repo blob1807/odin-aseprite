@@ -155,6 +155,7 @@ File_Flag :: enum(DWORD){
 File_Flags :: bit_set[File_Flag; DWORD]
 File_Header :: struct {
     size: DWORD,
+    frames: WORD,
     width: WORD,
     height: WORD,
     color_depth: Color_Depth,
@@ -214,6 +215,7 @@ Chunk_Types_Set :: enum {
 }
 Chunk_Set :: bit_set[Chunk_Types_Set]
 
+
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors: BYTE, // 0 == 256
@@ -221,6 +223,7 @@ Old_Palette_Packet :: struct {
 }
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
 Old_Palette_64_Chunk :: distinct []Old_Palette_Packet
+
 
 Layer_Chunk_Flag :: enum(WORD) {
     Visiable,
@@ -270,6 +273,7 @@ Layer_Chunk :: struct {
     tileset_index: DWORD, // set if type == Tilemap
 }
 
+
 Raw_Cel :: struct{
     width: WORD, 
     height: WORD, 
@@ -308,6 +312,7 @@ Cel_Chunk :: struct {
     cel: Cel_Type,
 }
 
+
 Cel_Extra_Flag :: enum(WORD){Precise}
 Cel_Extra_Flags :: bit_set[Cel_Extra_Flag; WORD]
 Cel_Extra_Chunk :: struct {
@@ -317,6 +322,7 @@ Cel_Extra_Chunk :: struct {
     width: FIXED, 
     height: FIXED,
 }
+
 
 ICC_Profile :: distinct []byte
 Color_Profile_Flag :: enum(WORD){Special_Fixed_Gamma}
@@ -334,6 +340,7 @@ Color_Profile_Chunk :: struct {
     icc: Maybe(ICC_Profile),
 }
 
+
 ExF_Entry_Type :: enum(BYTE){
     Palette,
     Tileset,
@@ -347,6 +354,7 @@ External_Files_Entry :: struct{
 }
 External_Files_Chunk :: []External_Files_Entry
 
+
 Mask_Chunk :: struct {
     x,y: SHORT,
     width, height: WORD,
@@ -354,7 +362,9 @@ Mask_Chunk :: struct {
     bit_map_data: []BYTE, //size = height*((width+7)/8)
 }
 
+
 Path_Chunk :: struct{} // never used
+
 
 Tag_Loop_Dir :: enum(BYTE){
     Forward,
@@ -372,6 +382,7 @@ Tag :: struct{
 }
 Tags_Chunk :: []Tag
 
+
 Pal_Flag :: enum(WORD){Has_Name}
 Pal_Flags :: bit_set[Pal_Flag; WORD]
 Palette_Entry :: struct {
@@ -384,6 +395,7 @@ Palette_Chunk :: struct {
     last_index: DWORD,
     entries: []Palette_Entry,
 }
+
 
 // Vec_Diff :: struct{type: WORD, data: UD_Property_Value}
 // UD_Vec :: union {[]UD_Property_Value, []Vec_Diff}
@@ -413,6 +425,7 @@ User_Data_Chunk :: struct {
 
 }
 
+
 Slice_Center :: struct{
     x: LONG,
     y: LONG, 
@@ -439,6 +452,7 @@ Slice_Chunk :: struct {
     name: string,
     keys: []Slice_Key
 }
+
 
 Tileset_Flag :: enum(DWORD) {
     Include_Link_To_External_File,
