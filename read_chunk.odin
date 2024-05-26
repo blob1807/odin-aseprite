@@ -66,10 +66,10 @@ read_old_palette_256 :: proc(r: io.Reader, rt: ^int, allocator := context.alloca
 
         packet.colors = make([]Color_RGB, count, allocator) or_return
         for &c in packet.colors {
-            // FIXME: Are we reading it right??
-            c[2] = read_byte(r, rt) or_return
-            c[1] = read_byte(r, rt) or_return
+            // TODO: Maybe read into an array???
             c[0] = read_byte(r, rt) or_return
+            c[1] = read_byte(r, rt) or_return
+            c[2] = read_byte(r, rt) or_return
         }
     }
     return
@@ -89,10 +89,10 @@ read_old_palette_64 :: proc(r: io.Reader, rt: ^int, allocator := context.allocat
 
         packet.colors = make([]Color_RGB, count, allocator) or_return
         for &c in packet.colors {
-            // FIXME: Are we reading it right??
-            c[2] = read_byte(r, rt) or_return
-            c[1] = read_byte(r, rt) or_return
+            // TODO: Maybe read into an array???
             c[0] = read_byte(r, rt) or_return
+            c[1] = read_byte(r, rt) or_return
+            c[2] = read_byte(r, rt) or_return
         }
     }
     return
@@ -276,10 +276,10 @@ read_tags :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (ch
         tag.loop_direction = Tag_Loop_Dir(read_byte(r, rt) or_return)
         tag.repeat = read_word(r, rt) or_return
         read_skip(r, 6, rt) or_return
-        // FIXME: Are we reading it right??
-        tag.tag_color[2] = read_byte(r, rt) or_return
-        tag.tag_color[1] = read_byte(r, rt) or_return
+        // TODO: Maybe read into an array???
         tag.tag_color[0] = read_byte(r, rt) or_return
+        tag.tag_color[1] = read_byte(r, rt) or_return
+        tag.tag_color[2] = read_byte(r, rt) or_return
         read_byte(r, rt) or_return
         tag.name = read_string(r, rt, allocator) or_return
     }
@@ -295,12 +295,12 @@ read_palette :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
     read_skip(r, 8, rt) or_return
 
     for &entry in chunk.entries {
-        // FIXME: Are we reading it right??
+        // TODO: Maybe read into an array???
         pf := transmute(Pal_Flags)read_word(r, rt) or_return
-        entry.color[3] = read_byte(r, rt) or_return
-        entry.color[2] = read_byte(r, rt) or_return
-        entry.color[1] = read_byte(r, rt) or_return
         entry.color[0] = read_byte(r, rt) or_return
+        entry.color[1] = read_byte(r, rt) or_return
+        entry.color[2] = read_byte(r, rt) or_return
+        entry.color[3] = read_byte(r, rt) or_return
 
         if .Has_Name in pf {
             entry.name = read_string(r, rt, allocator) or_return
@@ -316,7 +316,7 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
         chunk.text = read_string(r, rt) or_return
     }
     if .Color in flags {
-        // FIXME: Are we reading it right??
+        // TODO: Maybe read into an array???
         colour: Color_RGBA
         colour[3] = read_byte(r, rt) or_return
         colour[2] = read_byte(r, rt) or_return
