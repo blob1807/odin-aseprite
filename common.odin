@@ -6,7 +6,8 @@ _ :: fmt
 _ :: log
 
 @(private)
-destroy_value :: proc(p: ^Property_Value) {
+destroy_value :: proc(p: ^Property_Value, alloc := context.allocator) {
+    context.allocator = alloc
     #partial switch &val in p {
     case string:
         // FIXME: Strings fail to free sometimes.
@@ -25,8 +26,8 @@ destroy_value :: proc(p: ^Property_Value) {
     }
 }
 
-// TODO: pass allocator to properally delete slices
-destroy_doc :: proc(doc: ^Document) {
+destroy_doc :: proc(doc: ^Document, alloc := context.allocator) {
+    context.allocator = alloc
     for &frame in doc.frames {
         for &chunk in frame.chunks {
             #partial switch &v in chunk {
