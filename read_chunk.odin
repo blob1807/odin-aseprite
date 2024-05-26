@@ -318,10 +318,10 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
     if .Color in flags {
         // TODO: Maybe read into an array???
         colour: Color_RGBA
-        colour[3] = read_byte(r, rt) or_return
-        colour[2] = read_byte(r, rt) or_return
-        colour[1] = read_byte(r, rt) or_return
         colour[0] = read_byte(r, rt) or_return
+        colour[1] = read_byte(r, rt) or_return
+        colour[2] = read_byte(r, rt) or_return
+        colour[3] = read_byte(r, rt) or_return 
         chunk.color = colour
     }
     if .Properties in flags {
