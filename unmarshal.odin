@@ -78,6 +78,10 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
         }
         fh.old_num_of_chunks = read_word(r, rt) or_return
         fh.duration = read_word(r, rt) or_return
+        if fh.duration == 0 {
+            fh.duration = doc.header.speed
+        }
+        
         read_skip(r, 2, rt) or_return
         fh.num_of_chunks = read_dword(r, rt) or_return
 
