@@ -1,19 +1,19 @@
 package aseprite_file_handler_utility
 
+import "core:fmt"
 import ase ".."
 
 // TODO: Should read in External Files when needed
 
 frames_from_doc :: proc(doc: ^ase.Document, frames: ^[dynamic]Frame) {
     md := metadata_from_doc(doc)
-    for frame in doc.frames {
-        append(frames, get_frame(frame, md))
-    }
+    get_frames(doc.frames, md, frames, .Layer_Opacity in doc.header.flags)
+    return
 }
 
-frames_from_doc_frames :: proc(data: []ase.Frame, metadata: Metadata, frames: ^[dynamic]Frame) {
+frames_from_doc_frames :: proc(data: []ase.Frame, metadata: Metadata, frames: ^[dynamic]Frame, layer_valid_opacity := false) {
     for frame in data {
-        append(frames, get_frame(frame, metadata))
+        append(frames, get_frame(frame, metadata, layer_valid_opacity))
     }
     return
 }
@@ -25,10 +25,11 @@ get_frames :: proc {
 
 get_frame :: frame_from_doc_frame
 
-frame_from_doc_frame :: proc(data: ase.Frame, metadata: Metadata) -> (frame: Frame) {
+// TODO: Need destruction & alloctor passing
+frame_from_doc_frame :: proc(data: ase.Frame, metadata: Metadata, layer_valid_opacity := false) -> (frame: Frame) {
     frame.md = metadata
     frame.duration = i64(data.header.duration)
-    frame.layers = get_layers(data)
+    frame.layers = get_layers(data, layer_valid_opacity)
 
     doc_tag := make([dynamic]ase.Tag)
     defer delete(doc_tag)

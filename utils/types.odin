@@ -22,8 +22,9 @@ Frame_Errors :: union #shared_nil {
 
 Image_Error :: enum{}
 Image_Errors :: union #shared_nil {
-    runtime.Allocator_Error, 
     Image_Error,
+    image.General_Image_Error,
+    runtime.Allocator_Error, 
 }
 
 Animation_Error :: enum{}
@@ -53,14 +54,25 @@ Pixels :: []byte
 
 Vec2 :: [2]int
 
+// TODO: Might not be needed. IDK yet
+Cel :: struct {
+    using md: Metadata, 
+    pos: Vec2, 
+    opacity: int,
+    pixel: Pixels, 
+    link: int,
+    z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
+}
+
 Layer :: struct {
     using md: Metadata, 
-    pos: Vec2,
     name: string,
     opacity: int,
-    pixels: Pixels,
+    cels: []Cel,
     visiable: bool,
-    // blend_mode
+    index: int, 
+    
+    blend_mode: ase.Layer_Blend_Mode // TODO: Replace with int backed one?? Is it even needed??
 }
 
 Frame :: struct {
@@ -71,11 +83,19 @@ Frame :: struct {
     // tags
 }
 
+// Bits per pixel
+Color_Depth :: enum {
+    None,
+    Indexed=8,
+    Grayscale=16,
+    RGBA=32,
+}
+
 Metadata :: struct {
     width: int, 
     height: int, 
-    depth: int, 
-    // channels: int, Will always be RGBA
+    depth: Color_Depth, 
+    // channels: int, Will always be RGBA i.e. 4
 }
 
 
