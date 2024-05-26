@@ -32,7 +32,11 @@ GPL_Error :: enum {
     Cant_Parse_Color,
 }
 
-from_string :: proc(data: string) -> (parsed: GPL_Palette, err: GPL_Error) {
+Errors :: union #shared_nil {GPL_Error, runtime.Allocator_Error}
+
+from_string :: proc(data: string, alloc := context.allocator) -> (parsed: GPL_Palette, err: Errors) {
+    parsed.colors = make([dynamic]Color, alloc) or_return
+
     parsed.raw = data
     s := parsed.raw
     index := strings.index(s, "\n")
@@ -113,7 +117,7 @@ from_string :: proc(data: string) -> (parsed: GPL_Palette, err: GPL_Error) {
                 color.a = 255
             }
             color.name = strings.trim_space(line[i:])
-            append(&parsed.colors, color)
+            append(&parsed.colors, color) or_return
         }
         if index == len(s) {
             break
@@ -123,7 +127,7 @@ from_string :: proc(data: string) -> (parsed: GPL_Palette, err: GPL_Error) {
     return
 }
 
-from_bytes :: proc(data: []byte) -> (parsed: GPL_Palette, err: GPL_Error) {
+from_bytes :: proc(data: []byte) -> (parsed: GPL_Palette, err: Errors) {
     return from_string(string(data))
 }
 
