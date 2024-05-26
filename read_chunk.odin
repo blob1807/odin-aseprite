@@ -9,6 +9,48 @@ import "core:compress/zlib"
 _::fmt
 _::log
 
+read_file_header :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (h: File_Header, err: Unmarshal_Error) {
+    h.size = read_dword(r, rt) or_return
+
+    if io.Stream_Mode.Size in io.query(r) {
+        stream_size := io.size(r) or_return
+        if stream_size != i64(h.size) {
+            return {}, .Data_Size_Not_Equal_To_Header
+        }
+    }
+    
+    magic := read_word(r, rt) or_return
+    if magic != FILE_MAGIC_NUM {
+        return {}, .Bad_File_Magic_Number
+    } 
+
+    h.frames = read_word(r, rt) or_return
+
+    h.width = read_word(r, rt) or_return
+    h.height = read_word(r, rt) or_return
+    h.color_depth = Color_Depth(read_word(r, rt) or_return)
+
+    h.flags = transmute(File_Flags)read_dword(r, rt) or_return
+    h.speed = read_word(r, rt) or_return
+    read_skip(r, 4+4, rt) or_return
+
+    h.transparent_index = read_byte(r, rt) or_return
+    read_skip(r, 3, rt) or_return
+
+    h.num_of_colors = read_word(r, rt) or_return
+    h.ratio_width = read_byte(r, rt) or_return
+    h.ratio_height = read_byte(r, rt) or_return
+
+    h.x = read_short(r, rt) or_return
+    h.y = read_short(r, rt) or_return
+
+    h.grid_width = read_word(r, rt) or_return
+    h.grid_height = read_word(r, rt) or_return
+    read_skip(r, 84, rt) or_return
+
+    return
+}
+
 
 read_old_palette_256 :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: Old_Palette_256_Chunk, err: Unmarshal_Error) {
     op_size := cast(int)read_word(r, rt) or_return

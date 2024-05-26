@@ -57,45 +57,15 @@ unmarshal :: proc{
 }
 
 unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+    // TODO: Put Everything into a Virtual Arena?
+    // But I do prefer letting user choose the allocator.
     context.allocator = allocator
     icc_warn: bool
     rt := &total_read
-    set := io.query(r)
-    h: File_Header
-    h.size = read_dword(r, rt) or_return
 
-    if io.Stream_Mode.Size in set {
-        stream_size := io.size(r) or_return
-        if stream_size != i64(h.size) {
-            return total_read, .Data_Size_Not_Equal_To_Header
-        }
-    }
-    
-    magic := read_word(r, rt) or_return
-    if magic != FILE_MAGIC_NUM {
-        return total_read, .Bad_File_Magic_Number
-    } 
-
-    frames := read_word(r, rt) or_return
-
-    h.width = read_word(r, rt) or_return
-    h.height = read_word(r, rt) or_return
-    h.color_depth = Color_Depth(read_word(r, rt) or_return)
-    h.flags = transmute(File_Flags)read_dword(r, rt) or_return
-    h.speed = read_word(r, rt) or_return
-    read_skip(r, 4+4, rt) or_return
-    h.transparent_index = read_byte(r, rt) or_return
-    read_skip(r, 3, rt) or_return
-    h.num_of_colors = read_word(r, rt) or_return
-    h.ratio_width = read_byte(r, rt) or_return
-    h.ratio_height = read_byte(r, rt) or_return
-    h.x = read_short(r, rt) or_return
-    h.y = read_short(r, rt) or_return
-    h.grid_width = read_word(r, rt) or_return
-    h.grid_height = read_word(r, rt) or_return
-    read_skip(r, 84, rt) or_return
-
-    doc.header = h
+    doc.header = read_file_header(r, rt) or_return
+    frames := doc.header.frames
+    color_depth := doc.header.color_depth
     doc.frames = make([]Frame, int(frames)) or_return
 
     for &frame in doc.frames {
@@ -134,7 +104,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                 chunk = read_layer(r, rt) or_return
 
             case .cel:
-                chunk = read_cel(r, rt, int(h.color_depth), c_size) or_return
+                chunk = read_cel(r, rt, int(color_depth), c_size) or_return
 
             case .cel_extra:
                 chunk = read_cel_extra(r, rt) or_return
@@ -180,7 +150,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
 unmarshal_chunks :: proc{unmarshal_multi_chunks, unmarshal_single_chunk}
 
-@(warning="This function is new. May have bugs.")
+//@(warning="This function is new. May have bugs.")
 unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     context.allocator = allocator
     icc_warn: bool
@@ -322,7 +292,7 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
 }
 
 
-@(warning="This function is new. May have bugs.")
+//@(warning="This function is new. May have bugs.")
 unmarshal_single_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error)
 where intrinsics.type_is_variant_of(Chunk, T) {
     context.allocator = allocator
@@ -464,21 +434,3 @@ where intrinsics.type_is_variant_of(Chunk, T) {
     }
     return
 }
-
-/*@(private)
-_unmarshal_chunk :: {}
-
-_unmarshal_old_256
-_unmarshal_old_64 :: proc() {}
-_unmarshal_layer
-_unmarshal_cel
-_unmarshal_cel_extra
-_unmarshal_color_profile
-_unmarshal_external_files
-_unmarshal_mask
-_unmarshal_path
-_unmarshal_tags
-_unmarshal_palette
-_unmarshal_user_data
-_unmarshal_slice
-_unmarshal_tileset*/
