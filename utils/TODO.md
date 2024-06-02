@@ -4,14 +4,21 @@ Jarvis make automating things easier please.
 - Respecting Exteranl Files
 
 ### Automation things:
-- [ ] Frames, the base of everything; 
-- [ ] Layers, of given frame or frame index; 
-- [ ] Precomputed Image, compatable with `core:image`; 
-- [ ] Precomputed Animations, ditto; 
-- [ ] Tileset, from layers or frames, ditto; 
+- [x] Frames, the base of everything; 
+- [x] Layers, of given frame or frame index; 
+- [x] Palettes new & all;
+- [~] Precomputed Images; 
+- [~] Precomputed Animations; 
+- [ ] Tileset, from layers or frames; 
 
 ### Other things:
-- [ ] Palettes, to & from GPL; 
+- [x] Palettes, to & from GPL; 
+- [x] Images to`core:image`;
+
+### Image
+- [x] Covert colour spaces to sRGB. There are none RN;
+- [x] Colour Palette Indexing
 
 A use case very cool.
 https://gist.github.com/karl-zylinski/ddc98344cb45468649df8e52d9247dff
+
