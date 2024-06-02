@@ -49,67 +49,84 @@ Erros :: union #shared_nil {
 }
 
 // Raw Types
-Pixel :: image.RGBA_Pixel
+Pixel :: [4]byte
 Pixels :: []byte
 
 Vec2 :: [2]int
 
-// TODO: Might not be needed. IDK yet
 Cel :: struct {
-    using md: Metadata, 
-    pos: Vec2, 
+    using pos: Vec2, 
+    width, height: int,
     opacity: int,
-    pixel: Pixels, 
     link: int,
+    layer: int, 
     z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
+    raw: Pixels, 
 }
 
 Layer :: struct {
-    using md: Metadata, 
     name: string,
     opacity: int,
-    cels: []Cel,
     visiable: bool,
     index: int, 
-    
-    blend_mode: ase.Layer_Blend_Mode // TODO: Replace with int backed one?? Is it even needed??
+    blend_mode: ase.Layer_Blend_Mode // TODO: Replace with int backed one??
 }
 
 Frame :: struct {
-    using md: Metadata, 
     duration: i64, // in milliseconds
-    layers: []Layer,
-    visiable: bool, 
-    // tags
+    cels: []Cel,
+}
+
+Tag :: struct {
+    from: int,
+    to: int,
+    direction: ase.Tag_Loop_Dir,
+    name: string,
+}
+
+Palette :: []Color
+
+Color :: struct {
+    using color: Pixel, 
+    name: string,
 }
 
 // Bits per pixel
-Color_Depth :: enum {
-    None,
+Pixel_Depth :: enum {
     Indexed=8,
-    Grayscale=16,
+    Grayscale=16, 
     RGBA=32,
+}
+
+// Not needed RN. We'll only ever handle sRGB.
+Color_Space :: enum {
+    None, sRGB, ICC,
 }
 
 Metadata :: struct {
     width: int, 
     height: int, 
-    depth: Color_Depth, 
+    bpp: Pixel_Depth, 
+    // spase: Color_Space, 
     // channels: int, Will always be RGBA i.e. 4
 }
 
 
-// Precomputed Types
-Image :: image.Image
-
-Animation :: struct {
-    using md: Metadata,
-    fps: int, 
-    lenght: time.Duration, 
-    frames: []Pixels, 
+// Precomputed Types. They own all their data.
+Image :: struct {
+    using md: Metadata, 
+    data: []byte, 
 }
 
-// TODO: A single image or array of tiles?
+Animation :: struct {
+    fps: int,
+    using md: Metadata,
+    length: time.Duration, 
+    frames: [][]byte, 
+}
+
+// TODO: A single image or array of tiles? 
+// Is it even something i should do?
 Tileset :: struct {
     tile_width: int, 
     tile_height: int, 
