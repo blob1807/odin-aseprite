@@ -49,6 +49,29 @@ has_new_palette :: proc(doc: ^ase.Document) -> bool {
 }
 
 
+// Linearly resizes an Image.
+// Not work as on right now
+resize_image :: scale_image
+
+// Linearly scale an Image.
+// Not work as on right now
+scale_image :: proc(img: []byte, md: Metadata, factor: int = 10) -> (res: []byte) {
+    assert(size_of(img) == md.height * md.height * 4)
+    res = make([]byte, size_of(img) * factor)
+
+    for y in 0..<md.height {
+        for x in 0..<md.width {
+            x := (y * md.height + x) * 4
+            xi := x * factor
+            pix := img[x:x+4]
+            copy(img[xi:xi+4], pix)
+        }
+    }
+
+    return
+}
+
+
 destroy_frames :: proc(frames: []Frame) {
     for frame in frames {
         delete(frame.cels)
