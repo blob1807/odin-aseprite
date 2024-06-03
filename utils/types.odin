@@ -69,7 +69,7 @@ Layer :: struct {
     opacity: int,
     visiable: bool,
     index: int, 
-    blend_mode: ase.Layer_Blend_Mode // TODO: Replace with int backed one??
+    blend_mode: Blend_Mode // TODO: Replace with int backed one??
 }
 
 Frame :: struct {
@@ -134,10 +134,6 @@ Tileset :: struct {
 }
 
 
-DEFAULT_ANIMATION :: Animation {}
-DEFAULT_FRAME :: Frame {}
-
-
 @(private)
 User_Data :: struct {
     chunk: ase.User_Data_Chunk,
@@ -148,4 +144,26 @@ User_Data :: struct {
 @(private)
 User_Data_Parent :: enum {
     Tag, Tileset, Sprite
+}
+
+Blend_Mode :: enum {
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    Color_Dodge,
+    Color_Burn,
+    Hard_Light,
+    Soft_Light,
+    Difference,
+    Exclusion,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
+    Addition,
+    Subtract,
+    Divide,
 }
