@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:image"
 import "core:bytes"
 import "core:slice"
+import "core:log"
 
 import ase ".."
 
@@ -91,8 +92,9 @@ get_image_bytes_from_frame :: proc(frame: Frame, layers: []Layer, md: Metadata, 
     }
 
     for cel in frame.cels {
-        if !layers[cel.layer].visiable { continue }
-        write_cel(img[:], cel, layers[cel.layer], md, pal)
+        lay := layers[cel.layer]
+        if !lay.visiable { continue }
+        write_cel(img, cel, lay, md, pal)
     }
 
     return
@@ -152,16 +154,13 @@ to_core_image :: proc(buf: []byte, md: Metadata) -> (img: image.Image) {
 
 // Write a cel to an image's data
 write_cel :: proc(img: []byte, cel: Cel, layer: Layer, md: Metadata, pal: Palette = nil) {
-    // TODO: Write to a cel slice. Then do Layer Blend & Opacity.
-    // raw := make([]byte, cel.width * cel.height * 4)
-    // defer delete(raw)
-
     for y in 0..<cel.height {
+        yi := y + cel.y
         for x in 0..<cel.width {
-            xi := ((y + cel.y) * md.width + x + cel.x) * 4
+            xi := (yi * md.width + x + cel.x) * 4
             xc := (y * cel.width + x) * 4
 
-            pix: Pixel
+            pix: [4]byte
             // Convert to RGBA
             switch md.bpp {
             case .Indexed:
@@ -174,31 +173,21 @@ write_cel :: proc(img: []byte, cel: Cel, layer: Layer, md: Metadata, pal: Palett
             case .RGBA:
                 copy(pix[:], cel.raw[xc:xc+4])
             case:
-                fmt.eprint("bpp == 0, ")
+                log.error("Invalid Color Mode was provided: ", md.bpp)
             }
 
             if pix.a != 0 {
+                //img_pix: [4]byte
+                //copy(img_pix[:], img[xi:xi+4])
+                //pix = blend(img_pix, pix, alpha(cel.opacity, layer.opacity), layer.blend_mode)
+                
+                if i := img[xi:xi+4][3]; i != 0 {
+                    pix.a = byte(int(i) * int(pix.a) * cel.opacity * layer.opacity / (255*255*255))
+                } else {
+                    pix.a = byte(int(pix.a) * cel.opacity * layer.opacity / (255*255))
+                }
                 copy(img[xi:xi+4], pix[:])
             }
-        }
-    }
-
-    return
-}
-
-
-// Linearly resizes an Image
-// Not work as on right now
-resize_image :: proc(img: []byte, md: Metadata, factor: int = 10) -> (res: []byte) {
-    assert(size_of(img) == md.height * md.height * 4)
-    res = make([]byte, size_of(img) * factor)
-
-    for y in 0..<md.height {
-        for x in 0..<md.width {
-            x := (y * md.height + x) * 4
-            xi := x * factor
-            pix := img[x:x+4]
-            copy(img[xi:xi+4], pix)
         }
     }
 
