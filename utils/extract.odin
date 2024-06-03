@@ -25,7 +25,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame) -> (res: []Cel) {
         case ase.Cel_Chunk:
             cel := Cel {
                 pos = {int(c.x), int(c.y)},
-                opacity = int(c.opacity_level), // TODO: Needs rework
+                opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
                 layer = int(c.layer_index)
             }
@@ -73,9 +73,9 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false) ->
         case ase.Layer_Chunk:
             lay := Layer {
                 name = v.name, 
-                opacity = int(v.opacity) if layer_valid_opacity else 0,
+                opacity = int(v.opacity) if layer_valid_opacity else 255,
                 index = len(layers),
-                blend_mode = v.blend_mode,
+                blend_mode = Blend_Mode(v.blend_mode),
                 visiable = .Visiable in v.flags
             }
             append(&layers, lay)
