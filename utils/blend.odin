@@ -1,13 +1,11 @@
 package aseprite_file_handler_utility
 
-import "base:runtime"
-import "core:slice"
 import "core:log"
 import "core:math"
-import "core:fmt"
+// import "core:fmt"
 
 
-slow_alpha :: proc(#any_int a: int, b: ..int) -> (res: int) {
+slow_alpha :: proc(a: int, b: ..int) -> (res: int) {
     // α = α * A1 *..An / 255^n
     if len(b) == 0 { return a }
     if len(b) == 1 { return a * b[0] / 255}
@@ -22,76 +20,113 @@ slow_alpha :: proc(#any_int a: int, b: ..int) -> (res: int) {
 }
 
 alpha :: mul
-mul :: proc(#any_int a, b: int) -> byte {
+mul :: proc{mul_u8, mul_u16, mul_int}
+mul_u16 :: proc(a, b: u16) -> u16 {
     // License to be Found in .\Licenses
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
-    // return byte(a * b / 255)
+    //return a * b / 255
+
     t := a * b + 128
-    return byte(((t >> 8 ) + t ) >> 8)
+    return ((t >> 8 ) + t ) >> 8
 }
 
-div :: proc(#any_int a, b: int) -> byte {
+mul_int :: proc(a, b: int) -> u16 {
+    // License to be Found in .\Licenses
+    // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
+    //return a * b / 255
+
+    t := a * b + 128
+    return u16(((t >> 8 ) + t ) >> 8)
+}
+
+mul_u8 :: proc(a, b: byte) -> u16 {
+    // License to be Found in .\Licenses
+    // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
+    //return a * b / 255
+
+    t := a * b + 128
+    return u16(((t >> 8 ) + t ) >> 8)
+}
+
+
+div :: proc(a, b: u16) -> u16 {
     // License to be Found in .\Licenses
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L70
-    return byte(a * 255 + (b / 2) / b)
+    return a * 255 + (b / 2) / b
 }
 
 
 /* ---------------------------------------------------------------------------------- */
 // Everything below's License to be Found in .\Licenses
 
-blend :: proc(last, cur: Pixel, opacity: byte, mode: Blend_Mode) -> (res: Pixel) {
+blend :: proc(last, cur: Pixel, opacity: u16, mode: Blend_Mode) -> (res: Pixel, err: Blend_Error) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp
-    pix: [4]byte
+    // FIXME: Blend mode is not working
+    if last.a == 0 {
+        res.rgb = cur.rgb
+        res.a = byte(mul(u16(cur.a), opacity))
+        return
+    }
+
+    back: [4]u16 = {u16(last.r), u16(last.g), u16(last.b), u16(last.a)}
+    pix: [4]u16 = {u16(cur.r), u16(cur.g), u16(cur.b), u16(cur.a)}
+
+    blen: [4]u16
     switch mode {
-    case .Addition:    pix = blend_addition(last, cur, opacity)
-    case .Color:       pix = blend_color(last, cur, opacity)
-    case .Color_Burn:  pix = blend_color_burn(last, cur, opacity)
-    case .Color_Dodge: pix = blend_color_dodge(last, cur, opacity)
-    case .Darken:      pix = blend_darken(last, cur, opacity)
-    case .Difference:  pix = blend_difference(last, cur, opacity)
-    case .Divide:      pix = blend_divide(last, cur, opacity)
-    case .Exclusion:   pix = blend_exclusion(last, cur, opacity)
-    case .Hard_Light:  pix = blend_hard_light(last, cur, opacity)
-    case .Hue:         pix = blend_hue(last, cur, opacity)
-    case .Lighten:     pix = blend_lighten(last, cur, opacity)
-    case .Luminosity:  pix = blend_luminosity(last, cur, opacity)
-    case .Multiply:    pix = blend_multiply(last, cur, opacity)
-    case .Normal:      pix = blend_normal(last, cur, opacity)
-    case .Overlay:     pix = blend_overlay(last, cur, opacity)
-    case .Saturation:  pix = blend_saturation(last, cur, opacity)
-    case .Screen:      pix = blend_screen(last, cur, opacity)
-    case .Soft_Light:  pix = blend_soft_light(last, cur, opacity)
-    case .Subtract:    pix = blend_subtract(last, cur, opacity)
+    case .Src:         blen = blend_src(back, pix, opacity)
+    case .Merge:       blen = blend_merge(back, pix, opacity)
+    case .Neg_BW:      blen = blend_neg_bw(back, pix, opacity)
+    case .Red_Tint:    blen = blend_red_tint(back, pix, opacity)
+    case .Blue_Tint:   blen = blend_blue_tint(back, pix, opacity)
+    case .Dst_Over:    blen = blend_normal_dst_over(back, pix, opacity)
+    case .Addition:    blen = blend_addition(back, pix, opacity)
+    case .Color:       blen = blend_color(back, pix, opacity)
+    case .Color_Burn:  blen = blend_color_burn(back, pix, opacity)
+    case .Color_Dodge: blen = blend_color_dodge(back, pix, opacity)
+    case .Darken:      blen = blend_darken(back, pix, opacity)
+    case .Difference:  blen = blend_difference(back, pix, opacity)
+    case .Divide:      blen = blend_divide(back, pix, opacity)
+    case .Exclusion:   blen = blend_exclusion(back, pix, opacity)
+    case .Hard_Light:  blen = blend_hard_light(back, pix, opacity)
+    case .Hue:         blen = blend_hue(back, pix, opacity)
+    case .Lighten:     blen = blend_lighten(back, pix, opacity)
+    case .Luminosity:  blen = blend_luminosity(back, pix, opacity)
+    case .Multiply:    blen = blend_multiply(back, pix, opacity)
+    case .Normal:      blen = blend_normal(back, pix, opacity)
+    case .Overlay:     blen = blend_overlay(back, pix, opacity)
+    case .Saturation:  blen = blend_saturation(back, pix, opacity)
+    case .Screen:      blen = blend_screen(back, pix, opacity)
+    case .Soft_Light:  blen = blend_soft_light(back, pix, opacity)
+    case .Subtract:    blen = blend_subtract(back, pix, opacity)
+    case .Unspecified: fallthrough
     case: 
         log.error("Invalid Bland Mode provided:", mode)
-        return last
+        return last, .Invalid_Mode
     }
-    normal := blend_normal(last, pix, opacity)
 
-    if last.a != 0 {
-        norm_merge := blend_merge(normal, pix, last.a)
-        pix_alpha := alpha(cur.a, opacity)
-        com_alpha := alpha(last.a, pix_alpha)
-        return blend_merge(norm_merge, pix, com_alpha)
-    }
-    return normal
+    normal := blend_normal(back, pix, opacity)
+    norm_merge := blend_merge(normal, blen, back.a)
+    total_alpha := alpha(pix.a, opacity)
+    com_alpha := alpha(back.a, total_alpha)
+    blen = blend_merge(norm_merge, blen, com_alpha)
+
+    return {byte(blen.r), byte(blen.g), byte(blen.b), byte(blen.a)}, nil
 }
 
 
 /* ------------------------------------------------------------------- */
 // RGB Blenders
 
-blend_normal :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    cur: [4]byte = cur
-    if cur.a == 0 { 
+blend_normal :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    if last.a == 0 {
+        res = cur
+        res.a = alpha(cur.a, opacity)
+    } else if cur.a == 0 {
         return last
     }
 
+    cur := cur
     cur.a = alpha(cur.a, opacity)
-    if last.a == 0 {
-        return cur
-    }
 
     res.a = cur.a + last.a - alpha(last.a, cur.a)
     res.r = last.r + (cur.r - last.r) * cur.a / res.a
@@ -100,11 +135,11 @@ blend_normal :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return res
 }
 
-blend_src :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) { 
+blend_src :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) { 
     return last
 }
 
-blend_merge :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_merge :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
 
     if last.a == 0 {
         res.rgb = cur.rgb
@@ -116,7 +151,7 @@ blend_merge :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
         res.b = last.b + mul((cur.b - last.b), opacity)
     }
 
-    res.a = last.a + alpha((cur.a - last.a), opacity)
+    res.a = last.a + mul((cur.a - last.a), opacity)
     if res.a == 0 {
         res.rgb = 0
     }
@@ -124,33 +159,33 @@ blend_merge :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return
 }
 
-blend_neg_bw :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_neg_bw :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     if rgba_luma(last) < 128{
         return {255, 255, 255, 255}
     }
     return {0, 0, 0, 255}
 }
 
-blend_red_tint :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    cur: [4]byte = cur
+blend_red_tint :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    cur := cur
     luma := rgba_luma(cur)
-    cur = { byte((255 + luma)/2), byte(luma/2), byte(luma/2), last.a}
+    cur = { (255 + luma)/2, luma/2, luma/2, last.a }
     return blend_normal(last, cur, opacity)
 }
 
-blend_blue_tint :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_blue_tint :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     luma := rgba_luma(cur)
-    res = { byte(luma/2), byte(luma/2), byte((255 + luma)/2), last.a}
+    res = { luma/2, luma/2, (255 + luma)/2, last.a}
     return blend_normal(last, res, opacity)
 }
 
-blend_normal_dst_over :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_normal_dst_over :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.a = alpha(cur.a, opacity)
     return blend_normal(last, res, opacity)
 }
 
 
-blend_multiply :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_multiply :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.r = mul(last.r, cur.r)
     res.b = mul(last.b, cur.b)
     res.g = mul(last.g, cur.g)
@@ -158,7 +193,7 @@ blend_multiply :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_screen :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_screen :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.r = last.r + cur.r - mul(last.r, cur.r)
     res.b = last.b + cur.b - mul(last.b, cur.b)
     res.g = last.g + cur.g - mul(last.g, cur.g)
@@ -166,7 +201,7 @@ blend_screen :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_overlay :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_overlay :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.r = max(last.r, cur.r)
     res.b = max(last.b, cur.b)
     res.g = max(last.g, cur.g)
@@ -174,7 +209,7 @@ blend_overlay :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_darken :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_darken :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.r = min(last.r, cur.r)
     res.b = min(last.b, cur.b)
     res.g = min(last.g, cur.g)
@@ -182,7 +217,7 @@ blend_darken :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_lighten :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_lighten :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     res.r = max(last.r, cur.r)
     res.b = max(last.b, cur.b)
     res.g = max(last.g, cur.g)
@@ -190,16 +225,16 @@ blend_lighten :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_color_dodge :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    cd :: proc(#any_int b, s: int) -> byte {
+blend_color_dodge :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    cd :: proc(b, s: u16) -> u16 {
         if b == 0 {
             return 0
         }
-        s := 255 - s
-        if b >= s {
+        s1 := 255 - s
+        if b >= s1 {
             return 255
         }
-        return div(b, s)
+        return div(b, s1)
     }
 
     res.r = cd(last.r, cur.r)
@@ -209,16 +244,16 @@ blend_color_dodge :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_color_burn :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    cb :: proc(#any_int b, s: int) -> byte {
+blend_color_burn :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    cb :: proc(b, s: u16) -> u16 {
         if b == 255 {
             return 255
         }
-        b := 255 - b
-        if b >= s {
+        b1 := 255 - b
+        if b1 >= s {
             return 0
         }
-        return 255 - div(b, s)
+        return 255 - div(b1, s)
     }
 
     res.r = cb(last.r, cur.r)
@@ -228,8 +263,8 @@ blend_color_burn :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_hard_light :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    hl :: proc(#any_int b, s: int) -> byte {
+blend_hard_light :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    hl :: proc(b, s: u16) -> u16 {
         if s < 128 {
             return mul(b, s<<1)
         }
@@ -243,8 +278,8 @@ blend_hard_light :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_soft_light :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    sl :: proc(#any_int b, s: int) -> byte {
+blend_soft_light :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    sl :: proc(b, s: u16) -> u16 {
         b := f64(b) / 255
         s := f64(s) / 255
         r, d: f64
@@ -260,7 +295,7 @@ blend_soft_light :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
         } else {
             r = b + (2 * s - 1) * (d - b)
         }
-        return byte(r * 255 + 0.5)
+        return u16(r * 255 + 0.5)
     }
 
     res.r = sl(last.r, cur.r)
@@ -270,17 +305,17 @@ blend_soft_light :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-blend_difference :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    res.r = byte(abs(int(last.r) - int(cur.r)))
-    res.b = byte(abs(int(last.b) - int(cur.b)))
-    res.g = byte(abs(int(last.g) - int(cur.g)))
+blend_difference :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    res.r = abs(last.r - cur.r)
+    res.b = abs(last.b - cur.b)
+    res.g = abs(last.g - cur.g)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
 
-blend_exclusion :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    ex :: proc(#any_int b, s: int) -> byte {
-        return byte(b + s - 2 * int(mul(b, s)))
+blend_exclusion :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    ex :: proc(b, s: u16) -> u16 {
+        return b + s - 2 * mul(b, s)
     }
     res.r = ex(last.r, cur.r)
     res.b = ex(last.b, cur.b)
@@ -294,7 +329,7 @@ blend_exclusion :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
 /* ------------------------------------------------------------------- */
 // HSV Blenders
 
-blend_hue :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_hue :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     r := f64(last.r) / 255
     g := f64(last.g) / 255
     b := f64(last.b) / 255
@@ -309,11 +344,11 @@ blend_hue :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     r, g, b = set_sat(r, g, b, s)
     r, g, b = set_luma(r, g, b, l)
 
-    res = {byte(255 * r), byte(255 * g), byte(255 * b), cur.a}
+    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
     return blend_normal(last, res, opacity)
 }
 
-blend_saturation :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_saturation :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     r := f64(cur.r) / 255
     g := f64(cur.g) / 255
     b := f64(cur.b) / 255
@@ -327,11 +362,11 @@ blend_saturation :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     r, g, b = set_sat(r, g, b, s)
     r, g, b = set_luma(r, g, b, l)
 
-    res = {byte(255 * r), byte(255 * g), byte(255 * b), cur.a}
+    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
     return blend_normal(last, res, opacity)
 }
 
-blend_color :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_color :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     r := f64(last.r) / 255
     g := f64(last.g) / 255
     b := f64(last.b) / 255
@@ -342,11 +377,11 @@ blend_color :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     b = f64(cur.b) / 255
     r, g, b = set_luma(r, g, b, l)
 
-    res = {byte(255 * r), byte(255 * g), byte(255 * b), cur.a}
+    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
     return blend_normal(last, res, opacity)
 }
 
-blend_luminosity :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
+blend_luminosity :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     r := f64(cur.r) / 255
     g := f64(cur.g) / 255
     b := f64(cur.b) / 255
@@ -357,28 +392,28 @@ blend_luminosity :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
     b = f64(last.b) / 255
     r, g, b = set_luma(r, g, b, l)
 
-    res = {byte(255 * r), byte(255 * g), byte(255 * b), cur.a}
+    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
     return blend_normal(last, res, opacity)
 }
 
-blend_addition :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    res.r = byte(min(int(last.r) + int(cur.r), 255))
-    res.g = byte(min(int(last.g) + int(cur.r), 255))
-    res.b = byte(min(int(last.b) + int(cur.b), 255))
+blend_addition :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    res.r = min(last.r + cur.r, 255)
+    res.g = min(last.g + cur.r, 255)
+    res.b = min(last.b + cur.b, 255)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
 
-blend_subtract :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    res.r = byte(max(int(last.r) - int(cur.r), 0))
-    res.g = byte(max(int(last.g) - int(cur.r), 0))
-    res.b = byte(max(int(last.b) - int(cur.b), 0))
+blend_subtract :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    res.r = max(last.r - cur.r, 0)
+    res.g = max(last.g - cur.r, 0)
+    res.b = max(last.b - cur.b, 0)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
 
-blend_divide :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
-    bd :: proc(b, s: byte) -> byte {
+blend_divide :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
+    bd :: proc(b, s: u16) -> u16 {
         if b == 0 {
             return 0
         } else if b >= s {
@@ -399,12 +434,12 @@ blend_divide :: proc(last, cur: Pixel, opacity: byte) -> (res: Pixel) {
 /* ------------------------------------------------------------------- */
 // RGB Helpers
 
-rgba_luma :: proc(pix: Pixel) -> int {
+rgba_luma :: proc(pix: B_Pixel) -> u16 {
     return rgb_luma(pix.r, pix.b, pix.g)
 }
 
-rgb_luma :: proc(#any_int r, b, g: int) -> int {
-    return (r*2126 + g*7152 + b*722) / 10000
+rgb_luma :: proc(#any_int r, b, g: int) -> u16 {
+    return u16((r*2126 + g*7152 + b*722) / 10000)
 }
 
 /* ------------------------------------------------------------------- */
