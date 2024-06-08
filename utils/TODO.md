@@ -3,28 +3,36 @@ Jarvis make automating things easier please.
 ### Not doing:
 - Respecting Exteranl Files
 
+
 ### Automation things:
 - [x] Frames
 - [x] Layers
-- [x] Cels
+- [~] Cels
+    - [ ] Use Precise Bounds from Cel Extra when set
 - [x] Palettes new & old
 - [x] Metadata
+- [~] Tags
+    - [ ] Use User Data as well
+- [ ] Slices
 - [ ] Precomputed Images 
 - [ ] Precomputed Animations 
 - [ ] Precomputed Tileset
+
 
 ### Images:
 - [x] Basic Image creation
 - [x] Covert colour spaces to sRGB
 - [x] Colour Palette Indexing
 - [x] Change Alpha based on Cel & Layer Opacity
+- [ ] Use Doc.Slices to make image
 - [ ] Linear Image scaling
-- [ ] See if it's worth using a Fast Alpha algo
+- [X] See if it's worth using a Fast Alpha algo. Used it.
 - [ ] Blend Modes
+    - [x] Use u16s. Ints my still be needed.
     - [x] Find out how Aseprite does them
     - [ ] Add Aseprite's license
     - [ ] Maybe refactor to use Vecs in helpers
-    - [ ] Normal
+    - [x] Normal
     - [ ] Multiply
     - [ ] Screen
     - [ ] Overlay
@@ -43,10 +51,16 @@ Jarvis make automating things easier please.
     - [ ] Addition
     - [ ] Subtract
     - [ ] Divide
+    - [ ] Src
+    - [x] Merge
+    - [ ] Negitive Black White
+    - [ ] Red Tint
+    - [ ] Blue Tint
+    - [ ] Destination Over
+
 
 ### Animations:
-- [ ] Image Creation
-- [ ] Basic Animation Creation
+- [x] Basic Animation Creation
 - [ ] Onion Skinning
 - [ ] Tags
     - [ ] Only selected Tag
@@ -56,8 +70,11 @@ Jarvis make automating things easier please.
 ### Tilesets:
 - [ ] Decide if I'm even gonna support this
 
+
 ### Other things:
-- [x] Palettes, to & from GPL 
+- [ ] Palettes, to & from GPL 
+    - [ ] Doc
+    - [x] Image
 - [x] Images to `core:image`
 
 A use case very cool.
