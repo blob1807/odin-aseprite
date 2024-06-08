@@ -1,29 +1,31 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
-import "core:image"
 import "core:time"
 
 import ase ".."
 
 
 // Errors
-Layer_Error :: enum{}
-Layer_Errors :: union #shared_nil {
+Palette_Error :: enum { 
+    Color_Index_Out_of_Bounds 
+}
+Palette_Errors :: union #shared_nil {
     runtime.Allocator_Error, 
-    Layer_Error,
+    Palette_Error,
 }
 
-Frame_Error :: enum{}
-Frame_Errors :: union #shared_nil {
-    runtime.Allocator_Error, 
-    Frame_Error,
+Blend_Error :: enum {
+    Invalid_Mode,
 }
-
-Image_Error :: enum{}
+Image_Error :: enum {
+    Indexed_BPP_No_Palette,
+    Invalid_BPP,
+}
 Image_Errors :: union #shared_nil {
     Image_Error,
-    image.General_Image_Error,
+    Blend_Error,
+    Palette_Errors,
     runtime.Allocator_Error, 
 }
 
@@ -31,6 +33,8 @@ Animation_Error :: enum{}
 Animation_Errors :: union #shared_nil {
     runtime.Allocator_Error, 
     Animation_Error,
+    Palette_Errors,
+    Image_Errors,
 }
 
 Tileset_Error :: enum{}
@@ -39,20 +43,24 @@ Tileset_Errors :: union #shared_nil {
     Tileset_Error,
 }
 
-Erros :: union #shared_nil {
+Errors :: union #shared_nil {
     runtime.Allocator_Error, 
-    Layer_Error, 
-    Frame_Error, 
     Image_Error, 
-    Animation_Error, 
+    Animation_Errors, 
     Tileset_Error, 
 }
 
 // Raw Types
+B_Pixel :: [4]u16
 Pixel :: [4]byte
 Pixels :: []byte
 
 Vec2 :: [2]int
+
+Precise_Bounds :: struct {
+    // Well they're fixpoint but I anit dealing with that shit
+    x, y, width, height: f64
+}
 
 Cel :: struct {
     using pos: Vec2, 
@@ -62,6 +70,7 @@ Cel :: struct {
     layer: int, 
     z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
     raw: Pixels, 
+    extra: Maybe(Precise_Bounds)
 }
 
 Layer :: struct {
@@ -111,6 +120,15 @@ Metadata :: struct {
     // channels: int, Will always be RGBA i.e. 4
 }
 
+Slice_Key :: struct {
+    frame, x, y, width, height: int,
+}
+
+Slice :: struct {
+    name: string,
+    keys: []Slice_Key
+}
+
 
 // Precomputed Types. They own all their data.
 Image :: struct {
@@ -147,23 +165,31 @@ User_Data_Parent :: enum {
 }
 
 Blend_Mode :: enum {
-    Normal,
-    Multiply,
-    Screen,
-    Overlay,
-    Darken,
-    Lighten,
-    Color_Dodge,
-    Color_Burn,
-    Hard_Light,
-    Soft_Light,
-    Difference,
-    Exclusion,
-    Hue,
-    Saturation,
-    Color,
-    Luminosity,
-    Addition,
-    Subtract,
-    Divide,
+    Unspecified = -1,
+    Src         = -2,
+    Merge       = -3,
+    Neg_BW      = -4,
+    Red_Tint    = -5,
+    Blue_Tint   = -6,
+    Dst_Over    = -7,
+
+    Normal      = 0,
+    Multiply    = 1,
+    Screen      = 2,
+    Overlay     = 3,
+    Darken      = 4,
+    Lighten     = 5,
+    Color_Dodge = 6,
+    Color_Burn  = 7,
+    Hard_Light  = 8,
+    Soft_Light  = 9,
+    Difference  = 10,
+    Exclusion   = 11,
+    Hue         = 12,
+    Saturation  = 13,
+    Color       = 14,
+    Luminosity  = 15,
+    Addition    = 16,
+    Subtract    = 17,
+    Divide      = 18,
 }
