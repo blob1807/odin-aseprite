@@ -1,16 +1,15 @@
 package aseprite_file_handler_utility
 
-import "core:fmt"
 import "core:slice"
 
 import ase ".."
 
 
-get_metadata :: proc(doc: ^ase.Document) -> (md: Metadata) {
+get_metadata :: proc(header: ase.File_Header) -> (md: Metadata) {
     return {
-        int(doc.header.width), 
-        int(doc.header.height), 
-        Pixel_Depth(doc.header.color_depth),
+        int(header.width), 
+        int(header.height), 
+        Pixel_Depth(header.color_depth),
     }
 }
 
@@ -59,9 +58,9 @@ scale_image :: proc(img: []byte, md: Metadata, factor: int = 10) -> (res: []byte
     assert(size_of(img) == md.height * md.height * 4)
     res = make([]byte, size_of(img) * factor)
 
-    for y in 0..<md.height {
-        for x in 0..<md.width {
-            x := (y * md.height + x) * 4
+    for h in 0..<md.height {
+        for w in 0..<md.width {
+            x := (h * md.height + w) * 4
             xi := x * factor
             pix := img[x:x+4]
             copy(img[xi:xi+4], pix)
