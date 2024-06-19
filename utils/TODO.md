@@ -7,11 +7,11 @@ Jarvis make automating things easier please.
 ### Automation things:
 - [x] Frames
 - [x] Layers
-- [~] Cels
+- [ ] Cels
     - [ ] Use Precise Bounds from Cel Extra when set
 - [x] Palettes new & old
 - [x] Metadata
-- [~] Tags
+- [ ] Tags
     - [ ] Use User Data as well
 - [ ] Slices
 - [ ] Precomputed Images 
@@ -61,7 +61,7 @@ Jarvis make automating things easier please.
 
 ### Animations:
 - [x] Basic Animation Creation
-- [ ] Onion Skinning
+- [x] Onion Skinning
 - [ ] Tags
     - [ ] Only selected Tag
     - [ ] Use Tag durection
