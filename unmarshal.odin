@@ -61,6 +61,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
     // But I do prefer letting user choose the allocator.
     context.allocator = allocator
     icc_warn: bool
+    tm_warn: bool
     rt := &total_read
 
     doc.header = read_file_header(r, rt) or_return
@@ -128,12 +129,17 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                 chunk = read_palette(r, rt) or_return
 
             case .user_data:
+                fmt.printfln("[%v:%v]",rt^,rt^+c_size)
                 chunk = read_user_data(r, rt) or_return
 
             case .slice:
                 chunk = read_slice(r, rt) or_return
 
             case .tileset:
+                if !tm_warn {
+                    log.warn("Tilemaps & Tilesets are currently unsuported.")
+                    tm_warn = true
+                }
                 chunk = read_tileset(r, rt) or_return
 
             case .none:
