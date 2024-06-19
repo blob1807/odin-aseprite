@@ -292,9 +292,9 @@ Com_Tilemap_Cel :: struct{
     width, height: WORD,
     bits_per_tile: WORD, // always 32
     bitmask_id: Tile_ID,
-    bitmask_x: DWORD,
-    bitmask_y: DWORD,
-    bitmask_diagonal: DWORD,
+    bitmask_x: DWORD `fmt:"b"`,
+    bitmask_y: DWORD `fmt:"b"`,
+    bitmask_diagonal: DWORD `fmt:"b"`,
     tiles: []TILE, // ZLIB compressed
 }
 Cel_Types :: enum(WORD){
