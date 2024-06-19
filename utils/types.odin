@@ -10,44 +10,24 @@ import ase ".."
 Palette_Error :: enum { 
     Color_Index_Out_of_Bounds 
 }
-Palette_Errors :: union #shared_nil {
-    runtime.Allocator_Error, 
-    Palette_Error,
-}
-
 Blend_Error :: enum {
     Invalid_Mode,
+    Unequal_Image_Sizes, 
 }
 Image_Error :: enum {
     Indexed_BPP_No_Palette,
     Invalid_BPP,
 }
-Image_Errors :: union #shared_nil {
-    Image_Error,
-    Blend_Error,
-    Palette_Errors,
-    runtime.Allocator_Error, 
-}
-
-Animation_Error :: enum{}
-Animation_Errors :: union #shared_nil {
-    runtime.Allocator_Error, 
-    Animation_Error,
-    Palette_Errors,
-    Image_Errors,
-}
-
-Tileset_Error :: enum{}
-Tileset_Errors :: union #shared_nil {
-    runtime.Allocator_Error, 
-    Tileset_Error,
-}
+Animation_Error :: enum {}
+Tileset_Error :: enum {}
 
 Errors :: union #shared_nil {
     runtime.Allocator_Error, 
     Image_Error, 
-    Animation_Errors, 
+    Animation_Error, 
     Tileset_Error, 
+    Blend_Error, 
+    Palette_Error, 
 }
 
 // Raw Types
