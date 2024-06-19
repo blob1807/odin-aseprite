@@ -2,8 +2,11 @@ package aseprite_file_handler_utility
 
 import "core:time"
 import "core:slice"
+import "core:fmt"
 
 import ase ".."
+
+_::fmt
 
 // TODO: ALL Animation procs should respect Tags
 // TODO: Allow for the spesicaction of what tag to use
@@ -23,9 +26,9 @@ get_animation_from_doc :: proc(doc: ^ase.Document, anim: ^Animation, alloc := co
 
 get_animation_from_frames :: proc (
     frames: []Frame, layers: []Layer, md: Metadata, 
-    anim: ^Animation, tags: []Tag = {}, pal: Palette = nil, 
+    anim: ^Animation, tags: []Tag = nil, pal: Palette = nil, 
     alloc := context.allocator
-) -> (err: Animation_Errors) {
+) -> (err: Errors) {
     context.allocator = alloc
 
     if anim.fps == 0 {
@@ -49,7 +52,7 @@ get_animation_from_frames :: proc (
 }
 
 // Assumes 30 FPS & 100ms Frame Duration
-get_animation_from_images :: proc(imgs: []Image, md: Metadata, anim: ^Animation, alloc := context.allocator) -> (err: Animation_Errors) {
+get_animation_from_images :: proc(imgs: []Image, md: Metadata, anim: ^Animation, alloc := context.allocator) -> (err: Errors) {
     context.allocator = alloc
     anim.fps = 30
     anim.md = md
@@ -76,4 +79,45 @@ get_animation :: proc {
     get_animation_from_doc, 
     get_animation_from_frames, 
     get_animation_from_images, 
+}
+
+
+// Returns a new image set with Red/Blue Tint or Merge Onion Skin
+apply_onion_skin :: proc(
+    imgs: []Image, opacity := 69, merge := false, 
+    alloc := context.allocator
+) -> (frames: []Image, err: Errors) {
+    context.allocator = alloc
+
+    frames = make([]Image, len(imgs)) or_return
+    blank := make([]byte, len(imgs[0].data)) or_return
+    defer delete(blank)
+    
+    cur, next: []byte
+    last := blank
+    defer if cur != nil do delete(cur)
+
+    for img, pos in imgs {
+        if pos < len(imgs)-1 {
+            next = imgs[pos+1].data
+        } else {
+            next = blank
+        }
+
+        cur = slice.clone(img.data) or_return
+        if merge {
+            blend_bytes(last, cur, opacity, .Merge) or_return
+            blend_bytes(next, cur, opacity, .Merge) or_return
+        } else {
+            blend_bytes(last, cur, opacity, .Red_Tint) or_return
+            blend_bytes(next, cur, opacity, .Blue_Tint) or_return
+        }
+        
+
+        frames[pos] = img
+        frames[pos].data = cur
+        last = cur
+    }
+
+    return
 }
