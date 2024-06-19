@@ -1,9 +1,11 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
-//import "core:fmt"
+import "core:fmt"
 
 import ase ".."
+
+_::fmt
 
 cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Cel, err: runtime.Allocator_Error) {
     cels := make([dynamic]Cel, alloc) or_return
@@ -39,9 +41,9 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
                 cel.width = int(v.width)
                 cel.height = int(v.height)
                 cel.raw = v.pixel
-            case ase.Com_Tilemap_Cel:
             case ase.Linked_Cel:
                 cel.link = int(v)
+            case ase.Com_Tilemap_Cel:
             }
             append(&cels, cel) or_return
         }
@@ -148,7 +150,7 @@ get_frame :: proc(data: ase.Frame, alloc := context.allocator) -> (frame: Frame,
 }
 
 
-palette_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (palette: Palette, err: Palette_Errors) {
+palette_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (palette: Palette, err: Errors) {
     pal := make([dynamic]Color, alloc) or_return
     
     for frame in doc.frames {
@@ -158,7 +160,7 @@ palette_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (pal
     return pal[:], nil
 }
 
-palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: bool) -> (err: Palette_Errors) { 
+palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: bool) -> (err: Errors) { 
     for chunk in frame.chunks {
         #partial switch c in chunk {
         case ase.Palette_Chunk:
