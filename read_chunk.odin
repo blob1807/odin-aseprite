@@ -311,6 +311,7 @@ read_palette :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
 
 read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: User_Data_Chunk, err: Unmarshal_Error) {
     flags := transmute(UD_Flags)read_dword(r, rt) or_return
+    //fmt.println(flags)
 
     if .Text in flags {
         chunk.text = read_string(r, rt) or_return

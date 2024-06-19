@@ -1,8 +1,11 @@
 package aseprite_file_handler_utility
 
 import "core:slice"
+import "core:fmt"
 
 import ase ".."
+
+_::fmt
 
 
 get_metadata :: proc(header: ase.File_Header) -> (md: Metadata) {
