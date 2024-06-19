@@ -2,8 +2,9 @@ package aseprite_file_handler_utility
 
 import "core:log"
 import "core:math"
-// import "core:fmt"
+import "core:fmt"
 
+_::fmt
 
 slow_alpha :: proc(a: int, b: ..int) -> (res: int) {
     // α = α * A1 *..An / 255^n
@@ -18,6 +19,33 @@ slow_alpha :: proc(a: int, b: ..int) -> (res: int) {
     res /= d
     return
 }
+
+
+// Modifies current Image (`cur`)
+blend_images :: proc(last, cur: Image, opacity: int, mode: Blend_Mode) -> (err: Blend_Error) {
+    if len(last.data) != len(cur.data) {
+        return Blend_Error.Unequal_Image_Sizes
+    }
+    return blend_bytes(last.data, cur.data, opacity, mode)
+}
+
+// Modifies current Image (`cur`)
+blend_bytes :: proc(last, cur: []byte, opacity: int, mode: Blend_Mode) -> (err: Blend_Error) {
+    if len(last) != len(cur) {
+        return Blend_Error.Unequal_Image_Sizes
+    }
+
+    for pix in 0..<len(cur)/4 {
+        pos := pix * 4
+        l_pix, c_pix: [4]u8
+        copy(l_pix[:], last[pos:pos+4])
+        copy(c_pix[:], cur[pos:pos+4])
+        r_pix := blend(l_pix, c_pix, u16(opacity), mode) or_return
+        copy(cur[pos:pos+4], r_pix[:])
+    }
+    return
+}
+
 
 alpha :: mul
 mul :: proc{mul_u8, mul_u16, mul_int}
@@ -61,7 +89,6 @@ div :: proc(a, b: u16) -> u16 {
 
 blend :: proc(last, cur: Pixel, opacity: u16, mode: Blend_Mode) -> (res: Pixel, err: Blend_Error) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp
-    // FIXME: Blend mode is not working
     if last.a == 0 {
         res.rgb = cur.rgb
         res.a = byte(mul(u16(cur.a), opacity))
