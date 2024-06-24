@@ -8,24 +8,32 @@ import ase ".."
 
 // Errors
 Palette_Error :: enum { 
+    None,
     Color_Index_Out_of_Bounds, 
 }
 Blend_Error :: enum {
+    None,
     Invalid_Mode,
     Unequal_Image_Sizes, 
 }
 Image_Error :: enum {
+    None,
     Frame_Index_Out_Of_Bounds, 
     Indexed_BPP_No_Palette,
     Invalid_BPP,
 }
 Animation_Error :: enum {
+    None,
     Tag_Not_Found, 
+    Tag_Index_Out_Of_Bounds,
 }
 User_Data_Error :: enum {
+    None,
     No_Parent, 
 }
-Tileset_Error :: enum {}
+Tileset_Error :: enum {
+    None,
+}
 
 Errors :: union #shared_nil {
     runtime.Allocator_Error, 
