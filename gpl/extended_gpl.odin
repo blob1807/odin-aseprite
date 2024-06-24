@@ -19,8 +19,8 @@ GPL_Palette :: struct {
 }
 
 Color :: struct {
-    //using color: struct{r,g,b,a: int},
-    using color: [4]int,
+    //using color: struct{r,g,b,a: byte},
+    using color: [4]byte,
     name: string
 }
 
@@ -91,20 +91,20 @@ from_string :: proc(data: string, alloc := context.allocator) -> (parsed: GPL_Pa
             i := strings.index(line, " ")
             n, n_ok := strconv.parse_int(line[:i])
             if !n_ok { return {}, .Cant_Parse_Color }
-            color.r = n
+            color.r = byte(n)
 
             line = strings.trim_left_space(line[i:])
             i = strings.index(line, " ")
             n, n_ok = strconv.parse_int(line[:i])
             if !n_ok { return {}, .Cant_Parse_Color }
-            color.g = n
+            color.g =  byte(n)
 
             line = strings.trim_left_space(line[i:])
             i = strings.index(line, " ")
             if i == -1 {i = len(line)-1}
             n, n_ok = strconv.parse_int(line[:i])
             if !n_ok { return {}, .Cant_Parse_Color }
-            color.b = n
+            color.b =  byte(n)
 
             if parsed.rgba {
                 line = strings.trim_left_space(line[i:])
@@ -112,7 +112,7 @@ from_string :: proc(data: string, alloc := context.allocator) -> (parsed: GPL_Pa
                 if i == -1 {i = len(line)}
                 n, n_ok = strconv.parse_int(line[:i])
                 if !n_ok { return {}, .Cant_Parse_Color }
-                color.a = n
+                color.a =  byte(n)
             } else {
                 color.a = 255
             }
@@ -154,13 +154,13 @@ to_bytes :: proc(pal: GPL_Palette, allocator := context.allocator) -> (data: []b
     strings.write_string(&sb, "Channels: RGBA\n#\n")
 
     for color in pal.colors {
-        strings.write_int(&sb, color.r)
+        strings.write_int(&sb, int(color.r))
         strings.write_byte(&sb, ' ')
-        strings.write_int(&sb, color.g)
+        strings.write_int(&sb, int(color.g))
         strings.write_byte(&sb, ' ')
-        strings.write_int(&sb, color.b)
+        strings.write_int(&sb, int(color.b))
         strings.write_byte(&sb, ' ')
-        strings.write_int(&sb, color.a)
+        strings.write_int(&sb, int(color.a))
         strings.write_byte(&sb, ' ')
         strings.write_string(&sb, color.name)
         strings.write_byte(&sb, '\n')
