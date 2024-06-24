@@ -74,22 +74,36 @@ scale_image :: proc(img: []byte, md: Metadata, factor: int = 10) -> (res: []byte
 }
 
 
-destroy_frames :: proc(frames: []Frame) {
+destroy_frames :: proc(frames: []Frame, alloc := context.allocator) {
     for frame in frames {
-        delete(frame.cels)
+        delete(frame.cels, alloc)
     }
-    delete(frames)
+    delete(frames, alloc)
 }
 
-destroy_image :: proc(img: Image) {
-    delete(img.data)
+destroy_image :: proc(img: ^Image, alloc := context.allocator) {
+    delete(img.data, alloc)
 }
 
-destroy_animation :: proc(anim: Animation) {
+destroy_images :: proc(imgs: []Image, alloc := context.allocator) {
+    for img in imgs {
+        delete(img.data, alloc)
+    }
+    delete(imgs, alloc)
+}
+
+destroy_image_bytes :: proc(imgs: [][]byte, alloc := context.allocator) {
+    for img in imgs {
+        delete(img, alloc)
+    }
+    delete(imgs, alloc)
+}
+
+destroy_animation :: proc(anim: ^Animation, alloc := context.allocator) {
     for frame in anim.frames {
-        delete(frame)
+        delete(frame, alloc)
     }
-    delete(anim.frames)
+    delete(anim.frames, alloc)
 }
 
 destroy_frame :: delete_slice 
@@ -98,8 +112,9 @@ destroy_layers :: delete_slice
 destroy_palette :: delete_slice
 
 destroy :: proc {
-    delete_slice, 
     destroy_frames, 
     destroy_image, 
     destroy_animation, 
+    destroy_image_bytes, 
+    destroy_images,
 }
