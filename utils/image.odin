@@ -11,11 +11,15 @@ _::fmt
 // TODO: Should read in External Files when needed
 
 // Only Uses the first frame
-get_image_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator)  -> (img: Image, err: Errors) {
+get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allocator)  -> (img: Image, err: Errors) {
     context.allocator = alloc
     md := get_metadata(doc.header)
 
-    raw_frame := get_frame(doc.frames[0]) or_return
+    if frame >= len(doc.frames) {
+        return {}, Image_Error.Frame_Index_Out_Of_Bounds
+    }
+
+    raw_frame := get_frame(doc.frames[frame]) or_return
     defer delete(raw_frame.cels)
 
     layers := get_layers(doc) or_return
@@ -111,7 +115,9 @@ get_image_bytes :: proc {
 
 get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs: []Image, err: Errors) {
     context.allocator = alloc
-    images := make([]Image, len(doc.frames)) or_return
+    imgs = make([]Image, len(doc.frames)) or_return
+    defer if err != nil { destroy(imgs)}
+
     md := get_metadata(doc.header)
 
     layers := get_layers(doc) or_return
@@ -121,15 +127,17 @@ get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs:
     defer delete(palette)
 
     for frame, p in doc.frames {
-        images[p] = get_image(frame, layers, md, palette) or_return
+        imgs[p] = get_image(frame, layers, md, palette) or_return
     }
 
-    return images, nil
+    return 
 }
 
 get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs: [][]byte, err: Errors) {
     context.allocator = alloc
-    images := make([][]byte, len(doc.frames)) or_return
+    imgs = make([][]byte, len(doc.frames)) or_return
+    defer if err != nil { destroy(imgs)}
+    
     md := get_metadata(doc.header)
 
     layers := get_layers(doc) or_return
@@ -139,10 +147,10 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
     defer delete(palette)
 
     for frame, p in doc.frames {
-        images[p] = get_image_bytes(frame, layers, md, palette) or_return
+        imgs[p] = get_image_bytes(frame, layers, md, palette) or_return
     }
 
-    return images, nil
+    return
 }
 
 // Converts `utils.Image` to a `core:image.Image`
