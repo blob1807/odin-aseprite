@@ -20,7 +20,7 @@ get_animation_from_doc :: proc(doc: ^ase.Document, anim: ^Animation, use_tag := 
         delete(pal)
         delete(tags)
     }
-    return get_animation(fras, lays, md, anim, tags, pal, use_tag)
+    return get_animation_from_frames(fras, lays, md, anim, tags, pal, use_tag)
 }
 
 
@@ -31,17 +31,23 @@ get_animation_from_frames :: proc (
 ) -> (err: Errors) {
     context.allocator = alloc
 
-    s,f := 0, len(frames)-1
+    s,f := 0, len(frames)
     tag: Tag
+    
     if use_tag != "" {
+        fmt.println(tags, use_tag)
         for t in tags {
             if t.name == use_tag {
+                if len(frames) < t.to || len(frames) < t.from {
+                    return Animation_Error.Tag_Index_Out_Of_Bounds
+                }
                 tag = t
-                // TODO: Might need to sub one
                 s = t.from
-                f = t.to
+                f = t.to+1
+                break
             }
         }
+
         if tag == {} {
             return Animation_Error.Tag_Not_Found
         }
