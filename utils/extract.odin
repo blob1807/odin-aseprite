@@ -2,6 +2,7 @@ package aseprite_file_handler_utility
 
 import "base:runtime"
 import "core:fmt"
+import "core:math/fixed"
 
 import ase ".."
 
@@ -9,9 +10,22 @@ _::fmt
 
 cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Cel, err: runtime.Allocator_Error) {
     cels := make([dynamic]Cel, alloc) or_return
+    defer if err != nil { delete(cels) }
 
     for frame in doc.frames {
         f_cels := get_cels(frame, alloc) or_return
+        for &c in f_cels {
+            if c.raw == nil {
+                for l in cels[c.link:] {
+                    if l.layer == c.layer {
+                        c.height = l.height
+                        c.width = l.width
+                        c.raw = l.raw
+                    }
+                }
+            }
+        }
+
         append(&cels, ..f_cels) or_return
         delete(f_cels, alloc) or_return
     }
@@ -21,6 +35,7 @@ cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: [
 
 cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (res: []Cel, err: runtime.Allocator_Error) {
     cels := make([dynamic]Cel, alloc) or_return
+    defer if err != nil { delete(cels) }
 
     for chunk in frame.chunks {
         #partial switch c in chunk {
@@ -37,15 +52,28 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
                 cel.width = int(v.width)
                 cel.height = int(v.height)
                 cel.raw = v.pixel
+
             case ase.Raw_Cel:
                 cel.width = int(v.width)
                 cel.height = int(v.height)
                 cel.raw = v.pixel
+
             case ase.Linked_Cel:
                 cel.link = int(v)
+
             case ase.Com_Tilemap_Cel:
+            
             }
             append(&cels, cel) or_return
+
+        case ase.Cel_Extra_Chunk:
+            if ase.Cel_Extra_Flag.Precise in c.flags {
+                extra := Precise_Bounds {
+                    fixed.to_f64(c.x), fixed.to_f64(c.y), 
+                    fixed.to_f64(c.width), fixed.to_f64(c.height), 
+                }
+                cels[len(cels)-1].extra = extra
+            }
         }
     }
 
@@ -57,6 +85,7 @@ get_cels :: proc{cels_from_doc_frame, cels_from_doc}
 
 layers_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Layer, err: runtime.Allocator_Error) {
     layers := make([dynamic]Layer, alloc) or_return
+    defer if err != nil { delete(layers) }
 
     for frame in doc.frames {
         f_lays := get_layers(frame, .Layer_Opacity in doc.header.flags) or_return
@@ -69,6 +98,7 @@ layers_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res:
 
 layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, alloc := context.allocator) -> (res: []Layer, err: runtime.Allocator_Error) {
     layers := make([dynamic]Layer, alloc) or_return
+    defer if err != nil { delete(layers) }
 
     for chunk in frame.chunks {
         #partial switch v in chunk {
@@ -92,6 +122,7 @@ get_layers :: proc{layers_from_doc_frame, layers_from_doc}
 
 tags_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Tag, err: runtime.Allocator_Error) {
     tags := make([dynamic]Tag, alloc)
+    defer if err != nil { delete(tags) }
 
     for frame in doc.frames {
         f_tags := get_tags(frame, alloc) or_return
@@ -104,6 +135,7 @@ tags_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: [
 
 tags_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (res: []Tag, err: runtime.Allocator_Error) {
     tags := make([dynamic]Tag, alloc) or_return
+    defer if err != nil { delete(tags) }
 
     for chunk in frame.chunks {
         #partial switch v in chunk {
@@ -132,6 +164,8 @@ frames_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (fram
 
 frames_from_doc_frames :: proc(data: []ase.Frame, alloc := context.allocator) -> (frames: []Frame, err: runtime.Allocator_Error) {
     res := make([dynamic]Frame, alloc) or_return
+    defer if err != nil { delete(res) }
+
     for frame in data {
         append(&res, get_frame(frame) or_return) or_return
     }
@@ -152,6 +186,7 @@ get_frame :: proc(data: ase.Frame, alloc := context.allocator) -> (frame: Frame,
 
 palette_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (palette: Palette, err: Errors) {
     pal := make([dynamic]Color, alloc) or_return
+    defer if err != nil { delete(pal) }
     
     for frame in doc.frames {
         get_palette(frame, &pal, has_new_palette(doc)) or_return
@@ -190,7 +225,7 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
 
                 for i in first..<last {
                     if i >= len(pal) { 
-                        /* error plaese */
+                        return Palette_Error.Color_Index_Out_of_Bounds
                     }
                     pal[i].color.rgb = p.colors[i]
                     pal[i].color.a = 255
@@ -208,7 +243,7 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
 
                 for i in first..<last {
                     if i >= len(pal) { 
-                        /* error plaese */
+                        return Palette_Error.Color_Index_Out_of_Bounds
                     }
                     pal[i].color.rgb = p.colors[i]
                     pal[i].color.a = 255
@@ -233,9 +268,22 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
 
     md = get_metadata(doc.header)
     lays := make([dynamic]Layer) or_return
+    defer if err != nil { delete(lays) }
+
     fras := make([dynamic]Frame) or_return
+    defer if err != nil { delete(fras) }
+
     pal := make([dynamic]Color) or_return
+    defer if err != nil { delete(pal) }
+
     dyn_tags := make([dynamic]Tag) or_return
+    defer if err != nil { delete(dyn_tags) }
+
+    all_cels := make([dynamic]Cel) or_return
+    defer delete(all_cels)
+
+    ud_parent: User_Data_Parent
+    ud_index: int
 
     for doc_frame in doc.frames {
         frame: Frame
@@ -258,15 +306,37 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     cel.width = int(v.width)
                     cel.height = int(v.height)
                     cel.raw = v.pixel
+
                 case ase.Raw_Cel:
                     cel.width = int(v.width)
                     cel.height = int(v.height)
                     cel.raw = v.pixel
+
+                case ase.Linked_Cel: 
+                    i := int(v)
+                    for l in all_cels[i:] {
+                        if l.layer == cel.layer {
+                            cel.height = l.height
+                            cel.width = l.width
+                            cel.raw = l.raw
+                            cel.link = i
+                        }
+                    }
+                
                 case ase.Com_Tilemap_Cel:
-                case ase.Linked_Cel:
-                    cel.link = int(v)
                 }
                 append(&cels, cel) or_return
+                append(&all_cels, cel) or_return
+            
+            case ase.Cel_Extra_Chunk:
+                if ase.Cel_Extra_Flag.Precise in c.flags {
+                    extra := Precise_Bounds {
+                        fixed.to_f64(c.x), fixed.to_f64(c.y), 
+                        fixed.to_f64(c.width), fixed.to_f64(c.height), 
+                    }
+                    cels[len(cels)-1].extra = extra
+                    all_cels[len(all_cels)-1].extra = extra
+                }
             
             case ase.Layer_Chunk:
                 lay := Layer {
@@ -284,10 +354,11 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                         int(t.from_frame), 
                         int(t.to_frame), 
                         t.loop_direction, 
-                        t.name, 
+                        t.name
                     }
                     append(&dyn_tags, tag) or_return
                 }
+                ud_parent = .Tag
             
             case ase.Palette_Chunk:
                 if int(c.last_index) >= len(pal) {
@@ -295,15 +366,16 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                 }
                 for i in c.first_index..<c.last_index {
                     if int(i) >= len(pal) { 
-                        /* error plaese */
+                        err = Palette_Error.Color_Index_Out_of_Bounds
+                        return 
                     }
                     
                     if n, ok := c.entries[i].name.(string); ok {
                         pal[i].name = n
                     }
                     pal[i].color = c.entries[i].color
-    
                 }
+                ud_parent = .Sprite
     
             case ase.Old_Palette_256_Chunk:
                 if has_new { continue }
@@ -316,7 +388,8 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
     
                     for i in first..<last {
                         if i >= len(pal) { 
-                            /* error plaese */
+                            err = Palette_Error.Color_Index_Out_of_Bounds
+                            return
                         }
                         pal[i].color.rgb = p.colors[i]
                         pal[i].color.a = 255
@@ -334,12 +407,25 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
     
                     for i in first..<last {
                         if i >= len(pal) { 
-                            /* error plaese */
+                            err = Palette_Error.Color_Index_Out_of_Bounds
+                            return
                         }
                         pal[i].color.rgb = p.colors[i]
                         pal[i].color.a = 255
                     }
                 }
+
+            case ase.User_Data_Chunk:
+                switch ud_parent {
+                case .Sprite:
+                case .Tag:
+                case .Tileset:
+                case .None: fallthrough
+                case:
+                    err = User_Data_Error.No_Parent
+                    return
+                }
+                ud_index += 1
             }
         }
 
@@ -347,5 +433,5 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
         append(&fras, frame) or_return
     }
 
-    return md, lays[:], fras[:], pal[:], tags[:], nil
+    return md, lays[:], fras[:], pal[:], dyn_tags[:], nil
 }
