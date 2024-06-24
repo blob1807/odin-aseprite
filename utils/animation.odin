@@ -57,7 +57,7 @@ get_animation_from_frames :: proc (
 
     pos: int
 
-    for frame, i in frames[s:f] {
+    for frame in frames[s:f] {
         img := get_image_bytes_from_frame(frame, layers, md, pal) or_return
         defer delete(img)
 
