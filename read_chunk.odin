@@ -150,9 +150,10 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
 
         buf: bytes.Buffer
         defer bytes.buffer_destroy(&buf)
-        data := make([]byte, com_size) or_return
 
+        data := make([]byte, com_size) or_return
         defer delete(data)
+
         read_bytes(r, data[:], rt) or_return
 
         exp_size := color_depth / 8 * int(cel.height) * int(cel.width)
@@ -316,6 +317,7 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
     if .Text in flags {
         chunk.text = read_string(r, rt) or_return
     }
+
     if .Color in flags {
         // TODO: Maybe read into an array???
         colour: Color_RGBA
@@ -325,6 +327,7 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
         colour[3] = read_byte(r, rt) or_return 
         chunk.color = colour
     }
+    
     if .Properties in flags {
         //map_size := read_dword(r, rt) or_return
         read_skip(r, 4, rt) or_return
