@@ -6,6 +6,8 @@ import "core:fmt"
 
 _::fmt
 
+
+@(private)
 slow_alpha :: proc(a: int, b: ..int) -> (res: int) {
     // α = α * A1 *..An / 255^n
     if len(b) == 0 { return a }
@@ -50,27 +52,24 @@ blend_bytes :: proc(last, cur: []byte, opacity: int, mode: Blend_Mode) -> (err: 
 alpha :: mul
 mul :: proc{mul_u8, mul_u16, mul_int}
 mul_u16 :: proc(a, b: u16) -> u16 {
-    // License to be Found in .\Licenses
+    // License `.\3rd party licenses\libpixman license`
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
-    //return a * b / 255
 
     t := a * b + 128
     return ((t >> 8 ) + t ) >> 8
 }
 
 mul_int :: proc(a, b: int) -> u16 {
-    // License to be Found in .\Licenses
+    // License `.\3rd party licenses\libpixman license`
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
-    //return a * b / 255
 
     t := a * b + 128
     return u16(((t >> 8 ) + t ) >> 8)
 }
 
 mul_u8 :: proc(a, b: byte) -> u16 {
-    // License to be Found in .\Licenses
+    // License `.\3rd party licenses\libpixman license`
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L67
-    //return a * b / 255
 
     t := a * b + 128
     return u16(((t >> 8 ) + t ) >> 8)
@@ -78,14 +77,14 @@ mul_u8 :: proc(a, b: byte) -> u16 {
 
 
 div :: proc(a, b: u16) -> u16 {
-    // License to be Found in .\Licenses
+    // License `.\3rd party licenses\libpixman license`
     // https://github.com/libpixman/pixman/blob/master/pixman/pixman-combine32.h#L70
     return a * 255 + (b / 2) / b
 }
 
 
 /* ---------------------------------------------------------------------------------- */
-// Everything below's License to be Found in .\Licenses
+// Everything below's License `.\3rd party licenses\aseprite license`
 
 blend :: proc(last, cur: Pixel, opacity: u16, mode: Blend_Mode) -> (res: Pixel, err: Blend_Error) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp
