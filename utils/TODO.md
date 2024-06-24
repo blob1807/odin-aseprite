@@ -7,16 +7,16 @@ Jarvis make automating things easier please.
 ### Automation things:
 - [x] Frames
 - [x] Layers
-- [ ] Cels
-    - [ ] Use Precise Bounds from Cel Extra when set
+- [x] Cels
+    - [x] Use Precise Bounds from Cel Extra when set
+    - [x] Linked Cels
 - [x] Palettes new & old
 - [x] Metadata
-- [ ] Tags
-    - [ ] Use User Data as well
-- [ ] Slices
+- [x] Tags
+- [ ] Use User Data
 - [ ] Precomputed Images 
 - [ ] Precomputed Animations 
-- [ ] Precomputed Tileset
+- [ ] Precomputed Tileset 
 
 
 ### Images:
@@ -24,14 +24,14 @@ Jarvis make automating things easier please.
 - [x] Covert colour spaces to sRGB
 - [x] Colour Palette Indexing
 - [x] Change Alpha based on Cel & Layer Opacity
-- [ ] Use Doc.Slices to make image
 - [ ] Linear Image scaling
 - [X] See if it's worth using a Fast Alpha algo. Used it.
 - [ ] Blend Modes
-    - [x] Use u16s. Ints my still be needed.
+    - [x] Use u16s. Ints may still be needed.
     - [x] Find out how Aseprite does them
     - [ ] Add Aseprite's license
     - [ ] Maybe refactor to use Vecs in helpers
+- [ ] Test Blends
     - [x] Normal
     - [ ] Multiply
     - [ ] Screen
@@ -62,9 +62,9 @@ Jarvis make automating things easier please.
 ### Animations:
 - [x] Basic Animation Creation
 - [x] Onion Skinning
-- [ ] Tags
-    - [ ] Only selected Tag
-    - [ ] Use Tag durection
+- [x] Tags
+    - [x] Only selected Tag
+    - [x] Use Tag durection
 
 
 ### Tilesets:
@@ -76,6 +76,7 @@ Jarvis make automating things easier please.
     - [ ] Doc
     - [x] Image
 - [x] Images to `core:image`
+- [ ] Custom formatter (fmt.set_user_formatters)
 
 A use case very cool.
 https://gist.github.com/karl-zylinski/ddc98344cb45468649df8e52d9247dff
