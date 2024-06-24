@@ -15,7 +15,7 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
     context.allocator = alloc
     md := get_metadata(doc.header)
 
-    if frame >= len(doc.frames) {
+    if len(doc.frames) <= frame {
         return {}, Image_Error.Frame_Index_Out_Of_Bounds
     }
 
@@ -31,13 +31,21 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
     return get_image(raw_frame, layers, md, palette, alloc)
 }
 
-get_image_from_doc_frame :: proc(frame: ase.Frame, layers: []Layer, md: Metadata,  pal: Palette = nil, alloc := context.allocator)  -> (img: Image, err: Errors) {
+get_image_from_doc_frame :: proc(
+    frame: ase.Frame, layers: []Layer, md: Metadata,  
+    pal: Palette = nil, alloc := context.allocator
+)  -> (img: Image, err: Errors) {
+
     raw_frame := get_frame(frame, alloc) or_return
     defer delete(raw_frame.cels, alloc)
     return get_image(raw_frame, layers, md, pal)
 }
 
-get_image_from_cel :: proc(cel: Cel, layer: Layer, md: Metadata, pal: Palette = nil, alloc := context.allocator) -> (img: Image, err: Errors) {
+get_image_from_cel :: proc(
+    cel: Cel, layer: Layer, md: Metadata, 
+    pal: Palette = nil, alloc := context.allocator
+) -> (img: Image, err: Errors) {
+
     img.width = cel.width
     img.height = cel.height
     img.bpp = .RGBA
@@ -46,7 +54,11 @@ get_image_from_cel :: proc(cel: Cel, layer: Layer, md: Metadata, pal: Palette = 
     return
 }
 
-get_image_from_frame :: proc(frame: Frame, layers: []Layer, md: Metadata, pal: Palette = nil, alloc := context.allocator) -> (img: Image, err: Errors) {
+get_image_from_frame :: proc(
+    frame: Frame, layers: []Layer, md: Metadata, 
+    pal: Palette = nil, alloc := context.allocator
+) -> (img: Image, err: Errors) {
+
     img.width = md.width
     img.height = md.height
     img.data = get_image_bytes(frame, layers, md, pal, alloc) or_return
@@ -78,18 +90,30 @@ get_image_bytes_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator)
     return get_image_bytes(raw_frame, layers, md, palette)
 }
 
-get_image_bytes_from_doc_frame :: proc(frame: ase.Frame, layers: []Layer, md: Metadata,  pal: Palette = nil, alloc := context.allocator)  -> (img: []byte, err: Errors) {
+get_image_bytes_from_doc_frame :: proc(
+    frame: ase.Frame, layers: []Layer, md: Metadata, 
+    pal: Palette = nil, alloc := context.allocator
+)  -> (img: []byte, err: Errors) {
+
     raw_frame := get_frame(frame) or_return
     return get_image_bytes(raw_frame, layers, md, pal)
 }
 
-get_image_bytes_from_cel :: proc(cel: Cel, layer: Layer, md: Metadata,  pal: Palette = nil, alloc := context.allocator) -> (img: []byte, err: Errors) {
+get_image_bytes_from_cel :: proc(
+    cel: Cel, layer: Layer, md: Metadata, 
+    pal: Palette = nil, alloc := context.allocator
+) -> (img: []byte, err: Errors) {
+
     img = make([]byte, cel.width * cel.height * 4, alloc) or_return
     write_cel(img[:], cel, layer, md, pal) or_return
     return
 }
 
-get_image_bytes_from_frame :: proc(frame: Frame, layers: []Layer, md: Metadata, pal: Palette = nil, alloc := context.allocator) -> (img: []byte, err: Errors) {
+get_image_bytes_from_frame :: proc(
+    frame: Frame, layers: []Layer, md: Metadata, 
+    pal: Palette = nil, alloc := context.allocator
+) -> (img: []byte, err: Errors) {
+
     img = make([]byte, md.width * md.height * 4, alloc) or_return
 
     if !slice.is_sorted_by(frame.cels[:], cel_less) {
