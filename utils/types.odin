@@ -8,17 +8,23 @@ import ase ".."
 
 // Errors
 Palette_Error :: enum { 
-    Color_Index_Out_of_Bounds 
+    Color_Index_Out_of_Bounds, 
 }
 Blend_Error :: enum {
     Invalid_Mode,
     Unequal_Image_Sizes, 
 }
 Image_Error :: enum {
+    Frame_Index_Out_Of_Bounds, 
     Indexed_BPP_No_Palette,
     Invalid_BPP,
 }
-Animation_Error :: enum {}
+Animation_Error :: enum {
+    Tag_Not_Found, 
+}
+User_Data_Error :: enum {
+    No_Parent, 
+}
 Tileset_Error :: enum {}
 
 Errors :: union #shared_nil {
@@ -28,6 +34,7 @@ Errors :: union #shared_nil {
     Tileset_Error, 
     Blend_Error, 
     Palette_Error, 
+    User_Data_Error, 
 }
 
 // Raw Types
@@ -38,7 +45,7 @@ Pixels :: []byte
 Vec2 :: [2]int
 
 Precise_Bounds :: struct {
-    // Well they're fixpoint but I anit dealing with that shit
+    // TODO: Well they're fixpoint but I anit dealing with that shit
     x, y, width, height: f64
 }
 
@@ -141,7 +148,7 @@ User_Data :: struct {
 
 @(private)
 User_Data_Parent :: enum {
-    Tag, Tileset, Sprite
+    None, Sprite, Tag, Tileset
 }
 
 Blend_Mode :: enum {
