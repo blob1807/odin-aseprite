@@ -99,11 +99,11 @@ BYTE_N :: [dynamic]BYTE
 STRING :: string
 POINT :: struct {
     x: LONG,
-    y: LONG
+    y: LONG,
 }
 SIZE :: struct {
     w: LONG,
-    h: LONG
+    h: LONG,
 }
 RECT :: struct {
     origin: POINT,
@@ -219,7 +219,7 @@ Chunk_Set :: bit_set[Chunk_Types_Set]
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors: BYTE, // 0 == 256
-    colors: []Color_RGB
+    colors: []Color_RGB,
 }
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
 Old_Palette_64_Chunk :: distinct []Old_Palette_Packet
@@ -278,14 +278,14 @@ Layer_Chunk :: struct {
 Raw_Cel :: struct{
     width: WORD, 
     height: WORD, 
-    pixel: []PIXEL
+    pixel: []PIXEL,
 }
 Linked_Cel :: distinct WORD
 // raw cel ZLIB compressed
 Com_Image_Cel :: struct{
     width: WORD, 
     height: WORD, 
-    pixel: []PIXEL
+    pixel: []PIXEL,
 }
 Tile_ID :: enum(DWORD) { byte=0xfffffff1, word=0xffff1fff, dword=0x1fffffff }
 Com_Tilemap_Cel :: struct{
@@ -404,7 +404,7 @@ UD_Vec :: []Property_Value
 Property_Type :: enum(WORD) {
     Null, Bool, I8, U8, I16, U16, I32, U32, I64, U64,
     Fixed, F32, F64, String, Point, Size, Rect, 
-    Vector, Properties, UUID 
+    Vector, Properties, UUID, 
 }
 Property_Value :: union {
     bool, i8, BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
@@ -431,7 +431,7 @@ Slice_Center :: struct{
     x: LONG,
     y: LONG, 
     width: DWORD, 
-    height: DWORD
+    height: DWORD,
 }
 Slice_Pivot :: distinct POINT
 Slice_Key :: struct{
@@ -451,7 +451,7 @@ Slice_Flags :: bit_set[Slice_Flag; DWORD]
 Slice_Chunk :: struct {
     flags: Slice_Flags,
     name: string,
-    keys: []Slice_Key
+    keys: []Slice_Key,
 }
 
 
@@ -465,7 +465,7 @@ Tileset_Flag :: enum(DWORD) {
 }
 Tileset_Flags :: bit_set[Tileset_Flag; DWORD]
 Tileset_External :: struct{
-    file_id, tileset_id: DWORD
+    file_id, tileset_id: DWORD,
 }
 Tileset_Compressed :: distinct []PIXEL
 Tileset_Chunk :: struct {
