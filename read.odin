@@ -4,6 +4,8 @@ import "core:io"
 import "core:log"
 import "core:fmt"
 import "core:encoding/endian"
+//import "core:math/fixed"
+
 _ :: fmt
 _ :: log
 
@@ -89,6 +91,19 @@ read_fixed :: proc(r: io.Reader, n: ^int) -> (data: FIXED, err: Read_Error) {
         log.error("Faild to read fixed", s, n^)
         return data, .Wrong_Read_Size
     }
+
+    /*vi, ok_i := endian.get_i16(buf[:2], .Little)
+    if !ok_i {
+        err = .Unable_To_Decode_Data
+        return
+    }
+
+    vf, ok_f := endian.get_i16(buf[2:], .Little)
+    if !ok_f {
+        err = .Unable_To_Decode_Data
+        return
+    }
+    fixed.init_from_parts(&data, i32(vi), i32(vf))*/
 
     v, ok := endian.get_i32(buf[:], .Little)
     if !ok {

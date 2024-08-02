@@ -15,9 +15,9 @@ from_old_256_to_gpl :: proc(data: Old_Palette_256_Chunk, pal: ^gpl.GPL_Palette) 
     for pak in data.packets {
         for c in pak.colors {
             color: gpl.Color
-            color.r = int(c[0])
-            color.g = int(c[1])
-            color.b = int(c[2])
+            color.r = c[0]
+            color.g = c[1]
+            color.b = c[2]
             color.a = 255
             append(&pal.colors, color) or_return
         }
@@ -36,9 +36,9 @@ from_old_64_to_gpl :: proc(data: Old_Palette_64_Chunk, pal: ^gpl.GPL_Palette) ->
     for pak in data.packets {
         for c in pak.colors {
             color: gpl.Color
-            color.r = int(c[0])
-            color.g = int(c[1])
-            color.b = int(c[2])
+            color.r = c[0]
+            color.g = c[1]
+            color.b = c[2]
             color.a = 255
             append(&pal.colors, color)  or_return
         }
@@ -51,10 +51,10 @@ from_palette_to_gpl:: proc(data: Palette_Chunk, pal: ^gpl.GPL_Palette) -> (err: 
 
     for c in data.entries {
         color: gpl.Color
-        color.r = int(c.red)
-        color.g = int(c.green)
-        color.b = int(c.blue)
-        color.a = int(c.alpha)
+        color.r = c.red
+        color.g = c.green
+        color.b = c.blue
+        color.a = c.alpha
         append(&pal.colors, color)  or_return
     }
 
