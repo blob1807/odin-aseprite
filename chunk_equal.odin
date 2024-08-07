@@ -1,12 +1,11 @@
 //+private
 package aseprite_file_handler
 
-import "core:fmt"
-import "core:log"
 import "core:slice"
 import "core:reflect"
-_::log
-_::fmt
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 _old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if len(x) != len(y) {
@@ -499,7 +498,7 @@ _ud_prop_val_eq :: proc(x,y: Property_Value) -> (a: any, b: any, c: typeid, eq: 
         if !ok {
             return typeid_of(type_of(xv)), reflect.union_variant_typeid(y), typeid_of(Property_Value), false
         }
-        if !slice.equal(xv[:], yv[:]) {
+        if xv == yv {
             return xv, yv, typeid_of(UUID), false
         }
 
