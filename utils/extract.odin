@@ -1,12 +1,15 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
-import "core:fmt"
 import "core:math/fixed"
+import "core:mem"
+import "core:reflect"
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 import ase ".."
 
-_::fmt
 
 cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Cel, err: runtime.Allocator_Error) {
     cels := make([dynamic]Cel, alloc) or_return
@@ -15,7 +18,7 @@ cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: [
     for frame in doc.frames {
         f_cels := get_cels(frame, alloc) or_return
         for &c in f_cels {
-            if c.raw == nil {
+            if c.raw == nil && c.tilemap.tiles == nil {
                 for l in cels[c.link:] {
                     if l.layer == c.layer {
                         c.height = l.height
@@ -62,6 +65,23 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
                 cel.link = int(v)
 
             case ase.Com_Tilemap_Cel:
+                
+                cel.tilemap = Tilemap {
+                    width = int(v.width), 
+                    height = int(v.height), 
+                    x_flip = uint(v.bitmask_x), // Bitmask for X flip
+                    y_flip = uint(v.bitmask_y), // Bitmask for Y flip
+                    diag_flip = uint(v.bitmask_diagonal), // Bitmask for diagonal flip (swap X/Y axis)
+                    tiles = make([]int, len(v.tiles), alloc) or_return, 
+                }
+
+                for &n, p in cel.tilemap.tiles {
+                    switch t in v.tiles[p] {
+                    case ase.BYTE:  n = int(t)
+                    case ase.WORD:  n = int(t)
+                    case ase.DWORD: n = int(t)
+                    }
+                }
             
             }
             append(&cels, cel) or_return
@@ -108,7 +128,8 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
                 opacity = int(v.opacity) if layer_valid_opacity else 255,
                 index = len(layers),
                 blend_mode = Blend_Mode(v.blend_mode),
-                visiable = .Visiable in v.flags
+                visiable = .Visiable in v.flags,
+                tileset = int(v.tileset_index),
             }
             append(&layers, lay) or_return
         }
@@ -258,26 +279,63 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
 get_palette :: proc{palette_from_doc, palette_from_doc_frame}
 
 
+tileset_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (ts: []Tileset, err: runtime.Allocator_Error) {
+    buf := make([dynamic]Tileset, alloc) or_return
+    for frame in doc.frames {
+        err = get_tileset(frame, &buf, alloc)
+        if err != nil {
+            return buf[:], err
+        }
+    }
+    if len(buf) > 0 {
+        log.warn("Tilemaps & Tilesets currently only work for RGBA colour space.")
+    }
+    return buf[:], nil
+}
+
+tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc := context.allocator) -> (err: runtime.Allocator_Error) {
+    for chunk in frame.chunks {
+        #partial switch v in chunk {
+        case ase.Tileset_Chunk:
+            ts: Tileset = {
+                int(v.id), 
+                int(v.width), 
+                int(v.height), 
+                int(v.num_of_tiles),
+                int(v.base_index), 
+                v.name, 
+                nil, 
+            }
+
+            if t, ok := v.compressed.?; ok {
+                ts.tiles = mem.slice_data_cast(Pixels, t)
+            }
+
+            append(buf, ts) or_return
+
+        case ase.User_Data_Chunk:
+        }
+    }
+    
+    return
+}
+
+get_tileset :: proc{tileset_from_doc, tileset_from_doc_frame}
+
+
 get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
-    md: Metadata, layers: []Layer, frames: []Frame, 
-    palette: []Color, tags: []Tag, err: Errors
+    info: Info err: Errors
 ) {
     context.allocator = alloc
     layer_valid_opacity := .Layer_Opacity in doc.header.flags
     has_new := has_new_palette(doc)
 
-    md = get_metadata(doc.header)
-    lays := make([dynamic]Layer) or_return
-    defer if err != nil { delete(lays) }
-
-    fras := make([dynamic]Frame) or_return
-    defer if err != nil { delete(fras) }
-
-    pal := make([dynamic]Color) or_return
-    defer if err != nil { delete(pal) }
-
-    dyn_tags := make([dynamic]Tag) or_return
-    defer if err != nil { delete(dyn_tags) }
+    frames := make([dynamic]Frame) or_return
+    lays   := make([dynamic]Layer) or_return
+    tags   := make([dynamic]Tag) or_return
+    all_ts := make([dynamic]Tileset) or_return
+    pal    := make([dynamic]Color) or_return
+    md     := get_metadata(doc.header)
 
     all_cels := make([dynamic]Cel) or_return
     defer delete(all_cels)
@@ -344,7 +402,8 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     opacity = int(c.opacity) if layer_valid_opacity else 255,
                     index = len(lays),
                     blend_mode = Blend_Mode(c.blend_mode),
-                    visiable = .Visiable in c.flags
+                    visiable = .Visiable in c.flags,
+                    tileset = int(c.tileset_index),
                 }
                 append(&lays, lay) or_return
 
@@ -356,7 +415,7 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                         t.loop_direction, 
                         t.name
                     }
-                    append(&dyn_tags, tag) or_return
+                    append(&tags, tag) or_return
                 }
                 ud_parent = .Tag
             
@@ -426,12 +485,26 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     return
                 }
                 ud_index += 1
+
+            case ase.Tileset_Chunk:
+                ts: Tileset
+                ts.id = int(c.id)
+                ts.width = int(c.width)
+                ts.height = int(c.height)
+                ts.base = int(c.base_index)
+                ts.name = c.name
+
+                if t, ok := c.compressed.?; ok {
+                    ts.tiles = mem.slice_data_cast(Pixels, t)
+                }
+
+                append(&all_ts, ts) or_return
             }
         }
 
         frame.cels = cels[:]
-        append(&fras, frame) or_return
+        append(&frames, frame) or_return
     }
 
-    return md, lays[:], fras[:], pal[:], dyn_tags[:], nil
+    return {frames[:], lays[:], tags[:], all_ts[:], nil, pal[:], md, alloc}, nil
 }
