@@ -1,44 +1,37 @@
 package aseprite_file_handler_utility
 
+
 import "core:time"
 import "core:slice"
-import "core:fmt"
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 import ase ".."
-
-_::fmt
 
 // TODO: ALL Animation procs should respect Tags
 // TODO: Allow for the spesicaction of what tag to use
 
 get_animation_from_doc :: proc(doc: ^ase.Document, anim: ^Animation, use_tag := "", alloc := context.allocator) -> (err: Errors) {
-    context.allocator = alloc
-    md, lays, fras, pal, tags := get_all(doc) or_return
-    defer {
-        destroy_frames(fras)
-        delete(lays)
-        delete(pal)
-        delete(tags)
-    }
-    return get_animation_from_frames(fras, lays, md, anim, tags, pal, use_tag)
+    info := get_all(doc, alloc) or_return
+    defer destroy(&info)
+    return get_animation_from_frames(info, anim, use_tag)
 }
 
 
 get_animation_from_frames :: proc (
-    frames: []Frame, layers: []Layer, md: Metadata, 
-    anim: ^Animation, tags: []Tag = nil, pal: Palette = nil, 
-    use_tag := "", alloc := context.allocator
+    info: Info, anim: ^Animation, use_tag := "",
 ) -> (err: Errors) {
-    context.allocator = alloc
+    context.allocator = info.allocator
 
-    s,f := 0, len(frames)
+    s,f := 0, len(info.frames)
     tag: Tag
     
     if use_tag != "" {
-        fmt.println(tags, use_tag)
-        for t in tags {
+        fmt.println(info.tags, use_tag)
+        for t in info.tags {
             if t.name == use_tag {
-                if len(frames) < t.to || len(frames) < t.from {
+                if len(info.frames) < t.to || len(info.frames) < t.from {
                     return Animation_Error.Tag_Index_Out_Of_Bounds
                 }
                 tag = t
@@ -57,14 +50,14 @@ get_animation_from_frames :: proc (
         anim.fps = 30
     }
 
-    anim.md = md
+    anim.md = info.md
     anim_frames := make([dynamic][]byte) or_return
     defer if err != nil { delete(anim_frames) }
 
     pos: int
 
-    for frame in frames[s:f] {
-        img := get_image_bytes_from_frame(frame, layers, md, pal) or_return
+    for frame in info.frames[s:f] {
+        img := get_image_bytes_from_frame(frame, info) or_return
         defer delete(img)
 
         to_add := f64(frame.duration) * f64(anim.fps) / 1000 
@@ -80,8 +73,10 @@ get_animation_from_frames :: proc (
 
     if tag.direction == .Ping_Pong || tag.direction == .Ping_Pong_Reverse {
         rev := slice.clone(anim_frames[:])
+        defer delete(rev)
+        
         slice.reverse(rev)
-        append_elems(&anim_frames, ..rev)
+        append_elems(&anim_frames, ..rev) or_return
     }
 
     anim.frames = anim_frames[:]
