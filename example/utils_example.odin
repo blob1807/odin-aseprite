@@ -162,3 +162,4 @@ upscale_all_images :: proc() {
     imgs, ierr := utils.get_all_images(&doc)
     big_imgs, bierr := utils.upscale_all(imgs) // default is 10
 }
+
