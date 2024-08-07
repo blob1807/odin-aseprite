@@ -1,15 +1,15 @@
 package aseprite_file_handler_utility
 
-import "core:log"
 import "core:math"
-import "core:fmt"
+import "core:simd"
 
-_::fmt
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 
 @(private)
 slow_alpha :: proc(a: int, b: ..int) -> (res: int) {
-    // α = α * A1 *..An / 255^n
+    // α = α1 * α2 *..αn / 255^(n-1)
     if len(b) == 0 { return a }
     if len(b) == 1 { return a * b[0] / 255}
     res = a
@@ -154,10 +154,13 @@ blend_normal :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     cur := cur
     cur.a = alpha(cur.a, opacity)
 
+    // res.a = cur.a + last.a - alpha(last.a, cur.a)
+    // res.r = last.r + (cur.r - last.r) * cur.a / res.a
+    // res.g = last.g + (cur.g - last.g) * cur.a / res.a
+    // res.b = last.b + (cur.b - last.b) * cur.a / res.a
+
     res.a = cur.a + last.a - alpha(last.a, cur.a)
-    res.r = last.r + (cur.r - last.r) * cur.a / res.a
-    res.g = last.g + (cur.g - last.g) * cur.a / res.a
-    res.b = last.b + (cur.b - last.b) * cur.a / res.a
+    res.rgb = last.rgb + (cur.rgb - last.rgb) * cur.a / res.a
     return res
 }
 
@@ -343,6 +346,7 @@ blend_exclusion :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
     ex :: proc(b, s: u16) -> u16 {
         return b + s - 2 * mul(b, s)
     }
+    
     res.r = ex(last.r, cur.r)
     res.b = ex(last.b, cur.b)
     res.g = ex(last.g, cur.g)
@@ -356,69 +360,69 @@ blend_exclusion :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
 // HSV Blenders
 
 blend_hue :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
-    r := f64(last.r) / 255
-    g := f64(last.g) / 255
-    b := f64(last.b) / 255
+    pix := [3]f64{f64(last.r), f64(last.g), f64(last.b)}
+    pix /= 255
 
-    s := hsv_sat(r, g, b)
-    l := hsv_luma(r, g, b)
+    //s := hsv_sat(pix)
+    l := hsv_luma(pix)
 
-    r = f64(cur.r) / 255
-    g = f64(cur.g) / 255
-    b = f64(cur.b) / 255
+    pix = {f64(cur.r), f64(cur.g), f64(cur.b)}
+    pix /= 255
 
-    r, g, b = set_sat(r, g, b, s)
-    r, g, b = set_luma(r, g, b, l)
+    // pix = set_luma(set_sat(pix, s), l)
+    pix = set_luma(pix, l)
 
-    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
+    pix *= 255
+    res = {u16(pix.r), u16(pix.g), u16(pix.b), cur.a}
+
     return blend_normal(last, res, opacity)
 }
 
 blend_saturation :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
-    r := f64(cur.r) / 255
-    g := f64(cur.g) / 255
-    b := f64(cur.b) / 255
-    s := hsv_sat(r, g, b)
+    pix := [3]f64{f64(cur.r), f64(cur.g), f64(cur.b)}
+    pix /= 255
+    // s := hsv_sat(pix)
 
-    r = f64(last.r) / 255
-    g = f64(last.g) / 255
-    b = f64(last.b) / 255
-    l := hsv_luma(r, g, b)
+    pix = {f64(last.r), f64(last.g), f64(last.b)}
+    pix /= 255
+    l := hsv_luma(pix)
 
-    r, g, b = set_sat(r, g, b, s)
-    r, g, b = set_luma(r, g, b, l)
+    // pix = set_luma(set_sat(pix, s), l)
+    pix = set_luma(pix, l)
 
-    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
+    pix *= 255
+    res = {u16(pix.r), u16(pix.g), u16(pix.b), cur.a}
+
     return blend_normal(last, res, opacity)
 }
 
 blend_color :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
-    r := f64(last.r) / 255
-    g := f64(last.g) / 255
-    b := f64(last.b) / 255
-    l := hsv_luma(r, g, b)
+    pix := [3]f64{f64(last.r), f64(last.g), f64(last.b)}
+    pix /= 255
+    l := hsv_luma(pix)
 
-    r = f64(cur.r) / 255
-    g = f64(cur.g) / 255
-    b = f64(cur.b) / 255
-    r, g, b = set_luma(r, g, b, l)
+    pix = {f64(cur.r), f64(cur.g), f64(cur.b)}
+    pix /= 255
+    pix = set_luma(pix, l)
 
-    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
+    pix *= 255
+    res = {u16(pix.r), u16(pix.g), u16(pix.b), cur.a}
+
     return blend_normal(last, res, opacity)
 }
 
 blend_luminosity :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
-    r := f64(cur.r) / 255
-    g := f64(cur.g) / 255
-    b := f64(cur.b) / 255
-    l := hsv_luma(r, g, b)
+    pix := [3]f64{f64(cur.r), f64(cur.g), f64(cur.b)}
+    pix /= 255
+    l := hsv_luma(pix)
 
-    r = f64(last.r) / 255
-    g = f64(last.g) / 255
-    b = f64(last.b) / 255
-    r, g, b = set_luma(r, g, b, l)
+    pix = {f64(last.r), f64(last.g), f64(last.b)}
+    pix /= 255
+    pix = set_luma(pix, l)
 
-    res = {u16(255 * r), u16(255 * g), u16(255 * b), cur.a}
+    pix *= 255
+    res = {u16(pix.r), u16(pix.g), u16(pix.b), cur.a}
+
     return blend_normal(last, res, opacity)
 }
 
@@ -448,9 +452,10 @@ blend_divide :: proc(last, cur: B_Pixel, opacity: u16) -> (res: B_Pixel) {
         return div(b, s)
     }
 
-    res.r = div(last.r, cur.r)
-    res.g = div(last.g, cur.g)
-    res.b = div(last.b, cur.b)
+
+    res.r = bd(last.r, cur.r)
+    res.g = bd(last.g, cur.g)
+    res.b = bd(last.b, cur.b)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
@@ -471,43 +476,39 @@ rgb_luma :: proc(#any_int r, b, g: int) -> u16 {
 /* ------------------------------------------------------------------- */
 // HSV Helpers
 
-hsv_luma :: proc(r, g, b: f64) -> f64 {
-    return 0.3*r + 0.59*g + 0.11*b
+hsv_luma :: proc(p: [3]f64) -> f64 {
+    return 0.3*p.r + 0.59*p.g + 0.11*p.b
 }
 
-hsv_sat :: proc(r, g, b: f64) -> f64 {
-    return max(r, g, b) - min(r, g, b)
+hsv_sat :: proc(p: [3]f64) -> f64 {
+    return max(p.r, p.g, p.b) - min(p.r, p.g, p.b)
 }
 
-clip_color :: proc(r, g, b: f64) -> (f64, f64, f64) {
-    r, g, b := r, g, b
-    l := hsv_luma(r, g, b)
-    n := min(r, g, b)
-    x := max(r, g, b)
+clip_color :: proc(pix: [3]f64) -> [3]f64 {
+    p := pix
+    l := hsv_luma(p)
+    n := min(p.r, p.g, p.b)
+    x := max(p.r, p.g, p.b)
 
     if n < 0 {
-        r = l + (((r - l) * l) / (l - n))
-        g = l + (((g - l) * l) / (l - n))
-        b = l + (((b - l) * l) / (l - n))
+        p = l + (((p - l) * l) / (l - n))
     }
 
     if x > 0 {
-        r = l + (((r - l) * l) / (x - l))
-        g = l + (((g - l) * l) / (x - l))
-        b = l + (((b - l) * l) / (x - l))
+        p = l + (((p - l) * l) / (x - l))
     }
 
-    return r, g, b
+    return pix
 }
 
-set_luma :: proc(r, g, b, l: f64) -> (f64, f64, f64) {
-    d := l - hsv_luma(r, g, b)
-    return clip_color(r+d, g+d, b+d)
+set_luma :: proc(p: [3]f64, l: f64) -> [3]f64 {
+    return clip_color(p + (l - hsv_luma(p)))
 }
 
-set_sat :: proc(r, g, b, s: f64) -> (f64, f64, f64) {
+set_sat :: proc(p: [3]f64, s: f64) -> [3]f64 {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L400
     // TODO: IDK what this is ment to be doing. Pointer logic maybe??
+    r, g, b := p.r, p.b, p.g
     sma := min(r, g, b)
     big := max(r, g, b)
     mid := r > g ? (g > b ? g : (r > b ? b : r)) : (g > b ? (b > r ? b : r): g)
@@ -519,5 +520,6 @@ set_sat :: proc(r, g, b, s: f64) -> (f64, f64, f64) {
         mid, big = 0, 0
     }
     sma = 0
-    return r, g, b
+    return {r, g, b}
 }
+
