@@ -10,42 +10,42 @@ import "core:bufio"
 @(require) import "core:log"
 
 
-unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(bytes.reader_to_stream(r))
     if !ok {
-        return total_read, .Unable_Make_Reader
+        return .Unable_Make_Reader
     }
     return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(bufio.reader_to_stream(r))
     if !ok {
-        return total_read, .Unable_Make_Reader
+        return .Unable_Make_Reader
     }
     return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_filename :: proc(name: string, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_filename :: proc(name: string, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     fd, err_no := os.open(name, os.O_RDONLY, 0)
     if err_no != 0 {
         log.error("Unable to read because of:", err_no)
-        return total_read, .Unable_To_Open_File
+        return .Unable_To_Open_File
     }
     defer os.close(fd)
     return unmarshal(fd, doc, alloc)
 }
 
-unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(os.stream_from_handle(h))
     io.to_reader(os.stream_from_handle(os.stdin))
     if !ok {
-        return total_read, .Unable_Make_Reader
+        return .Unable_Make_Reader
     }
     return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_slice :: proc(b: []byte, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_slice :: proc(b: []byte, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     r: bytes.Reader
     bytes.reader_init(&r, b[:])
     return unmarshal(&r, doc, alloc)
@@ -56,13 +56,19 @@ unmarshal :: proc{
     unmarshal_from_filename, unmarshal_from_bufio, unmarshal_from_reader,
 }
 
-unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
     // Put Everything into a Virtual Arena?
     // But I do prefer letting user choose the alloc.
     context.allocator = alloc
+    tr: int
+    defer {
+        if err != nil {
+            log.error("Failed to unmarshal at", tr, "cause of", err)
+        }
+    }
 
     icc_warn, tm_warn: bool
-    rt := &total_read
+    rt := &tr
 
     doc.header = read_file_header(r, rt) or_return
     frames := doc.header.frames
@@ -75,7 +81,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.all
         read_dword(r, rt) or_return
         frame_magic := read_word(r, rt) or_return
         if frame_magic != FRAME_MAGIC_NUM {
-            return total_read, .Bad_Frame_Magic_Number
+            return .Bad_Frame_Magic_Number
         }
         fh.old_num_of_chunks = read_word(r, rt) or_return
         fh.duration = read_word(r, rt) or_return
@@ -145,7 +151,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.all
                 fallthrough
             case:
                 log.error("Invalid Chunk Type", c_type)
-                return total_read, .Invalid_Chunk_Type
+                return .Invalid_Chunk_Type
             }
         }
     }
@@ -156,22 +162,28 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.all
 unmarshal_chunks :: proc{unmarshal_multi_chunks, unmarshal_single_chunk}
 
 
-unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, alloc := context.allocator) -> (err: Unmarshal_Error) {
     context.allocator = alloc
     icc_warn: bool
-    rt := &total_read
+    tr: int
+    defer {
+        if err != nil {
+            log.error("Failed to unmarshal at", tr, "cause of", err)
+        }
+    }
+    rt := &tr
 
     size := read_dword(r, rt) or_return
     if io.Stream_Mode.Size in io.query(r) {
         stream_size := io.size(r) or_return
         if stream_size != i64(size) {
-            return total_read, .Data_Size_Not_Equal_To_Header
+            return .Data_Size_Not_Equal_To_Header
         }
     }
 
     magic := read_word(r, rt) or_return
     if magic != FILE_MAGIC_NUM {
-        return total_read, .Bad_File_Magic_Number
+        return .Bad_File_Magic_Number
     } 
 
     frames := read_word(r, rt) or_return
@@ -183,7 +195,7 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
         read_dword(r, rt) or_return
         frame_magic := read_word(r, rt) or_return
         if frame_magic != FRAME_MAGIC_NUM {
-            return total_read, .Bad_Frame_Magic_Number
+            return .Bad_Frame_Magic_Number
         }
         old_num_of_chunks := read_word(r, rt) or_return
         read_skip(r, 4, rt) or_return
@@ -287,7 +299,7 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
                 fallthrough
             case:
                 log.error("Invalid Chunk Type", c_type)
-                return total_read, .Invalid_Chunk_Type
+                return .Invalid_Chunk_Type
             }
             if chunk != nil {
                 append(buf, chunk) or_return
@@ -298,24 +310,30 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
 }
 
 
-unmarshal_single_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error)
+unmarshal_single_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, alloc := context.allocator) -> (err: Unmarshal_Error)
 where intrinsics.type_is_variant_of(Chunk, T) {
     context.allocator = alloc
     icc_warn: bool
-    _ = icc_warn
-    rt := &total_read
+
+    tr: int
+    defer {
+        if err != nil {
+            log.error("Failed to unmarshal at", tr, "cause of", err)
+        }
+    }
+    rt := &tr
 
     size := read_dword(r, rt) or_return
     if io.Stream_Mode.Size in io.query(r) {
         stream_size := io.size(r) or_return
         if stream_size != i64(size) {
-            return total_read, .Data_Size_Not_Equal_To_Header
+            return .Data_Size_Not_Equal_To_Header
         }
     }
 
     magic := read_word(r, rt) or_return
     if magic != FILE_MAGIC_NUM {
-        return total_read, .Bad_File_Magic_Number
+        return .Bad_File_Magic_Number
     } 
 
     frames := read_word(r, rt) or_return
@@ -328,7 +346,7 @@ where intrinsics.type_is_variant_of(Chunk, T) {
         read_dword(r, rt) or_return
         frame_magic := read_word(r, rt) or_return
         if frame_magic != FRAME_MAGIC_NUM {
-            return total_read, .Bad_Frame_Magic_Number
+            return .Bad_Frame_Magic_Number
         }
         old_num_of_chunks := read_word(r, rt) or_return
         read_skip(r, 4, rt) or_return
@@ -431,7 +449,7 @@ where intrinsics.type_is_variant_of(Chunk, T) {
             case .none: fallthrough
             case:
                 log.error("Invalid Chunk Type", c_type)
-                return total_read, .Invalid_Chunk_Type
+                return .Invalid_Chunk_Type
             }
         }
     }

@@ -15,10 +15,7 @@ ase_example :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    read, un_err := ase.unmarshal(data[:], &doc)
-    if read != int(doc.header.size) {
-        fmt.eprintln("Failed to Unmarshal my beloved, geralt.", read, doc.header.size)
-    }
+    un_err := ase.unmarshal(data[:], &doc)
     if un_err != nil {
         fmt.eprintln("Failed to Unmarshal my beloved, geralt.", un_err)
         return
@@ -60,7 +57,7 @@ read_only :: proc() {
         }
         delete(cs_buf)
     }
-    written, err := ase.unmarshal_single_chunk(ir, &cs_buf)
+    err := ase.unmarshal_single_chunk(ir, &cs_buf)
 
 
     cm_buf := make([dynamic]ase.Chunk)
@@ -75,7 +72,7 @@ read_only :: proc() {
         delete(cm_buf)
     }
     set := ase.Chunk_Set{.cel, .cel_extra, .tileset}
-    written, err = ase.unmarshal_multi_chunks(ir, &cm_buf, set)
+    err = ase.unmarshal_multi_chunks(ir, &cm_buf, set)
 
 
 
@@ -86,7 +83,7 @@ read_only :: proc() {
         }
         delete(c_buf)
     }
-    written, err = ase.unmarshal_chunks(ir, &c_buf)
+    err = ase.unmarshal_chunks(ir, &c_buf)
 
 
     cmc_buf := make([dynamic]ase.Chunk)
@@ -100,5 +97,5 @@ read_only :: proc() {
         }
         delete(cmc_buf)
     }
-    written, err = ase.unmarshal_chunks(ir, &cmc_buf, set)
+    err = ase.unmarshal_chunks(ir, &cmc_buf, set)
 }

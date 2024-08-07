@@ -13,7 +13,7 @@ single_image :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data[:], &doc)
+    doc_err := ase.unmarshal(data[:], &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -34,7 +34,7 @@ all_images :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data[:], &doc)
+    doc_err := ase.unmarshal(data[:], &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -56,7 +56,7 @@ nth_image :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data[:], &doc)
+    doc_err := ase.unmarshal(data[:], &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -77,7 +77,7 @@ animation :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data, &doc)
+    doc_err := ase.unmarshal(data, &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -100,7 +100,7 @@ animation_tag :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data, &doc)
+    doc_err := ase.unmarshal(data, &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -122,7 +122,7 @@ animation_images :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    _, doc_err := ase.unmarshal(data, &doc)
+    doc_err := ase.unmarshal(data, &doc)
     if doc_err != nil {
         fmt.eprintln("Fail to unmarshal:", doc_err)
         return
@@ -144,4 +144,21 @@ animation_images :: proc() {
         return
     }
     defer utils.destroy(&anim)
+}
+
+
+upscale_image :: proc() {
+    data := #load("../tests/blob/marshmallow.aseprite")
+    doc: ase.Document
+    derr := ase.unmarshal(data[:], &doc)
+    img, ierr := utils.get_image(&doc) // default frame idx is 0
+    big_img, bierr := utils.upscale_image(img, 100) // default is 10
+}
+
+upscale_all_images :: proc() {
+    data := #load("../tests/blob/marshmallow.aseprite")
+    doc: ase.Document
+    derr := ase.unmarshal(data[:], &doc)
+    imgs, ierr := utils.get_all_images(&doc)
+    big_imgs, bierr := utils.upscale_all(imgs) // default is 10
 }
