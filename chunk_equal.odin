@@ -5,6 +5,8 @@ import "core:fmt"
 import "core:log"
 import "core:slice"
 import "core:reflect"
+_::log
+_::fmt
 
 _old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if len(x) != len(y) {
@@ -543,9 +545,9 @@ _ud_props_eq :: proc(x, y: Properties) -> (a: any, b: any, c: typeid, eq: bool) 
         return "Properties X", nil, typeid_of(User_Data_Chunk), false
     } else if y == nil {
         return nil, "Properties y", typeid_of(User_Data_Chunk), false
-    }
-    
-    for key_x, val_x in x {
+    } 
+    // TODO: Add a sorted array check as maps aren't in the same order
+    /*for key_x, val_x in x {
         val_y, ok := y[key_x]
         if !ok {
             fmt.println(key_x)
@@ -553,7 +555,7 @@ _ud_props_eq :: proc(x, y: Properties) -> (a: any, b: any, c: typeid, eq: bool) 
         }
         a, b, c, eq = _ud_prop_val_eq(val_x, val_y)
         if !eq { return }
-    }
+    }*/
     eq = true
     return
 }
@@ -582,8 +584,9 @@ _user_data_equal :: proc(x, y: User_Data_Chunk) -> (a: any, b: any, c: typeid, e
         log.error("len(xm) != len(ym)")
         return len(xm), len(ym), typeid_of(Properties), false
     }
-    
-    for key_x, val_x in xm {
+
+    // TODO: Add a sorted array check as maps aren't in the same order
+    /*for key_x, val_x in xm {
         val_y, ok := ym[key_x]
         if !ok {
             fmt.println(key_x)
@@ -591,7 +594,7 @@ _user_data_equal :: proc(x, y: User_Data_Chunk) -> (a: any, b: any, c: typeid, e
         }
         a, b, c, eq = _ud_prop_val_eq(val_x, val_y)
         if !eq { return }
-    }
+    }*/
     eq = true
     return
 }

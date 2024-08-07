@@ -1,10 +1,11 @@
 package aseprite_file_handler
 
-import "base:runtime"
 import "core:io"
 import "core:log"
 import "core:fmt"
 import "core:encoding/endian"
+_ :: fmt
+_ :: log
 
 read_bool :: proc(r: io.Reader, n: ^int) -> (data: bool, err: Read_Error) {
     return bool(read_byte(r, n) or_return), nil
@@ -158,7 +159,7 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     return v, err 
 }
 
-read_string :: proc(r: io.Reader, n: ^int, allocator: runtime.Allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
+read_string :: proc(r: io.Reader, n: ^int, allocator := context.allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
     size := int(read_word(r, n) or_return)
 
     buf := make([]byte, size, allocator, loc) or_return
@@ -252,9 +253,8 @@ read_skip :: proc(r: io.Reader, to_skip: int, n: ^int) -> (err: Read_Error) {
     return
 }
 
-read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: runtime.Allocator) -> (val: Property_Value, err: Unmarshal_Error) {
-    // TODO: do below and remove all unneeded passing of allocator
-    // context.allocator = allocator
+read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator := context.allocator) -> (val: Property_Value, err: Unmarshal_Error) {
+    context.allocator = allocator
     switch type {
     case .Null:   return nil, nil
     case .Bool:   return read_bool(r, n)
@@ -269,42 +269,41 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator: run
     case .Fixed:  return read_fixed(r, n)
     case .F32:    return read_float(r, n)
     case .F64:    return read_double(r, n)
-    case .String: return read_string(r, n, allocator)
+    case .String: return read_string(r, n) // FIXME: This isn't getting freed sometimes
     case .Point:  return read_point(r, n)
     case .Size:   return read_size(r, n)
     case .Rect:   return read_rect(r, n)
     case .UUID:
-        val = make(UUID, 16, allocator) or_return
+        val = make(UUID, 16) or_return
         read_uuid(r, val.(UUID)[:], n) or_return
 
     case .Vector:
         num := int(read_dword(r, n) or_return)
-        val = make(UD_Vec, num, allocator) or_return
+        val = make(UD_Vec, num) or_return
         vec_type := Property_Type(read_word(r, n) or_return)
 
         if vec_type == .Null {
             for i in 0..<num {
                 prop_type := Property_Type(read_word(r, n) or_return)
-                val.(UD_Vec)[i] = read_ud_value(r, prop_type, n, allocator) or_return
+                val.(UD_Vec)[i] = read_ud_value(r, prop_type, n) or_return
             }
         } else {
             for i in 0..<num {
-                val.(UD_Vec)[i] = read_ud_value(r, vec_type, n, allocator) or_return
+                val.(UD_Vec)[i] = read_ud_value(r, vec_type, n) or_return
             }
         }
 
     case .Properties:
         size := read_dword(r, n) or_return
-        // FIXME: Is leaking. Not writing data?
-        val = make(Properties, size, allocator) or_return
+        val = make(Properties, size) or_return
 
         #partial switch &v in val {
         case Properties:
             for _ in 0..<size {
-                key := read_string(r, n, allocator) or_return
+                key := read_string(r, n) or_return
                 defer delete(key)
                 prop_type := Property_Type(read_word(r, n) or_return)
-                v[key] = read_ud_value(r, prop_type, n, allocator) or_return
+                v[key] = read_ud_value(r, prop_type, n) or_return
             }
         }
     }

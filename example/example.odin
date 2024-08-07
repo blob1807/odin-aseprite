@@ -1,9 +1,11 @@
 package example
 
+import "core:io"
 import "core:os"
 import "core:log"
 import "core:fmt"
 import "core:slice"
+import "core:bytes"
 
 import ase ".."
 
@@ -13,6 +15,7 @@ main :: proc() {
     context.logger = logger
 
     ase_example()
+    read_only()
 }
 
 ase_example :: proc() {
@@ -49,4 +52,61 @@ ase_example :: proc() {
     }
     
     fmt.println("Successfully Wrote my beloved, geralt.")
+}
+
+read_only :: proc() {
+    data := #load("../tests/blob/geralt.aseprite")
+
+    r: bytes.Reader
+    bytes.reader_init(&r, data[:])
+    ir, ok := io.to_reader(bytes.reader_to_stream(&r))
+
+    cs_buf := make([dynamic]ase.Cel_Chunk)
+    defer { 
+        for c in cs_buf { 
+            ase.destroy_chunk(c) 
+        }
+        delete(cs_buf)
+    }
+    written, err := ase.unmarshal_single_chunk(ir, &cs_buf)
+
+
+    cm_buf := make([dynamic]ase.Chunk)
+    defer {
+        for c in cm_buf {
+            #partial switch v in c {
+            case ase.Cel_Chunk:       ase.destroy_chunk(v)
+            case ase.Cel_Extra_Chunk: ase.destroy_chunk(v)
+            case ase.Tileset_Chunk:   ase.destroy_chunk(v)
+            }
+        }
+        delete(cm_buf)
+    }
+    set := ase.Chunk_Set{.cel, .cel_extra, .tileset}
+    written, err = ase.unmarshal_multi_chunks(ir, &cm_buf, set)
+
+
+
+    c_buf := make([dynamic]ase.Layer_Chunk)
+    defer { 
+        for c in c_buf { 
+            ase.destroy_chunk(c) 
+        }
+        delete(c_buf)
+    }
+    written, err = ase.unmarshal_chunks(ir, &c_buf)
+
+
+    cmc_buf := make([dynamic]ase.Chunk)
+    defer {
+        for c in cmc_buf {
+            #partial switch v in c {
+            case ase.Cel_Chunk:       ase.destroy_chunk(v)
+            case ase.Cel_Extra_Chunk: ase.destroy_chunk(v)
+            case ase.Tileset_Chunk:   ase.destroy_chunk(v)
+            }
+        }
+        delete(cmc_buf)
+    }
+    written, err = ase.unmarshal_chunks(ir, &cmc_buf, set)
 }
