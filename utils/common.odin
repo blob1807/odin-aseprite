@@ -1,11 +1,14 @@
 package aseprite_file_handler_utility
 
+import "base:runtime"
 import "core:slice"
-import "core:fmt"
+import "core:strings"
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 import ase ".."
 
-_::fmt
 
 
 get_metadata :: proc(header: ase.File_Header) -> (md: Metadata) {
@@ -51,63 +54,108 @@ has_new_palette :: proc(doc: ^ase.Document) -> bool {
 }
 
 
-// Linearly resizes an Image.
-// Not work as on right now
-resize_image :: scale_image
+has_tileset :: proc(doc: ^ase.Document) -> bool {
+    for f in doc.frames {
+        for c in f.chunks {
+            _ = c.(ase.Tileset_Chunk) or_continue
+            return true
+        }
+    }
+    return false
+}
 
-// Linearly scale an Image.
-// Not work as on right now
-scale_image :: proc(img: []byte, md: Metadata, factor: int = 10) -> (res: []byte) {
-    assert(size_of(img) == md.height * md.height * 4)
-    res = make([]byte, size_of(img) * factor)
+
+// Uses Nearest-neighbor Upscaling
+upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor: int = 10, alloc := context.allocator) -> (res: []byte, res_md: Metadata, err: runtime.Allocator_Error) {
+    assert(len(img) == (md.height * md.height * 4), "image size doesn't match metadata") // TODO: replace with an error
+    res = make([]byte, len(img) * factor * factor) or_return
+    res_md = {md.width*factor, md.height*factor, md.bpp}
 
     for h in 0..<md.height {
         for w in 0..<md.width {
-            x := (h * md.height + w) * 4
-            xi := x * factor
-            pix := img[x:x+4]
-            copy(img[xi:xi+4], pix)
+            start := (h*md.width*factor + w) * factor * 4
+            first := res[start:start + factor * 4]
+            copy(first[:4], img[(h*md.width + w) * 4:])
+
+            for x in 1..<factor {
+                copy(res[start + x * 4:], first[:4])
+            }
+            for y in 1..<factor {
+                copy(res[start + (y*md.width*factor*4):], first)
+            }
         }
     }
 
     return
 }
 
+// Uses Nearest-neighbor Upscaling
+upscale_image_from_img :: proc(img: Image, factor := 10, alloc := context.allocator) -> (res: Image, err: runtime.Allocator_Error) {
+    res.data, res.md = upscale_image_from_bytes(img.data, img.md, factor, alloc) or_return
+    return
+}
 
-destroy_frames :: proc(frames: []Frame, alloc := context.allocator) {
+// Uses Nearest-neighbor Upscaling
+upscale_image :: proc{upscale_image_from_img, upscale_image_from_bytes}
+
+
+
+destroy_frame :: proc(frame: Frame, alloc := context.allocator) -> runtime.Allocator_Error {
+    for &cel in frame.cels {
+        destroy(&cel, alloc) or_return
+    }
+    return delete(frame.cels, alloc)
+}
+
+destroy_frames :: proc(frames: []Frame, alloc := context.allocator) -> runtime.Allocator_Error {
     for frame in frames {
-        delete(frame.cels, alloc)
+        for &cel in frame.cels {
+            destroy(&cel, alloc) or_return
+        }
+        delete(frame.cels, alloc) or_return
     }
-    delete(frames, alloc)
+    return delete(frames, alloc)
 }
 
-destroy_image :: proc(img: ^Image, alloc := context.allocator) {
-    delete(img.data, alloc)
+destroy_image :: proc(img: ^Image, alloc := context.allocator) -> runtime.Allocator_Error {
+    return delete(img.data, alloc)
 }
 
-destroy_images :: proc(imgs: []Image, alloc := context.allocator) {
+destroy_images :: proc(imgs: []Image, alloc := context.allocator) -> runtime.Allocator_Error {
     for img in imgs {
-        delete(img.data, alloc)
+        delete(img.data, alloc) or_return
     }
-    delete(imgs, alloc)
+    return delete(imgs, alloc)
 }
 
-destroy_image_bytes :: proc(imgs: [][]byte, alloc := context.allocator) {
+destroy_image_bytes :: proc(imgs: [][]byte, alloc := context.allocator) -> runtime.Allocator_Error {
     for img in imgs {
-        delete(img, alloc)
+        delete(img, alloc) or_return
     }
-    delete(imgs, alloc)
+    return delete(imgs, alloc)
 }
 
-destroy_animation :: proc(anim: ^Animation, alloc := context.allocator) {
+destroy_animation :: proc(anim: ^Animation, alloc := context.allocator) -> runtime.Allocator_Error {
     for frame in anim.frames {
-        delete(frame, alloc)
+        delete(frame, alloc) or_return
     }
-    delete(anim.frames, alloc)
+    return delete(anim.frames, alloc)
 }
 
-destroy_frame :: delete_slice 
-destroy_cels :: delete_slice
+destroy_info :: proc(info: ^Info) -> runtime.Allocator_Error {
+    context.allocator = info.allocator
+    destroy_frames(info.frames) or_return
+    delete(info.layers) or_return
+    delete(info.palette) or_return
+    delete(info.tags) or_return
+    return nil
+}
+
+destroy_cel :: proc(cel: ^Cel, alloc := context.allocator) -> runtime.Allocator_Error {
+    delete(cel.tilemap.tiles, alloc) or_return
+    return nil
+}
+
 destroy_layers :: delete_slice
 destroy_palette :: delete_slice
 
@@ -117,4 +165,8 @@ destroy :: proc {
     destroy_animation, 
     destroy_image_bytes, 
     destroy_images,
+    destroy_info,
+    destroy_cel,
+    destroy_frame,
+    delete_slice,
 }
