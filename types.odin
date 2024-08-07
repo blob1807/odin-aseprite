@@ -119,7 +119,7 @@ PIXEL :: u8
 TILE  :: union {BYTE, WORD, DWORD}
 
 // of size 16
-UUID :: distinct []BYTE
+UUID :: [16]BYTE
 
 Color_RGB :: [3]BYTE
 Color_RGBA :: [4]BYTE
@@ -423,7 +423,6 @@ User_Data_Chunk :: struct {
     text: Maybe(string), 
     color: Maybe(Color_RGBA), 
     maps: Maybe(Properties_Map),
-
 }
 
 
