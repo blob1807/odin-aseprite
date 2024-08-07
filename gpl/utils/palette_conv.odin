@@ -7,21 +7,70 @@ import "core:slice"
 
 // TODO: Move to parent folder
 
-gpl_to_ase :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (pal: ase.Palette_Chunk, ok: bool) {
+gpl_to_ase :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (pal: ase.Palette_Chunk, err: gpl.Errors) {
+    pal.entries = make([]ase.Palette_Entry, len(gpl_pal.colors)) or_return
+    pal.size = ase.DWORD(len(gpl_pal.colors))
+    pal.last_index = pal.size
+
+    for &en, i in pal.entries {
+        en.color = gpl_pal.colors[i].color
+        if gpl_pal.colors[i].name != "" {
+            en.name = gpl_pal.colors[i].name
+        }
+    }
+
     return
 }
 
-gpl_to_old_packet :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (pack: []ase.Old_Palette_Packet, ok: bool) { 
+gpl_to_old_packet :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (pack: []ase.Old_Palette_Packet, err: gpl.Errors) { 
+    context.allocator = alloc
+    buf := make([dynamic]ase.Old_Palette_Packet, 0, len(gpl_pal.colors) / 256 + 1) or_return
+
+    size := len(gpl_pal.colors)
+    pos: int
+    for size > 256 { 
+        pal: ase.Old_Palette_Packet
+        pal.num_colors = 0
+        pal_buf := make([]ase.Color_RGB, 256) or_return
+
+        for i in 0..<256 {
+            pal_buf[i] = gpl_pal.colors[pos].color.rgb
+            pos += 1
+        }
+
+        pal.colors = pal_buf[:]
+        
+        append(&buf, pal) or_return
+        size -= 256
+    }
+
+    if size > 0 {
+        pal: ase.Old_Palette_Packet
+        pal.num_colors = 0
+        pal_buf := make([]ase.Color_RGB, size) or_return
+
+        for i in 0..<size {
+            pal_buf[i] = gpl_pal.colors[pos].color.rgb
+            pos += 1
+        }
+
+        pal.colors = pal_buf[:]
+        
+        append(&buf, pal) or_return
+    }
+
     return 
 }
 
-gpl_to_old_256 :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (res: ase.Old_Palette_64_Chunk, ok: bool) {
-    // Old isn't a single palette but a bunch of Packets
+gpl_to_old_256 :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (res: ase.Old_Palette_256_Chunk, err: gpl.Errors) {
+    buf := gpl_to_old_packet(gpl_pal, alloc) or_return
+    res = transmute(ase.Old_Palette_256_Chunk)buf
     return
 }
 
-gpl_to_old_64 :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (res: ase.Old_Palette_64_Chunk, ok: bool) {
-    // Old isn't a single palette but a bunch of Packets
+gpl_to_old_64 :: proc(gpl_pal: gpl.GPL_Palette, alloc := context.allocator) -> (res: ase.Old_Palette_64_Chunk, err: gpl.Errors) {
+    buf := gpl_to_old_packet(gpl_pal, alloc) or_return
+    res = transmute(ase.Old_Palette_64_Chunk)buf
     return
 }
 
@@ -53,14 +102,7 @@ new_to_gpl :: proc(data: ^ase.Palette_Chunk, pal: ^gpl.GPL_Palette, alloc := con
     reserve(&pal.colors, len(data.entries)) or_return
 
     for c in data.entries {
-        append_elem(&pal.colors, 
-            gpl.Color{color={
-                c.color.r, 
-                c.color.g, 
-                c.color.b, 
-                c.color.a}
-            }
-        ) or_return
+        append_elem(&pal.colors, gpl.Color{color=c.color}) or_return
     }
 
     return
