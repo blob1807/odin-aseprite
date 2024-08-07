@@ -228,6 +228,19 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
     return
 }
 
+
+get_img_for_atlas :: proc(doc: ^ase.Document, ignored_pal_idxs: []int = nil, alloc := context.allocator) -> (res: []Image, err: Errors) {
+    context.allocator = alloc
+
+    info := get_all(doc) or_return
+    defer destroy(&info)
+
+    res = make([]Image, len(doc.frames)) or_return
+
+    return
+}
+
+
 // Converts `utils.Image` to a `core:image.Image`
 to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> (img: image.Image, err: runtime.Allocator_Error) {
     img.width = md.width
@@ -262,7 +275,7 @@ cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc := con
     return
 }
 
-// Write a cel to an image's data. Assumes tilemaps & linked cels have already bein handled.
+// Write a cel to an image's data. Assumes tilemaps & linked cels have already been handled.
 write_cel :: proc (
     img: []byte, cel: Cel, layer: Layer, md: Metadata, 
     pal: Palette = nil, ignored_pal_idxs: []int = nil,
