@@ -3,52 +3,52 @@ package aseprite_file_handler
 import "base:intrinsics"
 import "core:io"
 import "core:os"
-import "core:fmt"
-import "core:log"
 import "core:bytes"
 import "core:bufio"
-_::fmt
-_::log
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 
-unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, allocator := context.allocator)-> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     rr, ok := io.to_reader(bytes.reader_to_stream(r))
     if !ok {
         return total_read, .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, allocator)
+    return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     rr, ok := io.to_reader(bufio.reader_to_stream(r))
     if !ok {
         return total_read, .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, allocator)
+    return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_filename :: proc(name: string, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_filename :: proc(name: string, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     fd, err_no := os.open(name, os.O_RDONLY, 0)
     if err_no != 0 {
         log.error("Unable to read because of:", err_no)
         return total_read, .Unable_To_Open_File
     }
     defer os.close(fd)
-    return unmarshal(fd, doc, allocator)
+    return unmarshal(fd, doc, alloc)
 }
 
-unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     rr, ok := io.to_reader(os.stream_from_handle(h))
+    io.to_reader(os.stream_from_handle(os.stdin))
     if !ok {
         return total_read, .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, allocator)
+    return unmarshal(rr, doc, alloc)
 }
 
-unmarshal_from_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+unmarshal_from_slice :: proc(b: []byte, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
     r: bytes.Reader
     bytes.reader_init(&r, b[:])
-    return unmarshal(&r, doc, allocator)
+    return unmarshal(&r, doc, alloc)
 }
 
 unmarshal :: proc{
@@ -56,12 +56,12 @@ unmarshal :: proc{
     unmarshal_from_filename, unmarshal_from_bufio, unmarshal_from_reader,
 }
 
-unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
-    // TODO: Put Everything into a Virtual Arena?
-    // But I do prefer letting user choose the allocator.
-    context.allocator = allocator
-    icc_warn: bool
-    tm_warn: bool
+unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+    // Put Everything into a Virtual Arena?
+    // But I do prefer letting user choose the alloc.
+    context.allocator = alloc
+
+    icc_warn, tm_warn: bool
     rt := &total_read
 
     doc.header = read_file_header(r, rt) or_return
@@ -129,7 +129,6 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
                 chunk = read_palette(r, rt) or_return
 
             case .user_data:
-                fmt.printfln("[%v:%v]",rt^,rt^+c_size)
                 chunk = read_user_data(r, rt) or_return
 
             case .slice:
@@ -156,9 +155,9 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, allocator := context
 
 unmarshal_chunks :: proc{unmarshal_multi_chunks, unmarshal_single_chunk}
 
-//@(warning="This function is new. May have bugs.")
-unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
-    context.allocator = allocator
+
+unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk_Set, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error) {
+    context.allocator = alloc
     icc_warn: bool
     rt := &total_read
 
@@ -195,93 +194,94 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
         }
         
         for _ in 0..<num_of_chunks {
-            c_size := int(read_dword(r, rt) or_return)
+            c_size := int(read_dword(r, rt) or_return) - 6
             c_type := cast(Chunk_Types)read_word(r, rt) or_return
+
             chunk: Chunk
             switch c_type {
             case .old_palette_256:
                 if .old_palette_256 in chunks {
                     chunk = read_old_palette_256(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .old_palette_64:
                 if .old_palette_64 in chunks {
                     chunk = read_old_palette_64(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .layer:
                 if .layer in chunks {
                     chunk = read_layer(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .cel:
                 if .cel in chunks {
-                    chunk = read_cel(r, rt, color_depth, c_size) or_return
+                    chunk = read_cel(r, rt, color_depth, c_size+6) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .cel_extra:
                 if .cel_extra in chunks {
                     chunk = read_cel_extra(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .color_profile:
                 if .color_profile in chunks {
                     chunk = read_color_profile(r, rt, &icc_warn) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .external_files:
                 if .external_files in chunks {
                     chunk = read_external_files(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .mask:
                 if .mask in chunks {
                     chunk = read_mask(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .path:
                 if .path in chunks {
                     chunk = read_path()
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .tags:
                 if .tags in chunks {
                     chunk = read_tags(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .palette:
                 if .palette in chunks {
                     chunk = read_palette(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .user_data:
                 if .user_data in chunks {
                     chunk = read_user_data(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .slice:
                 if .slice in chunks {
                     chunk = read_slice(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .tileset:
                 if .tileset in chunks {
                     chunk = read_tileset(r, rt) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .none:
                 fallthrough
@@ -298,10 +298,9 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
 }
 
 
-//@(warning="This function is new. May have bugs.")
-unmarshal_single_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, allocator := context.allocator) -> (total_read: int, err: Unmarshal_Error)
+unmarshal_single_chunk :: proc(r: io.Reader, buf: ^[dynamic]$T, alloc := context.allocator) -> (total_read: int, err: Unmarshal_Error)
 where intrinsics.type_is_variant_of(Chunk, T) {
-    context.allocator = allocator
+    context.allocator = alloc
     icc_warn: bool
     _ = icc_warn
     rt := &total_read
@@ -338,11 +337,9 @@ where intrinsics.type_is_variant_of(Chunk, T) {
         if num_of_chunks == 0 {
             num_of_chunks = int(old_num_of_chunks)
         }
-        when T == Old_Palette_256_Chunk {}
         
         for _ in 0..<num_of_chunks {
-            c_size := int(read_dword(r, rt) or_return)
-            _ = c_size
+            c_size := int(read_dword(r, rt) or_return) - 6
             c_type := cast(Chunk_Types)read_word(r, rt) or_return
 
             // TODO: This is too dirty for my likeing. Make a proc group for it all.
@@ -351,85 +348,85 @@ where intrinsics.type_is_variant_of(Chunk, T) {
                 when T == Old_Palette_256_Chunk {
                     append(buf, read_old_palette_256(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .old_palette_64:
                 when T == Old_Palette_64_Chunk {
                     append(buf, read_old_palette_64(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .layer:
                 when T == Layer_Chunk {
                     append(buf, read_layer(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .cel:
                 when T == Cel_Chunk {
-                    append(buf, read_cel(r, rt, color_depth, c_size) or_return) or_return
+                    append(buf, read_cel(r, rt, color_depth, c_size+6) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .cel_extra:
                 when T == Cel_Extra_Chunk {
                     append(buf, read_cel_extra(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .color_profile:
                 when T == Color_Profile_Chunk {
                     append(buf, read_color_profile(r, rt, &icc_warn) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .external_files:
                 when T == External_Files_Chunk {
                     append(buf, read_external_files(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .mask:
                 when T == Mask_Chunk {
                     append(buf, read_mask(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .path:
                 when T == Path_Chunk {
                     append(buf, read_path()) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .tags:
                 when T == Tags_Chunk {
                     append(buf, read_tags(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .palette:
                 when T == Palette_Chunk {
                     append(buf, read_palette(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .user_data:
                 when T == User_Data_Chunk {
                     append(buf, read_user_data(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .slice:
                 when T == Slice_Chunk {
                     append(buf, read_slice(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .tileset:
                 when T == Tileset_Chunk {
                     append(buf, read_tileset(r, rt) or_return) or_return
                 } else { 
-                    read_skip(r, c_size-6, rt) or_return 
+                    read_skip(r, c_size, rt) or_return 
                 }
             case .none: fallthrough
             case:
