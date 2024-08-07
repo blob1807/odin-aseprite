@@ -47,13 +47,13 @@ Errors :: union #shared_nil {
 
 // Raw Types
 B_Pixel :: [4]u16
-Pixel :: [4]byte
-Pixels :: []byte
+Pixel   :: [4]byte
+Pixels  :: []byte
 
 Vec2 :: [2]int
 
 Precise_Bounds :: struct {
-    // TODO: Well they're fixpoint but I anit dealing with that shit
+    // Truely fixpoint but I anit dealing with that shit
     x, y, width, height: f64
 }
 
@@ -65,7 +65,17 @@ Cel :: struct {
     layer: int, 
     z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
     raw: Pixels, 
-    extra: Maybe(Precise_Bounds)
+    tilemap: Tilemap,
+    extra: Maybe(Precise_Bounds),
+}
+
+Tilemap :: struct {
+    width: int, 
+    height: int, 
+    x_flip: uint,
+    y_flip: uint,
+    diag_flip: uint,
+    tiles: []int,
 }
 
 Layer :: struct {
@@ -73,7 +83,8 @@ Layer :: struct {
     opacity: int,
     visiable: bool,
     index: int, 
-    blend_mode: Blend_Mode // TODO: Replace with int backed one??
+    blend_mode: Blend_Mode,
+    tileset: int,
 }
 
 Frame :: struct {
@@ -124,26 +135,41 @@ Slice :: struct {
     keys: []Slice_Key
 }
 
+Tileset :: struct {
+    id: int,
+    width: int, 
+    height: int, 
+    num: int,
+    base: int,
+    name: string,
+    tiles: Pixels, 
+}
+
+
+Info :: struct {
+    frames:    []Frame,
+    layers:    []Layer,
+    tags:      []Tag,
+    tilesets:  []Tileset,
+    slieces:   []Slice,
+    palette:   Palette,
+    
+    md:        Metadata,
+    allocator: runtime.Allocator,
+}
+
 
 // Precomputed Types. They own all their data.
 Image :: struct {
     using md: Metadata, 
-    data: []byte, 
+    data: Pixels, 
 }
 
 Animation :: struct {
     fps: int,
     using md: Metadata,
     length: time.Duration, 
-    frames: [][]byte, 
-}
-
-// TODO: A single image or array of tiles? 
-// Is it even something i should do?
-Tileset :: struct {
-    tile_width: int, 
-    tile_height: int, 
-    tiles: []Pixels, 
+    frames: []Pixels, 
 }
 
 
@@ -168,16 +194,16 @@ Blend_Mode :: enum {
     Blue_Tint   = -6,
     Dst_Over    = -7,
 
-    Normal      = 0,
-    Multiply    = 1,
-    Screen      = 2,
-    Overlay     = 3,
-    Darken      = 4,
-    Lighten     = 5,
-    Color_Dodge = 6,
-    Color_Burn  = 7,
-    Hard_Light  = 8,
-    Soft_Light  = 9,
+    Normal      = 00,
+    Multiply    = 01,
+    Screen      = 02,
+    Overlay     = 03,
+    Darken      = 04,
+    Lighten     = 05,
+    Color_Dodge = 06,
+    Color_Burn  = 07,
+    Hard_Light  = 08,
+    Soft_Light  = 09,
     Difference  = 10,
     Exclusion   = 11,
     Hue         = 12,
