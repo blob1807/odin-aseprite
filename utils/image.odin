@@ -1,12 +1,14 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
-import "core:log"
-import "core:fmt"
 import "core:image"
 import "core:slice"
+import "core:mem"
+
+@(require) import "core:fmt"
+@(require) import "core:log"
+
 import ase ".."
-_::fmt
 
 // TODO: Should read in External Files when needed
 
@@ -20,7 +22,7 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
     }
 
     raw_frame := get_frame(doc.frames[frame]) or_return
-    defer delete(raw_frame.cels)
+    defer destroy(raw_frame)
 
     layers := get_layers(doc) or_return
     defer delete(layers)
@@ -28,40 +30,58 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
     palette := get_palette(doc) or_return
     defer delete(palette)
 
-    return get_image(raw_frame, layers, md, palette, alloc)
+    ts := get_tileset(doc) or_return
+    defer delete(ts)
+
+    info := Info { 
+        layers=layers, palette=palette, tilesets=ts, md=md,
+        allocator=alloc
+    }
+    
+    return get_image_from_frame(raw_frame, info)
 }
 
 get_image_from_doc_frame :: proc(
-    frame: ase.Frame, layers: []Layer, md: Metadata,  
-    pal: Palette = nil, alloc := context.allocator
+    frame: ase.Frame, info: Info
 )  -> (img: Image, err: Errors) {
 
-    raw_frame := get_frame(frame, alloc) or_return
-    defer delete(raw_frame.cels, alloc)
-    return get_image(raw_frame, layers, md, pal)
+    raw_frame := get_frame(frame, info.allocator) or_return
+    defer delete(raw_frame.cels, info.allocator)
+
+    return get_image_from_frame(raw_frame, info)
 }
 
 get_image_from_cel :: proc(
-    cel: Cel, layer: Layer, md: Metadata, 
-    pal: Palette = nil, alloc := context.allocator
+    cel: Cel, layer: Layer, info: Info,
 ) -> (img: Image, err: Errors) {
 
     img.width = cel.width
     img.height = cel.height
     img.bpp = .RGBA
-    img.data = make([]byte, cel.width * cel.height * 4, alloc) or_return
-    write_cel(img.data[:], cel, layer, md, pal) or_return
+        
+    if cel.tilemap.tiles != nil {
+        ts := info.tilesets[layer.tileset]
+        c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
+        defer delete(c.raw)
+
+        img.data = make([]byte, c.width * c.height * 4, info.allocator) or_return
+        write_cel(img.data[:], c, layer, info.md, info.palette) or_return
+
+    } else {
+        img.data = make([]byte, cel.width * cel.height * 4, info.allocator) or_return
+        write_cel(img.data[:], cel, layer, info.md, info.palette) or_return
+    }
+
     return
 }
 
 get_image_from_frame :: proc(
-    frame: Frame, layers: []Layer, md: Metadata, 
-    pal: Palette = nil, alloc := context.allocator
+    frame: Frame, info: Info,
 ) -> (img: Image, err: Errors) {
-
-    img.width = md.width
-    img.height = md.height
-    img.data = get_image_bytes(frame, layers, md, pal, alloc) or_return
+    
+    img.md = info.md
+    img.bpp = .RGBA
+    img.data = get_image_bytes(frame, info) or_return
     return
 }
 
@@ -87,43 +107,64 @@ get_image_bytes_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator)
     palette := get_palette(doc) or_return
     defer delete(palette)
 
-    return get_image_bytes(raw_frame, layers, md, palette)
+    ts := get_tileset(doc) or_return
+    defer delete(ts)
+
+    info := Info{layers=layers, palette=palette, tilesets=ts, allocator=alloc}
+
+    return get_image_bytes(raw_frame, info)
 }
 
 get_image_bytes_from_doc_frame :: proc(
-    frame: ase.Frame, layers: []Layer, md: Metadata, 
-    pal: Palette = nil, alloc := context.allocator
+    frame: ase.Frame, info: Info,
 )  -> (img: []byte, err: Errors) {
 
     raw_frame := get_frame(frame) or_return
-    return get_image_bytes(raw_frame, layers, md, pal)
+    return get_image_bytes(raw_frame, info)
 }
 
-get_image_bytes_from_cel :: proc(
-    cel: Cel, layer: Layer, md: Metadata, 
-    pal: Palette = nil, alloc := context.allocator
+get_image_bytes_from_cel :: proc( cel: Cel, layer: Layer, info: Info,
 ) -> (img: []byte, err: Errors) {
+    if cel.tilemap.tiles != nil {
+        ts := info.tilesets[layer.tileset]
+        c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
+        defer delete(c.raw)
 
-    img = make([]byte, cel.width * cel.height * 4, alloc) or_return
-    write_cel(img[:], cel, layer, md, pal) or_return
+        img = make([]byte, c.width * c.height * 4, info.allocator) or_return
+        write_cel(img, c, layer, info.md, info.palette) or_return
+
+    } else {
+        img = make([]byte, cel.width * cel.height * 4, info.allocator) or_return
+        write_cel(img, cel, layer, info.md, info.palette) or_return
+    }
+
     return
 }
 
 get_image_bytes_from_frame :: proc(
-    frame: Frame, layers: []Layer, md: Metadata, 
-    pal: Palette = nil, alloc := context.allocator
+    frame: Frame, info: Info,
 ) -> (img: []byte, err: Errors) {
+    context.allocator = info.allocator
 
-    img = make([]byte, md.width * md.height * 4, alloc) or_return
+    img = make([]byte, info.md.width * info.md.height * 4) or_return
 
     if !slice.is_sorted_by(frame.cels[:], cel_less) {
         slice.sort_by(frame.cels[:], cel_less)
     }
 
     for cel in frame.cels {
-        lay := layers[cel.layer]
+        lay := info.layers[cel.layer]
         if !lay.visiable { continue }
-        write_cel(img, cel, lay, md, pal) or_return
+
+        if cel.tilemap.tiles != nil {
+            ts := info.tilesets[lay.tileset]
+            c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
+            defer delete(c.raw)
+            write_cel(img, c, lay, info.md, info.palette) or_return
+
+        } else {
+            write_cel(img, cel, lay, info.md, info.palette) or_return
+        }
     }
 
     return
@@ -150,8 +191,13 @@ get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs:
     palette := get_palette(doc) or_return
     defer delete(palette)
 
+    ts := get_tileset(doc) or_return
+    defer delete(ts)
+
+    info := Info{layers=layers, palette=palette, tilesets=ts, allocator=alloc}
+
     for frame, p in doc.frames {
-        imgs[p] = get_image(frame, layers, md, palette) or_return
+        imgs[p] = get_image(frame, info) or_return
     }
 
     return 
@@ -160,7 +206,7 @@ get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs:
 get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs: [][]byte, err: Errors) {
     context.allocator = alloc
     imgs = make([][]byte, len(doc.frames)) or_return
-    defer if err != nil { destroy(imgs)}
+    defer if err != nil { destroy(imgs) }
     
     md := get_metadata(doc.header)
 
@@ -170,8 +216,13 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
     palette := get_palette(doc) or_return
     defer delete(palette)
 
+    ts := get_tileset(doc) or_return
+    defer delete(ts)
+
+    info := Info{layers=layers, palette=palette, tilesets=ts, allocator=alloc}
+
     for frame, p in doc.frames {
-        imgs[p] = get_image_bytes(frame, layers, md, palette) or_return
+        imgs[p] = get_image_bytes(frame, info) or_return
     }
 
     return
@@ -184,17 +235,42 @@ to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> 
     img.depth = 8
     img.channels = 4
     img.pixels.buf = make([dynamic]byte, len(buf), alloc) or_return
+
     copy(img.pixels.buf[:], buf)
     return
 }
 
-// Write a cel to an image's data
-write_cel :: proc(img: []byte, cel: Cel, layer: Layer, md: Metadata, pal: Palette = nil) -> (err: Errors) {
+cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc := context.allocator) -> (c: Cel, err: runtime.Allocator_Error) {
+    c = cel
+    c.width = cel.tilemap.width * ts.width
+    c.height = cel.tilemap.height * ts.height
+    ch := int(chans)/8
+    
+    c.raw = make([]byte, ts.height*ts.width*len(c.tilemap.tiles)*ch, alloc) or_return
+
+    for h in 0..<c.tilemap.height {
+        for w in 0..<c.tilemap.width {
+            s := (h * c.tilemap.width * ts.height + w) * ts.width * ch
+            s1 := ts.width * ts.height * c.tilemap.tiles[h * c.tilemap.width + w] * ch
+
+            for y in 0..<ts.height {
+                copy(c.raw[s+(y*ts.width*c.tilemap.width*ch):], ts.tiles[s1+(y*ts.width*ch):][:ch*ts.width])
+            }
+        }
+    }
+    
+    return
+}
+
+// Write a cel to an image's data. Assumes tilemaps & linked cels have already bein handled.
+write_cel :: proc (
+    img: []byte, cel: Cel, layer: Layer, md: Metadata, 
+    pal: Palette = nil, ignored_pal_idxs: []int = nil,
+) -> (err: Errors) {
     for y in 0..<cel.height {
-        yi := y + cel.y
         for x in 0..<cel.width {
-            xi := (yi * md.width + x + cel.x) * 4
-            xc := (y * cel.width + x) * 4
+            //xi := ((y + cel.y) * md.width + x + cel.x) * 4
+            //xc := (y * cel.width + x) * 4
 
             pix: [4]byte
             // Convert to RGBA
@@ -204,40 +280,44 @@ write_cel :: proc(img: []byte, cel: Cel, layer: Layer, md: Metadata, pal: Palett
                     log.error("Indexed Color Mode. No Palette")
                     return .Indexed_BPP_No_Palette
                 }
+                if slice.contains(ignored_pal_idxs, int(cel.raw[x])) {
+                    continue
+                }
                 pix = pal[cel.raw[x]].color
             case .Grayscale:
                 pix.rgb = cel.raw[x]
                 pix.a = cel.raw[x+1]
             case .RGBA:
-                copy(pix[:], cel.raw[xc:xc+4])
+                pix = (^[4]byte)(&cel.raw[(y * cel.width + x) * 4:][0])^
             case:
                 log.error("Invalid Color Mode: ", md.bpp)
                 return .Invalid_BPP
             }
 
             if pix.a != 0 {
-                ipix: [4]byte
-                copy(ipix[:], img[xi:xi+4])
+                ipix := (^[4]byte)(&img[((y + cel.y) * md.width + x + cel.x) * 4:][0])
+                cpix := B_Pixel{u16(ipix.r), u16(ipix.g), u16(ipix.b), u16(ipix.a)}
 
-                if ipix.a != 0 {
+                if cpix.a != 0 {
                     if layer.blend_mode == .Normal {
                         // TODO: Does this work for all cases?
                         // Or should I just do blend() regaurdless?
-                        a := u16(int(pix.a) * cel.opacity * layer.opacity / (255*255))
-                        pa := a + u16(ipix.a) - alpha(a, u16(ipix.a))
+                        // a := u16(int(pix.a) * cel.opacity * layer.opacity / (255*255))
 
-                        pix.r = byte(u16(ipix.r) + (u16(pix.r) - u16(ipix.r)) * a / pa)
-                        pix.g = byte(u16(ipix.g) + (u16(pix.g) - u16(ipix.g)) * a / pa)
-                        pix.b = byte(u16(ipix.b) + (u16(pix.b) - u16(ipix.b)) * a / pa)
+                        a := alpha(u16(pix.a), alpha(cel.opacity, layer.opacity))
+                        pa := a + cpix.a - alpha(a, cpix.a)
+
+                        pix.r = byte(cpix.r + (u16(pix.r) - cpix.r) * a / pa)
+                        pix.g = byte(cpix.g + (u16(pix.g) - cpix.g) * a / pa)
+                        pix.b = byte(cpix.b + (u16(pix.b) - cpix.b) * a / pa)
                         pix.a = byte(pa)
 
                     } else {
                         a := alpha(cel.opacity, layer.opacity)
-                        pix = blend(ipix, pix, a, layer.blend_mode) or_return
+                        pix = blend(ipix^, pix, a, layer.blend_mode) or_return
                     }
                 }
-
-                copy(img[xi:xi+4], pix[:])
+                ipix^ = pix
             }
         }
     }
