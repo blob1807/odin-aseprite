@@ -1,13 +1,11 @@
 package aseprite_file_handler
 
 import "core:io"
-import "core:log"
-import "core:fmt"
 import "core:encoding/endian"
 //import "core:math/fixed"
 
-_ :: fmt
-_ :: log
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 read_bool :: proc(r: io.Reader, n: ^int) -> (data: bool, err: Read_Error) {
     return bool(read_byte(r, n) or_return), nil
@@ -20,7 +18,7 @@ read_i8 :: proc(r: io.Reader, n: ^int) -> (data: i8, err: Read_Error) {
 read_byte :: proc(r: io.Reader, n: ^int) -> (data: BYTE, err: Read_Error) {
     data, err = io.read_byte(r, n)
     if err != nil {
-        log.error("Faild to read byte/i8/bool", n^)
+        log.error("Failed to read byte/i8/bool", n^)
     }
     return
 }
@@ -29,7 +27,7 @@ read_word :: proc(r: io.Reader, n: ^int) -> (data: WORD, err: Read_Error) {
     buf: [2]byte
     s := io.read(r, buf[:], n) or_return
     if s != 2 {
-        log.error("Faild to read word", s, n^)
+        log.error("Failed to read word", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -44,7 +42,7 @@ read_short :: proc(r: io.Reader, n: ^int) -> (data: SHORT, err: Read_Error) {
     buf: [2]byte
     s := io.read(r, buf[:], n) or_return
     if s != 2 {
-        log.error("Faild to read short", s, n^)
+        log.error("Failed to read short", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -59,7 +57,7 @@ read_dword :: proc(r: io.Reader, n: ^int) -> (data: DWORD, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
-        log.error("Faild to read dword", s, n^)
+        log.error("Failed to read dword", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -73,7 +71,7 @@ read_long :: proc(r: io.Reader, n: ^int) -> (data: LONG, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
-        log.error("Faild to read long", s, n^)
+        log.error("Failed to read long", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -88,7 +86,7 @@ read_fixed :: proc(r: io.Reader, n: ^int) -> (data: FIXED, err: Read_Error) {
     buf: [4]byte
     s := io.read(r, buf[:], n) or_return
     if s != 4 {
-        log.error("Faild to read fixed", s, n^)
+        log.error("Failed to read fixed", s, n^)
         return data, .Wrong_Read_Size
     }
 
@@ -118,7 +116,7 @@ read_float :: proc(r: io.Reader, n: ^int) -> (data: FLOAT, err: Read_Error) {
     buf: [4]byte 
     s := io.read(r, buf[:], n) or_return
     if s != 42 {
-        log.error("Faild to read float", s, n^)
+        log.error("Failed to read float", s, n^)
         return 0, .Wrong_Read_Size
     }
     
@@ -133,7 +131,7 @@ read_double :: proc(r: io.Reader, n: ^int) -> (data: DOUBLE, err: Read_Error) {
     buf: [8]byte 
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
-        log.error("Faild to read double", s, n^)
+        log.error("Failed to read double", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -148,7 +146,7 @@ read_qword :: proc(r: io.Reader, n: ^int) -> (data: QWORD, err: Read_Error) {
     buf: [8]byte
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
-        log.error("Faild to read qword", s, n^)
+        log.error("Failed to read qword", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -163,7 +161,7 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     buf: [8]byte
     s := io.read(r, buf[:], n) or_return
     if s != 8 {
-        log.error("Faild to read long64", s, n^)
+        log.error("Failed to read long64", s, n^)
         return 0, .Wrong_Read_Size
     }
 
@@ -174,18 +172,18 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
     return v, err 
 }
 
-read_string :: proc(r: io.Reader, n: ^int, allocator := context.allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
+read_string :: proc(r: io.Reader, n: ^int, alloc := context.allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
     size := int(read_word(r, n) or_return)
 
-    buf := make([]byte, size, allocator, loc) or_return
+    buf := make([]byte, size, alloc) or_return
     s: int
     s, err = io.read(r, buf[:], n)
     if err != nil {
-        log.error("Faild to read string", size, err, n^, loc)
+        log.error("Failed to read string", size, err, n^, loc)
         return
     }
     if s != size {
-        log.error("Faild to read string", size, s, n^, loc)
+        log.error("Failed to read string", size, s, n^, loc)
         err = .Wrong_Read_Size
         return
     }
@@ -212,10 +210,10 @@ read_rect :: proc(r: io.Reader, n: ^int) -> (data: RECT, err: Read_Error) {
     return 
 }
 
-read_uuid:: proc(r: io.Reader, data: UUID, n: ^int) -> (err: Read_Error) { 
-    s := io.read(r, cast([]u8)data[:], n) or_return
+read_uuid:: proc(r: io.Reader, n: ^int) -> (data: UUID, err: Read_Error) { 
+    s := io.read(r, data[:], n) or_return
     if s != 16 {
-        log.error("Faild to read UUID", s, data, n^)
+        log.error("Failed to read UUID", s, data, n^)
         err = .Wrong_Read_Size
     }
     return 
@@ -262,14 +260,18 @@ read_bytes :: proc(r: io.Reader, data: []byte, n: ^int) -> (err: Read_Error) {
 }
 
 read_skip :: proc(r: io.Reader, to_skip: int, n: ^int) -> (err: Read_Error) {
+    // i := io.seek(r, i64(n^+to_skip), .Current) or_return
+    // n^ += int(i)
+
     for _ in 0..<to_skip {
         io.read_byte(r, n) or_return
     }
     return
 }
 
-read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator := context.allocator) -> (val: Property_Value, err: Unmarshal_Error) {
-    context.allocator = allocator
+read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, alloc := context.allocator) -> (val: Property_Value, err: Unmarshal_Error) {
+    context.allocator = alloc
+
     switch type {
     case .Null:   return nil, nil
     case .Bool:   return read_bool(r, n)
@@ -284,13 +286,11 @@ read_ud_value :: proc(r: io.Reader, type: Property_Type, n: ^int, allocator := c
     case .Fixed:  return read_fixed(r, n)
     case .F32:    return read_float(r, n)
     case .F64:    return read_double(r, n)
-    case .String: return read_string(r, n) // FIXME: This isn't getting freed sometimes
+    case .String: return read_string(r, n) 
     case .Point:  return read_point(r, n)
     case .Size:   return read_size(r, n)
     case .Rect:   return read_rect(r, n)
-    case .UUID:
-        val = make(UUID, 16) or_return
-        read_uuid(r, val.(UUID)[:], n) or_return
+    case .UUID:   return read_uuid(r, n)
 
     case .Vector:
         num := int(read_dword(r, n) or_return)
