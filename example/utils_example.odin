@@ -148,7 +148,7 @@ animation_images :: proc() {
 
 
 upscale_image :: proc() {
-    data := #load("../tests/blob/marshmallow.aseprite")
+    data := #load("../tests/blob/geralt.aseprite")
     doc: ase.Document
     derr := ase.unmarshal(data[:], &doc)
     img, ierr := utils.get_image(&doc) // default frame idx is 0
@@ -156,7 +156,7 @@ upscale_image :: proc() {
 }
 
 upscale_all_images :: proc() {
-    data := #load("../tests/blob/marshmallow.aseprite")
+    data := #load("../tests/blob/geralt.aseprite")
     doc: ase.Document
     derr := ase.unmarshal(data[:], &doc)
     imgs, ierr := utils.get_all_images(&doc)
