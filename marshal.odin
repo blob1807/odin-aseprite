@@ -2,13 +2,12 @@ package aseprite_file_handler
 
 import "core:io"
 import "core:os"
-import "core:fmt"
-import "core:log"
 import "core:bytes"
 import "core:bufio"
 import "vendor:zlib"
-_::log
-_::fmt
+
+@(require) import "core:fmt"
+@(require) import "core:log"
 
 
 marshal_to_bytes_buff :: proc(b: ^bytes.Buffer, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
