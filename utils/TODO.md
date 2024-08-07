@@ -1,7 +1,8 @@
 Jarvis make automating things easier please.
 
-### Not doing:
-- Respecting Exteranl Files
+### Not Supporting:
+- Exteranl Files
+- Non-standard versions of Ase
 
 
 ### Automation things:
@@ -13,6 +14,7 @@ Jarvis make automating things easier please.
 - [x] Palettes new & old
 - [x] Metadata
 - [x] Tags
+- [ ] Tilesets
 - [ ] Use User Data
 - [ ] Precomputed Images 
 - [ ] Precomputed Animations 
@@ -24,13 +26,18 @@ Jarvis make automating things easier please.
 - [x] Covert colour spaces to sRGB
 - [x] Colour Palette Indexing
 - [x] Change Alpha based on Cel & Layer Opacity
-- [ ] Linear Image scaling
-- [X] See if it's worth using a Fast Alpha algo. Used it.
+- [x] Nearest Neighbor Upscaling
+- [x] See if it's worth using a Fast Alpha algo. Used it.
+- [ ] Use Tilesets to make images.
+    - [ ] Support Index & Greyscale Pixel Depths
+- [x] Ingore select palette indices
 - [ ] Blend Modes
     - [x] Use u16s. Ints may still be needed.
     - [x] Find out how Aseprite does them
-    - [ ] Add Aseprite's license
-    - [ ] Maybe refactor to use Vecs in helpers
+    - [x] Add Aseprite's license
+    - [x] Refactor to use fix arrays in helpers
+    - [ ] See if refactoring EVERYTHING to use fix arrays
+    - [ ] See if using simd Vecs is better.
 - [ ] Test Blends
     - [x] Normal
     - [ ] Multiply
@@ -65,18 +72,27 @@ Jarvis make automating things easier please.
 - [x] Tags
     - [x] Only selected Tag
     - [x] Use Tag durection
+- [ ] Tilesets
 
 
 ### Tilesets:
+- [x] Decide if I'm even gonna support this
+- [x] Extract Tilesets
+- [ ] Rename to Tilemap?
+
+
+### Sprite sheet / Atlas
 - [ ] Decide if I'm even gonna support this
 
 
 ### Other things:
-- [ ] Palettes, to & from GPL 
-    - [ ] Doc
+- [x] Palettes, to & from GPL 
+    - [x] Doc
     - [x] Image
 - [x] Images to `core:image`
 - [ ] Custom formatter (fmt.set_user_formatters)
+- [x] Add Error returns for deallocation errors
+- [ ] Use a fucking context which holds everything
 
 A use case very cool.
 https://gist.github.com/karl-zylinski/ddc98344cb45468649df8e52d9247dff
