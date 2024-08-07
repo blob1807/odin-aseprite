@@ -99,6 +99,24 @@ upscale_image_from_img :: proc(img: Image, factor := 10, alloc := context.alloca
 upscale_image :: proc{upscale_image_from_img, upscale_image_from_bytes}
 
 
+upscale_all_from_imgs :: proc(imgs: []Image, factor := 10, alloc := context.allocator) -> (res: []Image, err: runtime.Allocator_Error) {
+    res = make([]Image, len(imgs), alloc) or_return
+    for img, pos in imgs {
+        res[pos] = upscale_image_from_img(img, factor, alloc) or_return
+    }
+    return
+}
+
+upscale_all_from_byte:: proc(imgs: [][]byte, md: Metadata, factor := 10, alloc := context.allocator) -> (res: [][]byte, res_md: Metadata, err: runtime.Allocator_Error) {
+    res = make([][]byte, len(imgs), alloc) or_return
+    for img, pos in imgs {
+        res[pos], res_md = upscale_image_from_bytes(img, md, factor, alloc) or_return
+    }
+    return
+}
+
+upscale_all :: proc{upscale_all_from_imgs, upscale_all_from_byte}
+
 
 destroy_frame :: proc(frame: Frame, alloc := context.allocator) -> runtime.Allocator_Error {
     for &cel in frame.cels {
