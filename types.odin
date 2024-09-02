@@ -28,8 +28,8 @@ Unmarshal_Errors :: enum {
     User_Data_Maps_Not_Supported,
 }
 Unmarshal_Error :: union #shared_nil {
-    Unmarshal_Errors, 
     runtime.Allocator_Error, 
+    Unmarshal_Errors, 
     io.Error,
     Read_Error,
     zlib.Error,
