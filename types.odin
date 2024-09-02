@@ -14,6 +14,7 @@ import vzlib "vendor:zlib"
 // Only Size/Lengths that can't be gotten by len() are set.
 
 Unmarshal_Errors :: enum {
+    None,
     Unable_To_Open_File,
     Unable_Make_Reader,
     Bad_File_Magic_Number,
@@ -36,6 +37,7 @@ Unmarshal_Error :: union #shared_nil {
 }
 
 Read_Errors :: enum {
+    None,
     Unable_To_Decode_Data,
     Wrong_Read_Size,
     Array_To_Small,
@@ -44,6 +46,7 @@ Read_Errors :: enum {
 Read_Error :: union #shared_nil {Read_Errors, io.Error, runtime.Allocator_Error}
 
 Marshal_Errors :: enum {
+    None,
     Unable_Make_Writer,
     Buffer_Not_Big_Enough,
     Invalid_Chunk_Type,
@@ -61,6 +64,7 @@ Marshal_Error :: union #shared_nil {
 }
 
 Write_Errors :: enum {
+    None,
     Unable_To_Encode_Data,
     Wrong_Write_Size,
     Array_To_Small,
