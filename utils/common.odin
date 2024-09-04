@@ -1,14 +1,16 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
+import "core:c"
+import "core:mem"
 import "core:slice"
 import "core:strings"
+import "core:strconv"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
 
 import ase ".."
-
 
 
 get_metadata :: proc(header: ase.File_Header) -> (md: Metadata) {
@@ -67,21 +69,22 @@ has_tileset :: proc(doc: ^ase.Document) -> bool {
 
 // Uses Nearest-neighbor Upscaling
 upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor: int = 10, alloc := context.allocator) -> (res: []byte, res_md: Metadata, err: runtime.Allocator_Error) {
-    assert(len(img) == (md.height * md.height * 4), "image size doesn't match metadata") // TODO: replace with an error
-    res = make([]byte, len(img) * factor * factor) or_return
+    ch := int(md.bpp) >> 3
+    assert(len(img) == (md.height * md.height * ch), "image size doesn't match metadata") // TODO: replace with an error
+    res = make([]byte, len(img) * factor * factor, alloc) or_return
     res_md = {md.width*factor, md.height*factor, md.bpp}
 
     for h in 0..<md.height {
         for w in 0..<md.width {
-            start := (h*md.width*factor + w) * factor * 4
-            first := res[start:start + factor * 4]
-            copy(first[:4], img[(h*md.width + w) * 4:])
+            start := (h*md.width*factor + w) * factor * ch
+            first := res[start:start + factor * ch]
+            copy(first[:ch], img[(h*md.width + w) * ch:])
 
             for x in 1..<factor {
-                copy(res[start + x * 4:], first[:4])
+                copy(res[start + x * ch:][:ch], first)
             }
             for y in 1..<factor {
-                copy(res[start + (y*md.width*factor*4):], first)
+                copy(res[start + (y*md.width*factor*ch):], first)
             }
         }
     }
@@ -90,16 +93,16 @@ upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor: int = 10, al
 }
 
 // Uses Nearest-neighbor Upscaling
-upscale_image_from_img :: proc(img: Image, factor := 10, alloc := context.allocator) -> (res: Image, err: runtime.Allocator_Error) {
+upscale_image_from_img :: proc(img: Image, factor := 10, alloc := context.allocator) -> (res: Image, err: runtime.Allocator_Error) #optional_allocator_error {
     res.data, res.md = upscale_image_from_bytes(img.data, img.md, factor, alloc) or_return
     return
 }
 
 // Uses Nearest-neighbor Upscaling
-upscale_image :: proc{upscale_image_from_img, upscale_image_from_bytes}
+upscale_image :: proc { upscale_image_from_img, upscale_image_from_bytes }
 
 
-upscale_all_from_imgs :: proc(imgs: []Image, factor := 10, alloc := context.allocator) -> (res: []Image, err: runtime.Allocator_Error) {
+upscale_all_from_imgs :: proc(imgs: []Image, factor := 10, alloc := context.allocator) -> (res: []Image, err: runtime.Allocator_Error) #optional_allocator_error {
     res = make([]Image, len(imgs), alloc) or_return
     for img, pos in imgs {
         res[pos] = upscale_image_from_img(img, factor, alloc) or_return
@@ -170,12 +173,16 @@ destroy_info :: proc(info: ^Info) -> runtime.Allocator_Error {
 }
 
 destroy_cel :: proc(cel: ^Cel, alloc := context.allocator) -> runtime.Allocator_Error {
-    delete(cel.tilemap.tiles, alloc) or_return
-    return nil
+    return delete(cel.tilemap.tiles, alloc)
 }
 
-destroy_layers :: delete_slice
-destroy_palette :: delete_slice
+destroy_layers :: proc(lay: []Layer, alloc := context.allocator) -> runtime.Allocator_Error {
+    return delete(lay, alloc)
+}
+
+destroy_palette :: proc(pal: Palette, alloc := context.allocator) -> runtime.Allocator_Error {
+    return delete(pal)
+}
 
 destroy :: proc {
     destroy_frames, 
@@ -186,5 +193,34 @@ destroy :: proc {
     destroy_info,
     destroy_cel,
     destroy_frame,
-    delete_slice,
+    destroy_layers, 
+    destroy_palette,
+}
+
+
+compute_alpha :: proc(img: []u8, alloc := context.allocator) -> (res: []u8, err: runtime.Allocator_Error) #optional_allocator_error {
+    assert(len(img) %% 4 == 0, "Given buffer isn't RGBA")
+    img_buf := mem.slice_data_cast([][4]u8, img)
+    buf := make([][3]u8, len(img_buf), alloc) or_return
+
+    for p, pos in img_buf {
+        bp := [4]c.int{ c.int(p.r), c.int(p.g), c.int(p.b), c.int(p.a) }
+        bp.rgb = bp.rgb * bp.a / (255 + bp.a - alpha(bp.a, 255))
+        buf[pos] = { u8(bp.r), u8(bp.g), u8(bp.b) }
+    }
+
+    return mem.slice_data_cast([]u8, buf), nil
+}
+
+
+remove_alpha :: proc(img: []u8, alloc := context.allocator) -> (res: []u8, err: runtime.Allocator_Error) #optional_allocator_error {
+    assert(len(img) %% 4 == 0, "Given buffer isn't RGBA")
+    img_buf := mem.slice_data_cast([][4]u8, img)
+    buf := make([][3]u8, len(img_buf), alloc) or_return
+
+    for p, pos in img_buf {
+        buf[pos] = p.rgb
+    }
+
+    return mem.slice_data_cast([]u8, buf), nil
 }
