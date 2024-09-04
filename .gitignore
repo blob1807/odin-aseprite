@@ -1,13 +1,12 @@
-\ols.json
-\main.odin
-\example\out.aseprite
+ols.json
+main.odin
 
-\build
-\_main
-\tests\_utils\asefile
-\tests\_utils\aseprite
-\tests\_utils\blob
-\tests\_utils\community
+build
+_main
+tests/_utils/asefile
+tests/_utils/aseprite
+tests/_utils/blob
+tests/_utils/community
 
 *.exe
 *.ll
