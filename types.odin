@@ -3,6 +3,7 @@ package aseprite_file_handler
 
 import "base:runtime"
 import "core:io"
+import "core:os"
 import "core:math/fixed"
 import "core:compress/zlib"
 import vzlib "vendor:zlib"
@@ -15,7 +16,6 @@ import vzlib "vendor:zlib"
 
 Unmarshal_Errors :: enum {
     None,
-    Unable_To_Open_File,
     Unable_Make_Reader,
     Bad_File_Magic_Number,
     Bad_Frame_Magic_Number,
@@ -28,12 +28,13 @@ Unmarshal_Errors :: enum {
     User_Data_Maps_Not_Supported,
 }
 Unmarshal_Error :: union #shared_nil {
-    runtime.Allocator_Error, 
     Unmarshal_Errors, 
-    io.Error,
     Read_Error,
-    zlib.Error,
     ZLIB_Errors,
+    runtime.Allocator_Error, 
+    zlib.Error,
+    io.Error,
+    os.Error,
 }
 
 Read_Errors :: enum {
@@ -57,10 +58,10 @@ Marshal_Errors :: enum {
 }
 Marshal_Error :: union #shared_nil {
     Marshal_Errors, 
-    runtime.Allocator_Error, 
     Write_Error,
-    io.Error,
     ZLIB_Errors,
+    io.Error,
+    runtime.Allocator_Error, 
 }
 
 Write_Errors :: enum {
