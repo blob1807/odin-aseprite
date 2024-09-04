@@ -9,11 +9,11 @@ import "core:slice"
 
 import ase ".."
 
-// TODO: ALL Animation procs should respect Tags
-// TODO: Allow for the spesicaction of what tag to use
-
-get_animation_from_doc :: proc(doc: ^ase.Document, anim: ^Animation, use_tag := "", alloc := context.allocator) -> (err: Errors) {
-    info := get_all(doc, alloc) or_return
+get_animation_from_doc :: proc(
+    doc: ^ase.Document, anim: ^Animation, 
+    use_tag := "", alloc := context.allocator
+) -> (err: Errors) {
+    info := get_info(doc, alloc) or_return
     defer destroy(&info)
     return get_animation_from_frames(info, anim, use_tag)
 }
@@ -24,11 +24,10 @@ get_animation_from_frames :: proc (
 ) -> (err: Errors) {
     context.allocator = info.allocator
 
-    s,f := 0, len(info.frames)
+    s, f := 0, len(info.frames)
     tag: Tag
     
     if use_tag != "" {
-        fmt.println(info.tags, use_tag)
         for t in info.tags {
             if t.name == use_tag {
                 if len(info.frames) < t.to || len(info.frames) < t.from {
