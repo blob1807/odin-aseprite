@@ -1,54 +1,55 @@
 package aseprite_file_handler
 
+import "base:runtime"
 import "base:intrinsics"
 import "core:io"
 import "core:os"
 import "core:bytes"
 import "core:bufio"
+import "core:mem/virtual"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
 
 
-unmarshal_from_bytes_buff :: proc(r: ^bytes.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
+unmarshal_from_bytes_buff :: proc(doc: ^Document, r: ^bytes.Reader, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(bytes.reader_to_stream(r))
     if !ok {
         return .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, alloc)
+    return unmarshal(doc, rr, alloc)
 }
 
-unmarshal_from_bufio :: proc(r: ^bufio.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
+unmarshal_from_bufio :: proc(doc: ^Document, r: ^bufio.Reader, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(bufio.reader_to_stream(r))
     if !ok {
         return .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, alloc)
+    return unmarshal(doc, rr, alloc)
 }
 
-unmarshal_from_filename :: proc(name: string, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
-    fd, err_no := os.open(name, os.O_RDONLY, 0)
+unmarshal_from_filename :: proc(doc: ^Document, name: string, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
+    fd, err_no := os.open(name, os.O_RDONLY)
     if err_no != 0 {
         log.error("Unable to read because of:", err_no)
         return .Unable_To_Open_File
     }
     defer os.close(fd)
-    return unmarshal(fd, doc, alloc)
+    return unmarshal(doc, fd, alloc)
 }
 
-unmarshal_from_handle :: proc(h: os.Handle, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
+unmarshal_from_handle :: proc(doc: ^Document, h: os.Handle, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
     rr, ok := io.to_reader(os.stream_from_handle(h))
-    io.to_reader(os.stream_from_handle(os.stdin))
     if !ok {
         return .Unable_Make_Reader
     }
-    return unmarshal(rr, doc, alloc)
+    return unmarshal(doc, rr, alloc)
 }
 
-unmarshal_from_slice :: proc(b: []byte, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
+unmarshal_from_slice :: proc(doc: ^Document, b: []byte, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
     r: bytes.Reader
     bytes.reader_init(&r, b[:])
-    return unmarshal(&r, doc, alloc)
+    return unmarshal(doc, &r, alloc)
 }
 
 unmarshal :: proc{
@@ -56,16 +57,22 @@ unmarshal :: proc{
     unmarshal_from_filename, unmarshal_from_bufio, unmarshal_from_reader,
 }
 
-unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
-    // Put Everything into a Virtual Arena?
-    // But I do prefer letting user choose the alloc.
-    context.allocator = alloc
+unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
     tr: int
     defer {
         if err != nil {
-            log.error("Failed to unmarshal at", tr, "cause of", err)
+            log.errorf("Failed to unmarshal at %v (%X) cause of %v", tr, tr, err)
         }
     }
+    
+    temp_alloc := alloc
+    if alloc == {} {
+        if doc.arena.curr_block == nil {
+            virtual.arena_init_growing(&doc.arena) or_return
+        }
+        temp_alloc = virtual.arena_allocator(&doc.arena)
+    }
+    context.allocator = temp_alloc
 
     icc_warn, tm_warn: bool
     rt := &tr
@@ -142,7 +149,7 @@ unmarshal_from_reader :: proc(r: io.Reader, doc: ^Document, alloc := context.all
 
             case .tileset:
                 if !tm_warn {
-                    log.warn("Tilemaps & Tilesets are currently unsuported.")
+                    //log.warn("Tilemaps & Tilesets are currently unsuported.")
                     tm_warn = true
                 }
                 chunk = read_tileset(r, rt) or_return

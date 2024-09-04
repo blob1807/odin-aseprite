@@ -1,6 +1,7 @@
 package aseprite_file_handler
 
 import "base:runtime"
+import "core:mem/virtual"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
@@ -29,7 +30,12 @@ destroy_value :: proc(p: ^Property_Value, alloc := context.allocator) -> (err: r
     return
 }
 
-destroy_doc :: proc(doc: ^Document, alloc := context.allocator) -> (err: runtime.Allocator_Error) {
+destroy_doc :: proc(doc: ^Document) {
+    virtual.arena_destroy(&doc.arena)
+}
+
+
+destroy_doc_alloc :: proc(doc: ^Document, alloc := context.allocator) -> (err: runtime.Allocator_Error) {
     context.allocator = alloc
     for &frame in doc.frames {
         for &chunk in frame.chunks {
@@ -120,6 +126,7 @@ destroy_doc :: proc(doc: ^Document, alloc := context.allocator) -> (err: runtime
     }
     return delete(doc.frames)
 }
+
 
 destroy_chunk :: proc {
     _destroy_old_256, _destroy_old_64, _destroy_layer, _destroy_cel, 

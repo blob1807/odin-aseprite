@@ -9,8 +9,7 @@ import "core:mem"
 @(require) import "core:fmt"
 @(require) import "core:log"
 
-read_file_header :: proc(r: io.Reader, rt: ^int, alloc := context.allocator) -> (h: File_Header, err: Unmarshal_Error) {
-    context.allocator = alloc
+read_file_header :: proc(r: io.Reader, rt: ^int) -> (h: File_Header, err: Unmarshal_Error) {
     h.size = read_dword(r, rt) or_return
 
     if io.Stream_Mode.Size in io.query(r) {
@@ -405,7 +404,7 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
 
         assert(ok, "Expected size not equal to uncompressed size") // TODO: Replace with error
 
-        chunk.compressed = cast(Tileset_Compressed)buf.buf[buf.off:]
+        chunk.compressed = (Tileset_Compressed)(buf.buf[buf.off:])
 
     }
     return

@@ -15,7 +15,7 @@ ase_example :: proc() {
     doc: ase.Document
     defer ase.destroy_doc(&doc)
 
-    un_err := ase.unmarshal(data[:], &doc)
+    un_err := ase.unmarshal(&doc, data[:])
     if un_err != nil {
         fmt.eprintln("Failed to Unmarshal my beloved, geralt.", un_err)
         return
@@ -26,7 +26,7 @@ ase_example :: proc() {
     buf: [dynamic]byte
     defer delete(buf)
 
-    written, m_err := ase.marshal(&buf, &doc)
+    written, m_err := ase.marshal(&doc, &buf)
     if m_err != nil {
         fmt.eprintln("Failed to Marshal my beloved, geralt.", m_err)
         return

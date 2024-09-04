@@ -4,6 +4,7 @@ package aseprite_file_handler
 import "base:runtime"
 import "core:io"
 import "core:math/fixed"
+import "core:mem/virtual"
 import "core:compress/zlib"
 import vzlib "vendor:zlib"
 
@@ -127,6 +128,7 @@ Color_RGBA :: [4]BYTE
 Document :: struct {
     header: File_Header,
     frames: []Frame,
+    arena: virtual.Arena,
 }
 
 Frame :: struct {

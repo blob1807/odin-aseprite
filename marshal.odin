@@ -10,26 +10,26 @@ import "vendor:zlib"
 @(require) import "core:log"
 
 
-marshal_to_bytes_buff :: proc(b: ^bytes.Buffer, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
+marshal_to_bytes_buff :: proc(doc: ^Document, b: ^bytes.Buffer, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     w, ok := io.to_writer(bytes.buffer_to_stream(b))
     if !ok {
         return file_size, .Unable_Make_Writer
     }
-    return marshal(w, doc, allocator)
+    return marshal(doc, w, allocator)
 }
 
-marshal_to_handle :: proc(h: os.Handle, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
+marshal_to_handle :: proc(doc: ^Document, h: os.Handle, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     w, ok := io.to_writer(os.stream_from_handle(h))
     if !ok {
         return file_size, .Unable_Make_Writer
     }
-    return marshal(w, doc, allocator)
+    return marshal(doc, w, allocator)
 }
 
-marshal_to_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
+marshal_to_slice :: proc(doc: ^Document, b: []byte, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
-    file_size = marshal(&buf, doc, allocator) or_return
+    file_size = marshal(doc, &buf, allocator) or_return
     if len(b) < len(buf.buf[buf.off:]) {
         return file_size, Marshal_Errors.Buffer_Not_Big_Enough
     }
@@ -37,20 +37,20 @@ marshal_to_slice :: proc(b: []byte, doc: ^Document, allocator := context.allocat
     return
 }
 
-marshal_to_dynamic :: proc(b: ^[dynamic]byte, doc: ^Document, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
+marshal_to_dynamic :: proc(doc: ^Document, b: ^[dynamic]byte, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
     buf: bytes.Buffer
     defer bytes.buffer_destroy(&buf)
-    file_size = marshal(&buf, doc, allocator) or_return
+    file_size = marshal(doc, &buf, allocator) or_return
     append(b, ..buf.buf[:])
     return
 }
 
-marshal_to_bufio :: proc(w: ^bufio.Writer, doc: ^Document, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
+marshal_to_bufio :: proc(doc: ^Document, w: ^bufio.Writer, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
     ww, ok := io.to_writer(bufio.writer_to_stream(w))
     if !ok {
         return file_size, .Unable_Make_Writer
     }
-    return marshal(ww, doc, allocator)
+    return marshal(doc, ww, allocator)
 }
 
 marshal :: proc{
@@ -58,7 +58,7 @@ marshal :: proc{
     marshal_to_dynamic, marshal_to_bufio, marshal_to_writer,
 }
 
-marshal_to_writer :: proc(ww: io.Writer, doc: ^Document, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
+marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.allocator) -> (file_size: int, err: Marshal_Error) {
     ud_map_warn: bool
     s := &file_size
     b: bytes.Buffer
