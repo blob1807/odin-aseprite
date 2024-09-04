@@ -174,6 +174,9 @@ read_long64 :: proc(r: io.Reader, n: ^int) -> (data: LONG64, err: Read_Error) {
 
 read_string :: proc(r: io.Reader, n: ^int, alloc := context.allocator, loc := #caller_location) -> (data: STRING, err: Read_Error) {
     size := int(read_word(r, n) or_return)
+    if size == 0 {
+        return
+    }
 
     buf := make([]byte, size, alloc) or_return
     s: int
@@ -183,7 +186,7 @@ read_string :: proc(r: io.Reader, n: ^int, alloc := context.allocator, loc := #c
         return
     }
     if s != size {
-        log.error("Failed to read string", size, s, n^, loc)
+        log.error("Unexpected string size", size, s, n^, loc)
         err = .Wrong_Read_Size
         return
     }
