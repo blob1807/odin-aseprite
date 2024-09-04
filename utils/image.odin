@@ -4,6 +4,7 @@ import "base:runtime"
 import "core:image"
 import "core:slice"
 import "core:mem"
+import "core:os"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
@@ -21,24 +22,10 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
         return {}, Image_Error.Frame_Index_Out_Of_Bounds
     }
 
-    raw_frame := get_frame(doc.frames[frame]) or_return
-    defer destroy(raw_frame)
-
-    layers := get_layers(doc) or_return
-    defer delete(layers)
-
-    palette := get_palette(doc) or_return
-    defer delete(palette)
-
-    ts := get_tileset(doc) or_return
-    defer delete(ts)
-
-    info := Info { 
-        layers=layers, palette=palette, tilesets=ts, md=md,
-        allocator=alloc
-    }
+    info := get_info(doc) or_return
+    defer destroy(&info)
     
-    return get_image_from_frame(raw_frame, info)
+    return get_image_from_frame(info.frames[frame], info)
 }
 
 get_image_from_doc_frame :: proc(
@@ -63,6 +50,7 @@ get_image_from_cel :: proc(
         ts := info.tilesets[layer.tileset]
         c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
         defer delete(c.raw)
+        log.debug("Doning Tileset")
 
         img.data = make([]byte, c.width * c.height * 4, info.allocator) or_return
         write_cel(img.data[:], c, layer, info.md, info.palette) or_return
@@ -94,11 +82,11 @@ get_image :: proc {
 
 
 // Only Uses the First Frame
-get_image_bytes_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator)  -> (img: []byte, err: Errors) {
+get_image_bytes_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allocator)  -> (img: []byte, err: Errors) {
     context.allocator = alloc
     md := get_metadata(doc.header)
 
-    raw_frame := get_frame(doc.frames[0]) or_return
+    raw_frame := get_frame(doc.frames[frame]) or_return
     defer delete(raw_frame.cels)
 
     layers := get_layers(doc) or_return
@@ -129,6 +117,7 @@ get_image_bytes_from_cel :: proc( cel: Cel, layer: Layer, info: Info,
         ts := info.tilesets[layer.tileset]
         c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
         defer delete(c.raw)
+        log.debug("Doning Tileset")
 
         img = make([]byte, c.width * c.height * 4, info.allocator) or_return
         write_cel(img, c, layer, info.md, info.palette) or_return
@@ -152,7 +141,7 @@ get_image_bytes_from_frame :: proc(
         slice.sort_by(frame.cels[:], cel_less)
     }
 
-    for cel in frame.cels {
+    for cel, pos in frame.cels {
         lay := info.layers[cel.layer]
         if !lay.visiable { continue }
 
@@ -160,10 +149,17 @@ get_image_bytes_from_frame :: proc(
             ts := info.tilesets[lay.tileset]
             c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
             defer delete(c.raw)
+            log.debug("Doning Tileset")
+
             write_cel(img, c, lay, info.md, info.palette) or_return
 
         } else {
             write_cel(img, cel, lay, info.md, info.palette) or_return
+            if pos == 1 {
+                str := transmute([]u8)format_pixels({height=cel.height, width=cel.width, data=cel.raw, bpp=.RGBA}, cel.width, cel.height)
+                defer delete(str)
+                os.write_entire_file("_cel.txt", str)
+            }
         }
     }
 
@@ -183,20 +179,10 @@ get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs:
     imgs = make([]Image, len(doc.frames)) or_return
     defer if err != nil { destroy(imgs)}
 
-    md := get_metadata(doc.header)
+    info := get_info(doc) or_return
+    defer destroy(&info)
 
-    layers := get_layers(doc) or_return
-    defer delete(layers)
-
-    palette := get_palette(doc) or_return
-    defer delete(palette)
-
-    ts := get_tileset(doc) or_return
-    defer delete(ts)
-
-    info := Info{layers=layers, palette=palette, tilesets=ts, allocator=alloc}
-
-    for frame, p in doc.frames {
+    for frame, p in info.frames {
         imgs[p] = get_image(frame, info) or_return
     }
 
@@ -232,7 +218,7 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
 get_img_for_atlas :: proc(doc: ^ase.Document, ignored_pal_idxs: []int = nil, alloc := context.allocator) -> (res: []Image, err: Errors) {
     context.allocator = alloc
 
-    info := get_all(doc) or_return
+    info := get_info(doc) or_return
     defer destroy(&info)
 
     res = make([]Image, len(doc.frames)) or_return
@@ -259,18 +245,19 @@ cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc := con
     c.height = cel.tilemap.height * ts.height
     ch := int(chans)/8
     
-    c.raw = make([]byte, ts.height*ts.width*len(c.tilemap.tiles)*ch, alloc) or_return
+    c.raw = make([]byte, ts.height * ts.width * len(c.tilemap.tiles) * ch, alloc) or_return
 
     for h in 0..<c.tilemap.height {
         for w in 0..<c.tilemap.width {
             s := (h * c.tilemap.width * ts.height + w) * ts.width * ch
-            s1 := ts.width * ts.height * c.tilemap.tiles[h * c.tilemap.width + w] * ch
-
+            s1 := c.tilemap.tiles[h * c.tilemap.width + w] * ts.width * ts.height * ch
+            
             for y in 0..<ts.height {
-                copy(c.raw[s+(y*ts.width*c.tilemap.width*ch):], ts.tiles[s1+(y*ts.width*ch):][:ch*ts.width])
+                copy(c.raw[s+(y*ts.width*c.tilemap.width*ch):][:ch*ts.width], ts.tiles[s1+(y*ts.width*ch):])
             }
         }
     }
+    assert(len(c.raw) == (c.width * c.height * ch), "Missmatched sizes")
     
     return
 }
@@ -280,50 +267,65 @@ write_cel :: proc (
     img: []byte, cel: Cel, layer: Layer, md: Metadata, 
     pal: Palette = nil, ignored_pal_idxs: []int = nil,
 ) -> (err: Errors) {
+
+    switch md.bpp {
+    case .Indexed:
+        if pal == nil {
+            log.error("Indexed Color Mode. No Palette")
+            return .Indexed_BPP_No_Palette
+        }
+        fallthrough 
+    case .Grayscale, .RGBA:
+        // TODO: Replace with error returns
+        fmt.assertf(len(cel.raw) > 0, "No Cel Data %v", len(cel.raw))
+        fmt.assertf(len(cel.raw) % (int(md.bpp) / 8) == 0, "Invalid BPP %v", md.bpp)
+    case:
+        log.error("Invalid Color Mode: ", md.bpp)
+        return .Invalid_BPP
+    }
+
+    assert(len(img) == (md.height * md.width * 4))
+
+    pos: [2]int = {clamp(cel.x, 0, md.width),  clamp(cel.x, 0, md.width)}
+
     for y in 0..<cel.height {
         for x in 0..<cel.width {
-            //xi := ((y + cel.y) * md.width + x + cel.x) * 4
+            //xi := ((y + pos.y) * md.width + x + pos.x) * 4
             //xc := (y * cel.width + x) * 4
 
             pix: [4]byte
             // Convert to RGBA
             switch md.bpp {
             case .Indexed:
-                if pal == nil {
-                    log.error("Indexed Color Mode. No Palette")
-                    return .Indexed_BPP_No_Palette
-                }
-                if slice.contains(ignored_pal_idxs, int(cel.raw[x])) {
+                if slice.contains(ignored_pal_idxs, int(cel.raw[y * cel.width + x])) {
                     continue
                 }
-                pix = pal[cel.raw[x]].color
+                pix = pal[cel.raw[y * cel.width + x]].color
+
             case .Grayscale:
-                pix.rgb = cel.raw[x]
-                pix.a = cel.raw[x+1]
+                pix.rgb = cel.raw[y * cel.width + x]
+                pix.a = cel.raw[y * cel.width + x + 1]
+
             case .RGBA:
-                pix = (^[4]byte)(&cel.raw[(y * cel.width + x) * 4:][0])^
-            case:
-                log.error("Invalid Color Mode: ", md.bpp)
-                return .Invalid_BPP
-            }
+                pix = (^[4]byte)(&cel.raw[(y * cel.width + x) * 4])^
+            } 
 
             if pix.a != 0 {
-                ipix := (^[4]byte)(&img[((y + cel.y) * md.width + x + cel.x) * 4:][0])
-                cpix := B_Pixel{u16(ipix.r), u16(ipix.g), u16(ipix.b), u16(ipix.a)}
-
-                if cpix.a != 0 {
+                ipix := (^[4]byte)(&img[((y + cel.y) * md.width + x + cel.x) * 4])
+                if ipix.a != 0 {
                     if layer.blend_mode == .Normal {
                         // TODO: Does this work for all cases?
                         // Or should I just do blend() regaurdless?
-                        // a := u16(int(pix.a) * cel.opacity * layer.opacity / (255*255))
+                        //a := i32(int(pix.a) * cel.opacity * layer.opacity / (255*255))
 
-                        a := alpha(u16(pix.a), alpha(cel.opacity, layer.opacity))
-                        pa := a + cpix.a - alpha(a, cpix.a)
+                        last := B_Pixel{i32(ipix.r), i32(ipix.g), i32(ipix.b), i32(ipix.a)}
+                        a := alpha(i32(pix.a), alpha(cel.opacity, layer.opacity))
+                        pa := a + last.a - alpha(last.a, a)
 
-                        pix.r = byte(cpix.r + (u16(pix.r) - cpix.r) * a / pa)
-                        pix.g = byte(cpix.g + (u16(pix.g) - cpix.g) * a / pa)
-                        pix.b = byte(cpix.b + (u16(pix.b) - cpix.b) * a / pa)
-                        pix.a = byte(pa)
+                        pix.r = u8(last.r + (i32(pix.r) - last.r) * a / pa)
+                        pix.g = u8(last.g + (i32(pix.g) - last.g) * a / pa)
+                        pix.b = u8(last.b + (i32(pix.b) - last.b) * a / pa)
+                        pix.a = u8(pa)
 
                     } else {
                         a := alpha(cel.opacity, layer.opacity)
