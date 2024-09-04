@@ -44,7 +44,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         #partial switch c in chunk {
         case ase.Cel_Chunk:
             cel := Cel {
-                pos = {int(c.x), int(c.y)},
+                pos = {max(0, int(c.x)), max(0, int(c.y))},
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
                 layer = int(c.layer_index)
@@ -221,10 +221,11 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
         #partial switch c in chunk {
         case ase.Palette_Chunk:
             if int(c.last_index) >= len(pal) {
-                resize(pal, int(c.last_index)) or_return
+                resize(pal, int(c.last_index)+1) or_return
             }
-            for i in c.first_index..<c.last_index {
-                if int(i) >= len(pal) { 
+            
+            for i in c.first_index..=c.last_index {
+                if int(i) > len(pal) { 
                     return Palette_Error.Color_Index_Out_of_Bounds
                 }
                 
@@ -302,13 +303,12 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
                 int(v.width), 
                 int(v.height), 
                 int(v.num_of_tiles),
-                int(v.base_index), 
                 v.name, 
                 nil, 
             }
 
             if t, ok := v.compressed.?; ok {
-                ts.tiles = mem.slice_data_cast(Pixels, t)
+                ts.tiles = (Pixels)(t)
             }
 
             append(buf, ts) or_return
@@ -323,7 +323,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
 get_tileset :: proc{tileset_from_doc, tileset_from_doc_frame}
 
 
-get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
+get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
     info: Info err: Errors
 ) {
     context.allocator = alloc
@@ -353,11 +353,11 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
             #partial switch c in chunk {
             case ase.Cel_Chunk:
                 cel := Cel {
-                    pos = {int(c.x), int(c.y)},
+                    pos = {clamp(int(c.x), 0, md.width),  clamp(int(c.y), 0, md.height)},
                     opacity = int(c.opacity_level),
                     z_index = int(c.z_index),
                     layer = int(c.layer_index)
-                }
+                } 
         
                 switch v in c.cel {
                 case ase.Com_Image_Cel:
@@ -382,6 +382,22 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     }
                 
                 case ase.Com_Tilemap_Cel:
+                    cel.tilemap = Tilemap {
+                        width = int(v.width), 
+                        height = int(v.height), 
+                        x_flip = uint(v.bitmask_x), // Bitmask for X flip
+                        y_flip = uint(v.bitmask_y), // Bitmask for Y flip
+                        diag_flip = uint(v.bitmask_diagonal), // Bitmask for diagonal flip (swap X/Y axis)
+                        tiles = make([]int, len(v.tiles), alloc) or_return, 
+                    }
+    
+                    for &n, p in cel.tilemap.tiles {
+                        switch t in v.tiles[p] {
+                        case ase.BYTE:  n = int(t)
+                        case ase.WORD:  n = int(t)
+                        case ase.DWORD: n = int(t)
+                        }
+                    }
                 }
                 append(&cels, cel) or_return
                 append(&all_cels, cel) or_return
@@ -421,9 +437,9 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
             
             case ase.Palette_Chunk:
                 if int(c.last_index) >= len(pal) {
-                    resize(&pal, int(c.last_index)) or_return
+                    resize(&pal, int(c.last_index)+1) or_return
                 }
-                for i in c.first_index..<c.last_index {
+                for i in c.first_index..=c.last_index {
                     if int(i) >= len(pal) { 
                         err = Palette_Error.Color_Index_Out_of_Bounds
                         return 
@@ -491,11 +507,10 @@ get_all :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                 ts.id = int(c.id)
                 ts.width = int(c.width)
                 ts.height = int(c.height)
-                ts.base = int(c.base_index)
                 ts.name = c.name
 
                 if t, ok := c.compressed.?; ok {
-                    ts.tiles = mem.slice_data_cast(Pixels, t)
+                    ts.tiles = (Pixels)(t)
                 }
 
                 append(&all_ts, ts) or_return
