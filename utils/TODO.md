@@ -4,6 +4,27 @@ Jarvis make automating things easier please.
 - Exteranl Files
 - Non-standard versions of Ase
 
+https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L400
+https://github.com/aseprite/pixman/blob/285b9a907caffeb979322e629d4e57aa42061b5a/pixman/pixman-combine32.h
+
+## Bug Fixes:
+- [x] Cel writing / blending adding 1
+- [ ] Files
+    - [ ] ..\asefile\basic-16x16.aseprite
+    - [ ] ..\asefile\big.aseprite
+    - [ ] ..\asefile\blend_overlay.aseprite
+    - [ ] ..\asefile\blend_subtract.aseprite
+    - [ ] ..\asefile\color-curve.aseprite
+    - [ ] ..\asefile\indexed.aseprite
+    - [ ] ..\asefile\layers_and_tags.aseprite
+    - [ ] ..\asefile\linked_cels.aseprite
+    - [ ] ..\asefile\palette.aseprite
+    - [ ] ..\asefile\rawcel.aseprite
+    - [ ] ..\asefile\tilemap_empty_edges.aseprite
+    - [ ] ..\asefile\tilemap_multi.aseprite
+    - [ ] ..\asefile\transparency.aseprite
+    - [ ] ..\asefile\user_data.aseprite
+
 
 ### Automation things:
 - [x] Frames
@@ -14,6 +35,8 @@ Jarvis make automating things easier please.
 - [x] Palettes new & old
 - [x] Metadata
 - [x] Tags
+- [x] Upscaling
+    - [x] Repects pixel depth in assertion
 - [ ] Tilesets
 - [ ] Use User Data
 - [ ] Precomputed Images 
@@ -28,8 +51,8 @@ Jarvis make automating things easier please.
 - [x] Change Alpha based on Cel & Layer Opacity
 - [x] Nearest Neighbor Upscaling
 - [x] See if it's worth using a Fast Alpha algo. Used it.
-- [ ] Use Tilesets to make images.
-    - [ ] Support Index & Greyscale Pixel Depths
+- [x] Use Tilesets to make images.
+    - [x] Support Index & Greyscale Pixel Depths
 - [x] Ingore select palette indices
 - [ ] Blend Modes
     - [x] Use u16s. Ints may still be needed.
@@ -40,24 +63,29 @@ Jarvis make automating things easier please.
     - [ ] See if using simd Vecs is better.
 - [ ] Test Blends
     - [x] Normal
-    - [ ] Multiply
-    - [ ] Screen
+    - [x] Multiply
+    - [x] Screen
     - [ ] Overlay
-    - [ ] Darken
-    - [ ] Lighten
-    - [ ] Color_Dodge
-    - [ ] Color_Burn
+        - [ ] Bug
+    - [x] Darken
+    - [x] Lighten
+    - [x] Color_Dodge
+    - [x] Color_Burn
     - [ ] Hard_Light
-    - [ ] Soft_Light
-    - [ ] Difference
-    - [ ] Exclusion
+        - [ ] Bug
+    - [x] Soft_Light
+    - [x] Difference
+    - [x] Exclusion
     - [ ] Hue
+        - [ ] Bug
     - [ ] Saturation
-    - [ ] Color
-    - [ ] Luminosity
-    - [ ] Addition
+        - [ ] Bug
+    - [x] Color
+    - [x] Luminosity
+    - [x] Addition
     - [ ] Subtract
-    - [ ] Divide
+        - [ ] Bug
+    - [x] Divide
     - [ ] Src
     - [x] Merge
     - [ ] Negitive Black White
@@ -75,10 +103,18 @@ Jarvis make automating things easier please.
 - [ ] Tilesets
 
 
-### Tilesets:
+### Tilemap:
 - [x] Decide if I'm even gonna support this
 - [x] Extract Tilesets
-- [ ] Rename to Tilemap?
+- [x] Rename to Tilemap?
+- [x] Fix writeing them to cel.raw
+    - [x] Check if idxing in ts is right
+    - [x] Check if reading ts is right
+- [ ] Fix when tileset it larger the image size
+    size=2x2
+    1, 2, 3,
+    3, 4, 3,
+    2, 2, 3,
 
 
 ### Sprite sheet / Atlas
@@ -97,3 +133,4 @@ Jarvis make automating things easier please.
 A use case very cool.
 https://gist.github.com/karl-zylinski/ddc98344cb45468649df8e52d9247dff
 
+\aseprite\laf\os\common\generic_surface.h
