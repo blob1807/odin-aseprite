@@ -46,7 +46,7 @@ Errors :: union #shared_nil {
 }
 
 // Raw Types
-B_Pixel :: [4]u16
+B_Pixel :: [4]i32
 Pixel   :: [4]byte
 Pixels  :: []byte
 
@@ -140,7 +140,6 @@ Tileset :: struct {
     width: int, 
     height: int, 
     num: int,
-    base: int,
     name: string,
     tiles: Pixels, 
 }
@@ -162,7 +161,7 @@ Info :: struct {
 // Precomputed Types. They own all their data.
 Image :: struct {
     using md: Metadata, 
-    data: Pixels, 
+    data: Pixels `fmt:"-"`, 
 }
 
 Animation :: struct {
