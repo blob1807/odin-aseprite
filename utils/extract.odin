@@ -44,7 +44,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         #partial switch c in chunk {
         case ase.Cel_Chunk:
             cel := Cel {
-                pos = {max(0, int(c.x)), max(0, int(c.y))},
+                pos = {int(c.x), int(c.y)},
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
                 layer = int(c.layer_index)
@@ -120,8 +120,11 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
     layers := make([dynamic]Layer, alloc) or_return
     defer if err != nil { delete(layers) }
 
+    all_lays := make([dynamic]^ase.Layer_Chunk) or_return
+    defer delete(all_lays)
+
     for chunk in frame.chunks {
-        #partial switch v in chunk {
+        #partial switch &v in chunk {
         case ase.Layer_Chunk:
             lay := Layer {
                 name = v.name, 
@@ -130,7 +133,22 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
                 blend_mode = Blend_Mode(v.blend_mode),
                 visiable = .Visiable in v.flags,
                 tileset = int(v.tileset_index),
+                is_background = .Background in v.flags,
             }
+
+            #reverse for l in all_lays {
+                if l.type == .Group {
+                    if .Visiable not_in l.flags {
+                        lay.visiable = false
+                        break
+                    }
+                    if l.child_level == 0 {
+                        break
+                    }
+                }
+            }
+
+            append(&all_lays, &v) or_return
             append(&layers, lay) or_return
         }
     }
@@ -239,7 +257,7 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
         case ase.Old_Palette_256_Chunk:
             if has_new { continue }
             for p in c {
-                first := int(p.entries_to_skip)
+                first := len(pal) + int(p.entries_to_skip)
                 last := first + len(p.colors)
                 if last >= len(pal) {
                     resize(pal, last) or_return
@@ -250,14 +268,17 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
                         return Palette_Error.Color_Index_Out_of_Bounds
                     }
                     pal[i].color.rgb = p.colors[i]
-                    pal[i].color.a = 255
+                    if p.colors[i] != 0 {
+                        pal[i].color.a = 255
+                    }
+                    
                 }
             }
 
         case ase.Old_Palette_64_Chunk:
             if has_new { continue }
             for p in c {
-                first := int(p.entries_to_skip)
+                first := len(pal) + int(p.entries_to_skip)
                 last := first + len(p.colors)
                 if last >= len(pal) {
                     resize(pal, last) or_return
@@ -267,8 +288,11 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
                     if i >= len(pal) { 
                         return Palette_Error.Color_Index_Out_of_Bounds
                     }
+
                     pal[i].color.rgb = p.colors[i]
-                    pal[i].color.a = 255
+                    if p.colors[i] != 0 {
+                        pal[i].color.a = 255
+                    }
                 }
             }
         }
@@ -323,9 +347,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
 get_tileset :: proc{tileset_from_doc, tileset_from_doc_frame}
 
 
-get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
-    info: Info err: Errors
-) {
+get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info err: Errors) {
     context.allocator = alloc
     layer_valid_opacity := .Layer_Opacity in doc.header.flags
     has_new := has_new_palette(doc)
@@ -335,13 +357,16 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
     tags   := make([dynamic]Tag) or_return
     all_ts := make([dynamic]Tileset) or_return
     pal    := make([dynamic]Color) or_return
+    sls    := make([dynamic]Slice) or_return
     md     := get_metadata(doc.header)
 
-    all_cels := make([dynamic]Cel) or_return
-    defer delete(all_cels)
+    all_lays := make([dynamic]^ase.Layer_Chunk, 0, 64) or_return
+    defer delete(all_lays)
 
     ud_parent: User_Data_Parent
     ud_index: int
+
+    // TODO: Make big assumption that only Cel Chunks appear after first frame.
 
     for doc_frame in doc.frames {
         frame: Frame
@@ -350,10 +375,10 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
 
         for chunk in doc_frame.chunks {
 
-            #partial switch c in chunk {
+            #partial switch &c in chunk {
             case ase.Cel_Chunk:
                 cel := Cel {
-                    pos = {clamp(int(c.x), 0, md.width),  clamp(int(c.y), 0, md.height)},
+                    pos = {int(c.x), int(c.y)},
                     opacity = int(c.opacity_level),
                     z_index = int(c.z_index),
                     layer = int(c.layer_index)
@@ -371,13 +396,12 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     cel.raw = v.pixel
 
                 case ase.Linked_Cel: 
-                    i := int(v)
-                    for l in all_cels[i:] {
+                    for l, p in frames[v].cels {
                         if l.layer == cel.layer {
                             cel.height = l.height
                             cel.width = l.width
                             cel.raw = l.raw
-                            cel.link = i
+                            cel.link = int(v)
                         }
                     }
                 
@@ -399,8 +423,8 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                         }
                     }
                 }
+
                 append(&cels, cel) or_return
-                append(&all_cels, cel) or_return
             
             case ase.Cel_Extra_Chunk:
                 if ase.Cel_Extra_Flag.Precise in c.flags {
@@ -409,7 +433,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                         fixed.to_f64(c.width), fixed.to_f64(c.height), 
                     }
                     cels[len(cels)-1].extra = extra
-                    all_cels[len(all_cels)-1].extra = extra
                 }
             
             case ase.Layer_Chunk:
@@ -421,7 +444,23 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                     visiable = .Visiable in c.flags,
                     tileset = int(c.tileset_index),
                 }
+
+                if c.child_level != 0 {
+                    #reverse for l in all_lays {
+                        if l.type == .Group {
+                            if .Visiable not_in l.flags {
+                                lay.visiable = false
+                                break
+                            }
+                            if l.child_level == 0 {
+                                break
+                            }
+                        }
+                    }
+                }
+
                 append(&lays, lay) or_return
+                append(&all_lays, &c) or_return
 
             case ase.Tags_Chunk:
                 for t in c {
@@ -439,6 +478,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                 if int(c.last_index) >= len(pal) {
                     resize(&pal, int(c.last_index)+1) or_return
                 }
+                
                 for i in c.first_index..=c.last_index {
                     if int(i) >= len(pal) { 
                         err = Palette_Error.Color_Index_Out_of_Bounds
@@ -455,7 +495,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
             case ase.Old_Palette_256_Chunk:
                 if has_new { continue }
                 for p in c {
-                    first := int(p.entries_to_skip)
+                    first := len(pal) + int(p.entries_to_skip)
                     last := first + len(p.colors)
                     if last >= len(pal) {
                         resize(&pal, last) or_return
@@ -467,14 +507,16 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                             return
                         }
                         pal[i].color.rgb = p.colors[i]
-                        pal[i].color.a = 255
+                        if p.colors[i] != 0 {
+                            pal[i].color.a = 255
+                        }
                     }
                 }
     
             case ase.Old_Palette_64_Chunk:
                 if has_new { continue }
                 for p in c {
-                    first := int(p.entries_to_skip)
+                    first := len(pal) + int(p.entries_to_skip)
                     last := first + len(p.colors)
                     if last >= len(pal) {
                         resize(&pal, last) or_return
@@ -485,8 +527,19 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                             err = Palette_Error.Color_Index_Out_of_Bounds
                             return
                         }
-                        pal[i].color.rgb = p.colors[i]
-                        pal[i].color.a = 255
+                        if max(p.colors[i].r, p.colors[i].b, p.colors[i].g) > 63 {
+                            err = Palette_Error.Color_Index_Out_of_Bounds
+                            return
+                        }
+
+                        // https://github.com/alpine-alpaca/asefile/blob/2274c354cea6764f85597252a0d2228e64709348/src/palette.rs#L134
+                        // Scale such that 0 -> 0 & 63 -> 255
+                        pal[i].color.r = p.colors[i].r << 2 | p.colors[i].r >> 4
+                        pal[i].color.g = p.colors[i].g << 2 | p.colors[i].g >> 4
+                        pal[i].color.b = p.colors[i].b << 2 | p.colors[i].b >> 4
+                        if p.colors[i] != 0 {
+                            pal[i].color.a = 255
+                        }
                     }
                 }
 
@@ -514,6 +567,33 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
                 }
 
                 append(&all_ts, ts) or_return
+            
+            case ase.Slice_Chunk:
+                sl: Slice
+                sl.name = c.name
+                sl.flags = c.flags
+                sl.keys = make([]Slice_Key, len(c.keys))
+
+                for &key, pos in sl.keys {
+                    c_key := c.keys[pos]
+                    key.frame = int(c_key.frame_num)
+                    key.x = int(c_key.x)
+                    key.y = int(c_key.y)
+                    key.w = int(c_key.width)
+                    key.h = int(c_key.height)
+
+                    if center, ok := c_key.center.?; ok {
+                        key.center = {
+                            int(center.x), int(center.y),
+                            int(center.width), int(center.height)
+                        }
+                    }
+
+                    if pivot, ok := c_key.pivot.?; ok {
+                        key.pivot = { int(pivot.x), int(pivot.y) }
+                    }
+                }
+                append(&sls, sl)
             }
         }
 
@@ -521,5 +601,5 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (
         append(&frames, frame) or_return
     }
 
-    return {frames[:], lays[:], tags[:], all_ts[:], nil, pal[:], md, alloc}, nil
+    return {frames[:], lays[:], tags[:], all_ts[:], sls[:], pal[:], md, alloc}, nil
 }
