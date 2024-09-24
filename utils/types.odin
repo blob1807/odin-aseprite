@@ -64,7 +64,7 @@ Cel :: struct {
     link: int,
     layer: int, 
     z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
-    raw: Pixels, 
+    raw: Pixels `fmt:"-"`, 
     tilemap: Tilemap,
     extra: Maybe(Precise_Bounds),
 }
@@ -82,6 +82,7 @@ Layer :: struct {
     name: string,
     opacity: int,
     visiable: bool,
+    is_background: bool,
     index: int, 
     blend_mode: Blend_Mode,
     tileset: int,
@@ -122,15 +123,17 @@ Metadata :: struct {
     width: int, 
     height: int, 
     bpp: Pixel_Depth, 
-    // spase: Color_Space, 
-    // channels: int, Will always be RGBA i.e. 4
+    trans_idx: int,
 }
 
 Slice_Key :: struct {
-    frame, x, y, width, height: int,
+    frame, x, y, w, h: int,
+    center: [4]int,
+    pivot: [2]int,
 }
 
 Slice :: struct {
+    flags: ase.Slice_Flags,
     name: string,
     keys: []Slice_Key
 }
@@ -146,12 +149,12 @@ Tileset :: struct {
 
 
 Info :: struct {
-    frames:    []Frame,
-    layers:    []Layer,
-    tags:      []Tag,
-    tilesets:  []Tileset,
-    slieces:   []Slice,
-    palette:   Palette,
+    frames:   []Frame,
+    layers:   []Layer,
+    tags:     []Tag,
+    tilesets: []Tileset,
+    slices:   []Slice,
+    palette:  Palette,
     
     md:        Metadata,
     allocator: runtime.Allocator,
