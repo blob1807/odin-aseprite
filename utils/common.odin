@@ -18,6 +18,7 @@ get_metadata :: proc(header: ase.File_Header) -> (md: Metadata) {
         int(header.width), 
         int(header.height), 
         Pixel_Depth(header.color_depth),
+        int(header.transparent_index),
     }
 }
 
@@ -70,9 +71,9 @@ has_tileset :: proc(doc: ^ase.Document) -> bool {
 // Uses Nearest-neighbor Upscaling
 upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor: int = 10, alloc := context.allocator) -> (res: []byte, res_md: Metadata, err: runtime.Allocator_Error) {
     ch := int(md.bpp) >> 3
-    assert(len(img) == (md.height * md.height * ch), "image size doesn't match metadata") // TODO: replace with an error
+    assert(len(img) == (md.width * md.height * ch), "image size doesn't match metadata") // TODO: replace with an error
     res = make([]byte, len(img) * factor * factor, alloc) or_return
-    res_md = {md.width*factor, md.height*factor, md.bpp}
+    res_md = {md.width*factor, md.height*factor, md.bpp, md.trans_idx}
 
     for h in 0..<md.height {
         for w in 0..<md.width {
@@ -112,13 +113,16 @@ upscale_all_from_imgs :: proc(imgs: []Image, factor := 10, alloc := context.allo
 
 upscale_all_from_byte:: proc(imgs: [][]byte, md: Metadata, factor := 10, alloc := context.allocator) -> (res: [][]byte, res_md: Metadata, err: runtime.Allocator_Error) {
     res = make([][]byte, len(imgs), alloc) or_return
-    for img, pos in imgs {
-        res[pos], res_md = upscale_image_from_bytes(img, md, factor, alloc) or_return
+    if len(imgs) == 0 { return }
+    res[0], res_md = upscale_image_from_bytes(imgs[0], md, factor, alloc) or_return
+
+    for img, pos in imgs[1:] {
+        res[pos], _ = upscale_image_from_bytes(img, md, factor, alloc) or_return
     }
     return
 }
 
-upscale_all :: proc{upscale_all_from_imgs, upscale_all_from_byte}
+upscale_all :: proc{ upscale_all_from_imgs, upscale_all_from_byte }
 
 
 destroy_frame :: proc(frame: Frame, alloc := context.allocator) -> runtime.Allocator_Error {
@@ -169,6 +173,8 @@ destroy_info :: proc(info: ^Info) -> runtime.Allocator_Error {
     delete(info.layers) or_return
     delete(info.palette) or_return
     delete(info.tags) or_return
+    delete(info.tilesets) or_return
+    destroy_slices(info.slices) or_return
     return nil
 }
 
@@ -184,6 +190,17 @@ destroy_palette :: proc(pal: Palette, alloc := context.allocator) -> runtime.All
     return delete(pal)
 }
 
+destroy_slices :: proc(sls: []Slice, alloc := context.allocator) -> runtime.Allocator_Error {
+    for sl in sls {
+        destroy_slice(sl, alloc) or_return
+    }
+    return delete(sls)
+}
+
+destroy_slice :: proc(sl: Slice, alloc := context.allocator) -> runtime.Allocator_Error {
+    return delete(sl.keys)
+}
+
 destroy :: proc {
     destroy_frames, 
     destroy_image, 
@@ -195,6 +212,8 @@ destroy :: proc {
     destroy_frame,
     destroy_layers, 
     destroy_palette,
+    destroy_slices,
+    destroy_slice,
 }
 
 
