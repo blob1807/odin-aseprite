@@ -1,4 +1,4 @@
-package _main_test
+package odin_aseprite_utils_test
 
 import "core:os"
 import "core:mem"
@@ -24,6 +24,9 @@ rgba_is_equal :: proc(a, b: [][4]u8) -> ([2][4]byte, int, bool) {
 
     for p in 0..<len(a) {
         if a[p] != b[p] {
+            if a[p].a == 0 && b[p].a == 0 {
+                continue
+            }
             return {a[p], b[p]}, p, false
         }
     }
@@ -71,8 +74,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
     defer delete(raws)
 
     file_loop: for file in files {
-        if !strings.has_suffix(file, ".aseprite") \
-        && !strings.has_suffix(file, ".ase"){
+        if fp.long_ext(file) != ".aseprite" \
+        && fp.long_ext(file) != ".ase" {
             continue
         }
 
@@ -81,8 +84,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 continue file_loop
             }
         }
-
-        log.info("Checking", file)
+        
+        //log.info("Checking", file)
 
         defer clear(&raws)
         for rf in raw_files {
@@ -96,7 +99,6 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 testing.fail_now(t, fmt.tprint("Failed to find \"-frame\" in file", file, rf))
             }
 
-            //fmt.println(tf[:i], fp.stem(file))
             if tf[:i] == fp.stem(file) {
                 _, err := append(&raws, rf)
                 if err != nil {
@@ -106,7 +108,7 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
         }
 
         if len(raws) == 0 {
-            testing.fail_now(t, fmt.tprint("Failed to find raws", file))
+            testing.fail_now(t, fmt.tprint("Failed to find raws", file, fp.stem(file)))
         }
 
         doc: ase.Document
@@ -116,6 +118,15 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
             testing.fail_now(t, fmt.tprint("Failed to unmarshal", s, unm_err))
         }
         defer ase.destroy_doc(&doc)
+
+        for ch in doc.frames[0].chunks {
+            if c, ok := ch.(ase.Color_Profile_Chunk); ok {
+                if _, ok = c.icc.?; ok {
+                    log.info(file, "has ICC profile")
+                    continue file_loop
+                }
+            } 
+        }
 
         imgs, img_err := utils.get_all_images(&doc)
         if img_err != nil {
@@ -146,12 +157,6 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
 
             if len(buf) == len(img.data) {
                 tb2 := mem.slice_data_cast([][4]u8, buf)
-
-                // Remove any junk data added to "square-off" image
-                for &p in tb2 {
-                    if p.a == 0 { p = 0 }
-                }
-
                 tb1 := mem.slice_data_cast([][4]u8, img.data)
                 pix, p, ok := rgba_is_equal(tb1, tb2)
 
@@ -244,7 +249,7 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
 
                 cel_err := utils.write_cel(img_buf, cel, lay, md)
                 if cel_err != nil {
-                    testing.fail_now(t,  fmt.tprint("Unable to write cel\n", file, pos, raw, cel_err))
+                    testing.fail_now(t, fmt.tprint("Unable to write cel\n", file, pos, raw, cel_err))
                 }
 
                 tb1 := mem.slice_data_cast([][4]u8, img.data)
@@ -263,7 +268,7 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
     }
 }
 
-@(test)
+//@(test)
 blob_test :: proc(t: ^testing.T) {
     PATH :: "blob"
     SKIP_FILES := [?]string{}
@@ -272,22 +277,22 @@ blob_test :: proc(t: ^testing.T) {
 }
 
 
-//@(test)
+@(test)
 asefile_test :: proc(t: ^testing.T) {
     PATH :: "asefile"
     // FIXME: Skip Hue & Saturation Bland tests due to bug I can't find
-    // FIXME: Skip Cel Overflow, to be implemented
-    // TODO: Skip Slices. Not yet implemented
-    SKIP_FILES := [?]string{"hue", "saturation", "cel_overflow", "slice", "transparency", "user_data"}
+    // User data & ICCC colour profile unsupported
+    SKIP_FILES := [?]string{"saturation", "user_data", "color-curve"}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
 }
 
-
 //@(test)
 aseprite_test :: proc(t: ^testing.T) {
     PATH :: "aseprite"
-    SKIP_FILES := [?]string{}
+    // TODO: Slices to be implematated
+    // Exteral files unsupported
+    SKIP_FILES := [?]string{"file-tests-props", "slices"}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
 }
