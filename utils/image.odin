@@ -50,13 +50,24 @@ get_image_from_cel :: proc(
         ts := info.tilesets[layer.tileset]
         c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
         defer delete(c.raw)
-        log.debug("Doning Tileset")
 
         img.data = make([]byte, c.width * c.height * 4, info.allocator) or_return
+        if !layer.is_background && info.md.bpp == .Indexed {
+            img_p := mem.slice_data_cast([]Pixel, img.data)
+            c := info.palette[info.md.trans_idx].color
+            c.a = 0
+            slice.fill(img_p, c)
+        }
         write_cel(img.data[:], c, layer, info.md, info.palette) or_return
 
     } else {
         img.data = make([]byte, cel.width * cel.height * 4, info.allocator) or_return
+        if !layer.is_background && info.md.bpp == .Indexed {
+            img_p := mem.slice_data_cast([]Pixel, img.data)
+            c := info.palette[info.md.trans_idx].color
+            c.a = 0
+            slice.fill(img_p, c)
+        }
         write_cel(img.data[:], cel, layer, info.md, info.palette) or_return
     }
 
@@ -120,10 +131,22 @@ get_image_bytes_from_cel :: proc( cel: Cel, layer: Layer, info: Info,
         log.debug("Doning Tileset")
 
         img = make([]byte, c.width * c.height * 4, info.allocator) or_return
+        if !layer.is_background && info.md.bpp == .Indexed {
+            img_p := mem.slice_data_cast([]Pixel, img)
+            c := info.palette[info.md.trans_idx].color
+            c.a = 0
+            slice.fill(img_p, c)
+        }
         write_cel(img, c, layer, info.md, info.palette) or_return
 
     } else {
         img = make([]byte, cel.width * cel.height * 4, info.allocator) or_return
+        if !layer.is_background && info.md.bpp == .Indexed {
+            img_p := mem.slice_data_cast([]Pixel, img)
+            c := info.palette[info.md.trans_idx].color
+            c.a = 0
+            slice.fill(img_p, c)
+        }
         write_cel(img, cel, layer, info.md, info.palette) or_return
     }
 
@@ -134,11 +157,19 @@ get_image_bytes_from_frame :: proc(
     frame: Frame, info: Info,
 ) -> (img: []byte, err: Errors) {
     context.allocator = info.allocator
-
+    
     img = make([]byte, info.md.width * info.md.height * 4) or_return
+    if len(frame.cels) == 0 { return }
 
-    if !slice.is_sorted_by(frame.cels[:], cel_less) {
-        slice.sort_by(frame.cels[:], cel_less)
+    if !slice.is_sorted_by(frame.cels, cel_less) {
+        slice.sort_by(frame.cels, cel_less)
+    }
+    
+    if !info.layers[0].is_background && info.md.bpp == .Indexed {
+        img_p := mem.slice_data_cast([]Pixel, img)
+        c := info.palette[info.md.trans_idx].color
+        c.a = 0
+        slice.fill(img_p, c)
     }
 
     for cel, pos in frame.cels {
@@ -155,7 +186,7 @@ get_image_bytes_from_frame :: proc(
 
         } else {
             write_cel(img, cel, lay, info.md, info.palette) or_return
-            if pos == 1 {
+            if pos == 0 {
                 str := transmute([]u8)format_pixels({height=cel.height, width=cel.width, data=cel.raw, bpp=.RGBA}, cel.width, cel.height)
                 defer delete(str)
                 os.write_entire_file("_cel.txt", str)
@@ -265,8 +296,12 @@ cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc := con
 // Write a cel to an image's data. Assumes tilemaps & linked cels have already been handled.
 write_cel :: proc (
     img: []byte, cel: Cel, layer: Layer, md: Metadata, 
-    pal: Palette = nil, ignored_pal_idxs: []int = nil,
+    pal: Palette = nil,
 ) -> (err: Errors) {
+    if len(cel.raw) <= 0 {
+        log.debug("No Cel data to write.")
+        return
+    }
 
     switch md.bpp {
     case .Indexed:
@@ -276,62 +311,71 @@ write_cel :: proc (
         }
         fallthrough 
     case .Grayscale, .RGBA:
-        // TODO: Replace with error returns
-        fmt.assertf(len(cel.raw) > 0, "No Cel Data %v", len(cel.raw))
-        fmt.assertf(len(cel.raw) % (int(md.bpp) / 8) == 0, "Invalid BPP %v", md.bpp)
+        if len(cel.raw) % (int(md.bpp) / 8) == 0 { break }
+        fallthrough
     case:
         log.error("Invalid Color Mode: ", md.bpp)
         return .Invalid_BPP
     }
 
-    assert(len(img) == (md.height * md.width * 4))
+    assert(len(img) >= (md.height * md.width * 4), "Image buffer size is smaller than Metadata.")
+    _cel := cel
 
-    pos: [2]int = {clamp(cel.x, 0, md.width),  clamp(cel.x, 0, md.width)}
+    offset := [2]int {
+        abs(cel.x) if cel.x < 0 else 0,
+        abs(cel.y) if cel.y < 0 else 0,
+    }
 
-    for y in 0..<cel.height {
-        for x in 0..<cel.width {
-            //xi := ((y + pos.y) * md.width + x + pos.x) * 4
-            //xc := (y * cel.width + x) * 4
+    _cel.x = clamp(cel.x, 0, md.width)
+    _cel.y = clamp(cel.y, 0, md.height)
+    _cel.width = clamp(cel.width, 0, md.width)
+    _cel.height = clamp(cel.height, 0, md.height)
 
+    // TODO: Is this assert really needed???
+    assert (
+        _cel.x <= md.width && _cel.y <= md.height \
+        && _cel.width <= md.width && _cel.height <= md.height \
+        && offset.x <= md.width && offset.y <= md.height\
+        && _cel.x >= 0 && _cel.y >= 0 \
+        && _cel.width >= 0 && _cel.height >= 0 \
+        && offset.x >= 0 && offset.y >= 0, 
+        "Cel out of bounds of Image bounds."
+    )
+
+    for y in 0..<_cel.height {
+        for x in 0..<_cel.width {
             pix: [4]byte
+            idx := (y + offset.y) * cel.width + x + offset.x
+
             // Convert to RGBA
             switch md.bpp {
             case .Indexed:
-                if slice.contains(ignored_pal_idxs, int(cel.raw[y * cel.width + x])) {
+                if int(cel.raw[idx]) == md.trans_idx {
                     continue
                 }
-                pix = pal[cel.raw[y * cel.width + x]].color
+                pix = pal[cel.raw[idx]].color
 
             case .Grayscale:
-                pix.rgb = cel.raw[y * cel.width + x]
-                pix.a = cel.raw[y * cel.width + x + 1]
+                pix.rgb = cel.raw[(idx) * 2]
+                pix.a = cel.raw[(idx) * 2 + 1]
 
             case .RGBA:
-                pix = (^[4]byte)(&cel.raw[(y * cel.width + x) * 4])^
+                pix = (^[4]byte)(&cel.raw[(idx) * 4])^
             } 
 
             if pix.a != 0 {
-                ipix := (^[4]byte)(&img[((y + cel.y) * md.width + x + cel.x) * 4])
+                ipix := (^[4]byte)(&img[((y + _cel.y) * md.width + x + _cel.x) * 4])
+                
                 if ipix.a != 0 {
-                    if layer.blend_mode == .Normal {
-                        // TODO: Does this work for all cases?
-                        // Or should I just do blend() regaurdless?
-                        //a := i32(int(pix.a) * cel.opacity * layer.opacity / (255*255))
+                    // Blend pixels
+                    a := alpha(cel.opacity, layer.opacity)
+                    pix = blend(ipix^, pix, a, layer.blend_mode) or_return
 
-                        last := B_Pixel{i32(ipix.r), i32(ipix.g), i32(ipix.b), i32(ipix.a)}
-                        a := alpha(i32(pix.a), alpha(cel.opacity, layer.opacity))
-                        pa := a + last.a - alpha(last.a, a)
-
-                        pix.r = u8(last.r + (i32(pix.r) - last.r) * a / pa)
-                        pix.g = u8(last.g + (i32(pix.g) - last.g) * a / pa)
-                        pix.b = u8(last.b + (i32(pix.b) - last.b) * a / pa)
-                        pix.a = u8(pa)
-
-                    } else {
-                        a := alpha(cel.opacity, layer.opacity)
-                        pix = blend(ipix^, pix, a, layer.blend_mode) or_return
-                    }
+                } else {
+                    // Merge Alpha & Opacities
+                    pix.a = u8(alpha(i32(pix.a), alpha(cel.opacity, layer.opacity)))
                 }
+                
                 ipix^ = pix
             }
         }
