@@ -107,10 +107,6 @@ div :: proc( #any_int a, b: u16) -> u16 {
     return (a * 255 + (b / 2)) / b
 }
 
-
-/* ---------------------------------------------------------------------------------- */
-// Everything below's License `.\3rd party licenses\aseprite license`
-
 blend :: proc(last, cur: Pixel, opacity: i32, mode: Blend_Mode) -> (res: Pixel, err: Blend_Error) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp
     if last.a == 0 {
@@ -157,17 +153,14 @@ blend :: proc(last, cur: Pixel, opacity: i32, mode: Blend_Mode) -> (res: Pixel, 
 
     normal := blend_normal(back, pix, opacity)
     norm_merge := blend_merge(normal, blen, back.a)
-    total_alpha := alpha(pix.a, opacity)
-    com_alpha := alpha(back.a, total_alpha)
-    blen = blend_merge(norm_merge, blen, com_alpha)
+    blen = blend_merge(norm_merge, blen, alpha(back.a, alpha(pix.a, opacity)))
 
-    return {byte(blen.r), byte(blen.g), byte(blen.b), byte(blen.a)}, nil
+    return {u8(blen.r), u8(blen.g), u8(blen.b), u8(blen.a)}, nil
 }
 
 
 /* ------------------------------------------------------------------- */
 // RGB Blenders
-
 blend_normal :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     if last.a == 0 {
         res = cur
@@ -179,15 +172,9 @@ blend_normal :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     cur := cur
     cur.a = alpha(cur.a, opacity)
 
-    /*
-    res.a = cur.a + last.a - alpha(last.a, cur.a)
-    res.r = last.r + (cur.r - last.r) * cur.a / res.a
-    res.g = last.g + (cur.g - last.g) * cur.a / res.a
-    res.b = last.b + (cur.b - last.b) * cur.a / res.a
-    */
-
     res.a = cur.a + last.a - alpha(last.a, cur.a) 
     res.rgb = last.rgb + (cur.rgb - last.rgb) * cur.a / res.a
+
     return res
 }
 
@@ -202,10 +189,8 @@ blend_merge :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     } else if cur.a == 0 {
         res.rgb = last.rgb
     } else {
-        //res.r = last.r + mul((cur.r - last.r), opacity)
-        //res.g = last.g + mul((cur.g - last.g), opacity)
-        //res.b = last.b + mul((cur.b - last.b), opacity)
-        res = last + mul((cur - last), [4]i32{0..<4 = opacity}) 
+        op: [4]i32 = opacity
+        res = last + mul((cur - last), op) 
     }
 
     res.a = last.a + mul((cur.a - last.a), opacity)
@@ -243,24 +228,31 @@ blend_normal_dst_over :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel
 
 
 blend_multiply :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
-    //res.r = mul(last.r, cur.r)
-    //res.b = mul(last.b, cur.b)
-    //res.g = mul(last.g, cur.g)
     res = mul(last, cur)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
 
 blend_screen :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
-    //res.r = last.r + cur.r - mul(last.r, cur.r)
-    //res.b = last.b + cur.b - mul(last.b, cur.b)
-    //res.g = last.g + cur.g - mul(last.g, cur.g)
     res = last + cur - mul(last, cur)
     res.a = cur.a
     return blend_normal(last, res, opacity)
 }
 
-blend_overlay :: blend_hard_light
+blend_overlay :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
+    hl :: proc(b, s: i32) -> i32 {
+        if s < 128 {
+            return mul(b, s<<1)
+        }
+        return b + ((s<<1)-255) - mul(b, (s<<1)-255)
+    }
+
+    res.r = hl(cur.r, last.r)
+    res.b = hl(cur.b, last.b)
+    res.g = hl(cur.g, last.g)
+    res.a = cur.a
+    return blend_normal(last, res, opacity)
+}
 
 blend_darken :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     res.r = min(last.r, cur.r)
@@ -321,10 +313,7 @@ blend_hard_light :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
         if s < 128 {
             return mul(b, s<<1)
         }
-        return sc(b, s<<1 - 255)
-    }
-    sc :: proc(b,s: i32) -> i32 {
-        return b + s - mul(b, s)
+        return b + ((s<<1)-255) - mul(b, (s<<1)-255)
     }
 
     res.r = hl(last.r, cur.r)
@@ -386,20 +375,29 @@ blend_exclusion :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
 /* ------------------------------------------------------------------- */
 // HSV Blenders
 
+// FIXME: No worky
 blend_hue :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
-    lpix := [3]f64{f64(last.r), f64(last.g), f64(last.b)} / 255
+    /*
+    https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L392
+    https://drafts.fxtf.org/compositing-1/#blendinghue
+    https://printtechnologies.org/standards/files/pdf-reference-1.6-addendum-blend-modes.pdf
+    https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L425
+    https://gitlab.freedesktop.org/pixman/pixman/-/blob/master/pixman/pixman-combine-float.c?ref_type=heads#L908
+    */
 
-    s := hsv_sat(lpix)
-    l := hsv_luma(lpix)
+    lpix := [3]f64{f64(last.r), f64(last.g), f64(last.b)} / 255
+    sat := hsv_sat(lpix)
+    lum := hsv_luma(lpix)
 
     cpix := [3]f64{f64(cur.r), f64(cur.g), f64(cur.b)} / 255
-    cpix = set_luma(set_sat(cpix, s), l) * 255
+    cpix = set_sat(cpix, sat)
+    cpix = set_luma(cpix, lum)
+    cpix *= 255
 
-    res = {i32(cpix.r), i32(cpix.g), i32(cpix.b), cur.a}
-
-    return blend_normal(last, res, opacity)
+    return blend_normal(last, {i32(cpix.r), i32(cpix.g), i32(cpix.b), cur.a}, opacity)
 }
 
+// FIXME: No worky
 blend_saturation :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     pix := [3]f64{f64(cur.r), f64(cur.g), f64(cur.b)}
     pix /= 255
@@ -417,7 +415,6 @@ blend_saturation :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     return blend_normal(last, res, opacity)
 }
 
-// FIXME: Failing in tests
 blend_color :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     pix := [3]f64{f64(last.r), f64(last.g), f64(last.b)}
     pix /= 255
@@ -458,7 +455,7 @@ blend_addition :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
 
 blend_subtract :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     res.r = max(last.r - cur.r, 0)
-    res.g = max(last.g - cur.r, 0)
+    res.g = max(last.g - cur.g, 0)
     res.b = max(last.b - cur.b, 0)
     res.a = cur.a
     return blend_normal(last, res, opacity)
@@ -473,7 +470,6 @@ blend_divide :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
         }
         return i32(div(b, s))
     }
-
 
     res.r = bd(last.r, cur.r)
     res.g = bd(last.g, cur.g)
@@ -509,22 +505,23 @@ hsv_sat :: proc(p: [3]f64) -> f64 {
 clip_color :: proc(pix: [3]f64) -> [3]f64 {
     p := pix
     lum := hsv_luma(p)
-    min0 := min(p.r, p.g, p.b)
-    max0 := max(p.r, p.g, p.b)
+    n := min(p.r, p.g, p.b)
+    x := max(p.r, p.g, p.b)
 
-    if min0 < 0 {
-        p = lum + (((p - lum) * lum) / (lum - min0))
+    if n < 0 {
+        p = lum + (((p - lum) * lum) / (lum - n))
     }
 
-    if max0 > 1 {
-        p = lum + (((p - lum) * (1 - lum)) / (max0 - lum))
+    if x > 1 {
+        p = lum + (((p - lum) * (1 - lum)) / (x - lum))
     }
 
     return p
 }
 
 set_luma :: proc(p: [3]f64, l: f64) -> [3]f64 {
-    return clip_color(p + (l - hsv_luma(p)))
+    d := l - hsv_luma(p)
+    return clip_color(p + d)
 }
 
 
@@ -532,17 +529,17 @@ set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L400
     /*
     Note(blob):
-        there's a bug `bug with the og code when `r == g` and `g < b`.
+        there's a bug with the og code when `r == g` and `g < b`.
     */
 
     res = p    
     // Taken from https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L632
-    when ASEPRITE_SATURATION_BUG_COMPATIBLE {
+    /*when ASEPRITE_SATURATION_BUG_COMPATIBLE {
         MIN :: proc(x,y: ^f64) -> ^f64 {
-            return (x < y) ? x : y
+            return (x^ < y^) ? x : y
         }
         MAX :: proc(x,y: ^f64) -> ^f64 {
-            return (x > y) ? x : y
+            return (y^ < x^) ? x : y
         }
 
         r, g, b := &res.r, &res.g, &res.b
@@ -556,14 +553,72 @@ set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
         res.rb = res.r < res.b ? res.rb : res.br
         res.gb = res.g < res.b ? res.gb : res.bg
         min, mid, max := &res.r, &res.g, &res.b
-    }
+    }*/
+
     
+    /*res = p
+    val := [3][2]f64{{p.r, 0}, {p.g, 1}, {p.b, 2}}
+
+    val.rg = val.r[0] < val.g[0] ? val.rg : val.gr
+    val.rb = val.r[0] < val.b[0] ? val.rb : val.br
+    val.gb = val.g[0] < val.b[0] ? val.gb : val.bg
+    min, mid, max := int(val.r[1]), int(val.g[1]), int(val.b[1])
+    
+
+    if max > min {
+        res[mid] = ((res[mid] - res[min]) * s) / (res[max] - res[min])
+        res[max] = s
+    } else {
+        res[mid], res[max] = 0, 0
+    }
+    res[min] = 0*/
+    
+    res = p
+    min, mid, max: ^f64
+
+    if p.r > p.g {
+        if p.r > p.b {
+            max = &res.r
+            if p.g > p.b {
+                mid = &res.g
+                min = &res.b
+
+            } else {
+                mid = &res.b
+                min = &res.g
+            }
+
+        } else {
+            max = &res.b
+            mid = &res.r
+            min = &res.g
+        }
+
+    } else {
+        if p.r > p.b {
+            max = &res.g
+            mid = &res.r
+            min = &res.b
+
+        } else {
+            min = &res.r
+            if p.g > p.b {
+                max = &res.g
+                mid = &res.b
+
+            } else {
+                max = &res.b
+                mid = &res.g
+            }
+        }
+    }
 
     if max > min {
         mid^ = ((mid^ - min^) * s) / (max^ - min^)
         max^ = s
     } else {
-        mid^, max^ = 0, 0
+        mid^ = 0
+        max^ = 0
     }
     min^ = 0
 
