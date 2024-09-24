@@ -180,7 +180,7 @@ read_string :: proc(r: io.Reader, n: ^int, alloc := context.allocator, loc := #c
 
     buf := make([]byte, size, alloc) or_return
     s: int
-    s, err = io.read(r, buf[:], n)
+    s, err = io.read(r, buf, n)
     if err != nil {
         log.error("Failed to read string", size, err, n^, loc)
         return
@@ -191,7 +191,7 @@ read_string :: proc(r: io.Reader, n: ^int, alloc := context.allocator, loc := #c
         return
     }
 
-    data = string(buf[:])
+    data = string(buf)
     return
 }
 
@@ -254,7 +254,7 @@ read_tiles :: proc(r: io.Reader, data: []TILE, type: Tile_ID, n: ^int) -> (err: 
 }
 
 read_bytes :: proc(r: io.Reader, data: []byte, n: ^int) -> (err: Read_Error) {
-    s := io.read(r, data[:], n) or_return
+    s := io.read(r, data, n) or_return
     if s != len(data) {
         log.error("Could read all the bytes asked.", s, len(data))
         err = .Wrong_Read_Size

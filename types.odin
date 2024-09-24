@@ -128,7 +128,7 @@ Color_RGBA :: [4]BYTE
 Document :: struct {
     header: File_Header,
     frames: []Frame,
-    arena: virtual.Arena,
+    arena: virtual.Arena `fmt:"-"`,
 }
 
 Frame :: struct {

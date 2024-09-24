@@ -7,14 +7,13 @@ from pathlib import Path
 
 # Set to your Aseprite exe path, needed to make pngs via CLI interface https://www.aseprite.org/docs/cli/
 ASE_PATH = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Aseprite\\Aseprite.exe'
-SCALE = "10"
+
 
 UTIL_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.dirname(UTIL_PATH)
 PATHS = ["asefile", "aseprite", "blob", "community"]
 
 SAVE_CMD = [ASE_PATH, "-b", "", "--save-as", "{title}-frame{frame}.png"]
-SCALE_CMD = SAVE_CMD + ["--scale", SCALE]
 
 def main():
     print("Making PNG files")
@@ -46,7 +45,7 @@ def main():
                     continue
                 im = Image.open(Path(p, file))
                 with open(Path(file).stem + ".raw", "wb") as f:
-                    f.write(im.tobytes())
+                    f.write(im.convert("RGBA").tobytes())
                 #os.remove(file)
         os.chdir("..")
 

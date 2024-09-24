@@ -9,26 +9,26 @@ https://github.com/aseprite/pixman/blob/285b9a907caffeb979322e629d4e57aa42061b5a
 
 ## Bug Fixes:
 - [x] Cel writing / blending adding 1
-- [ ] Files
-    - [ ] ..\asefile\basic-16x16.aseprite
-    - [ ] ..\asefile\big.aseprite
-    - [ ] ..\asefile\blend_overlay.aseprite
-    - [ ] ..\asefile\blend_subtract.aseprite
-    - [ ] ..\asefile\color-curve.aseprite
-    - [ ] ..\asefile\indexed.aseprite
-    - [ ] ..\asefile\layers_and_tags.aseprite
-    - [ ] ..\asefile\linked_cels.aseprite
-    - [ ] ..\asefile\palette.aseprite
-    - [ ] ..\asefile\rawcel.aseprite
-    - [ ] ..\asefile\tilemap_empty_edges.aseprite
-    - [ ] ..\asefile\tilemap_multi.aseprite
-    - [ ] ..\asefile\transparency.aseprite
-    - [ ] ..\asefile\user_data.aseprite
+- [ ] Blending, again
+- [x] Indexed Colour Depth
+- [ ] Tilemaps
+- [ ] Errors
+    <!-- 
+    tb1 := mem.slice_data_cast([][4]u8, img.data)
+    tb2 := mem.slice_data_cast([][4]u8, raw_file_data)
+    pix, p, ok := rgba_is_equal(tb1, tb2)
+    log.warn("RGBA Images don't match", file, pos, raw, pix, p*channels)
+    -->
+
+    - [ ] RGBA Images don't match ..\asefile\blend_hue.aseprite 0 asefile\blend_hue-frame0.raw [[118, 213, 144, 98], [108, 221, 122, 98]] 4
+    - [ ] RGBA Images don't match ..\asefile\blend_saturation.aseprite 0 asefile\blend_saturation-frame0.raw [[41, 51, 222, 211], [58, 44, 213, 211]] 0
+    - [ ] RGBA Images don't match ..\asefile\blend_saturation_bug.aseprite 0 asefile\blend_saturation_bug-frame0.raw [[102, 102, 217, 255], [175, 71, 186, 255]] 548
 
 
 ### Automation things:
 - [x] Frames
-- [x] Layers
+- [ ] Layers
+    - [ ] Groups
 - [x] Cels
     - [x] Use Precise Bounds from Cel Extra when set
     - [x] Linked Cels
