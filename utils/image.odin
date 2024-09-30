@@ -234,7 +234,50 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
 }
 
 
-get_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Image, err: Errors) {
+get_cels_as_imgs :: proc(doc: ^ase.Document, frame_idx := 0, alloc := context.allocator) -> (res: []Image, err: Errors) {
+    context.allocator = alloc
+
+    info := get_info(doc) or_return
+    defer destroy(&info)
+
+    if len(info.frames) < frame_idx {
+        return nil, .Frame_Index_Out_Of_Bounds
+    }
+
+    frame := info.frames[frame_idx]
+
+    res = make([]Image, len(frame.cels)) or_return
+    if len(frame.cels) == 0 { return }
+
+    if !slice.is_sorted_by(frame.cels, cel_less) {
+        slice.sort_by(frame.cels, cel_less)
+    }
+
+    for cel, i in frame.cels {
+        lay := info.layers[cel.layer]
+        if !lay.visiable { continue }
+
+        img := make([]byte, cel.width * cel.height * 4) or_return
+
+        if cel.tilemap.tiles != nil {
+            ts := info.tilesets[lay.tileset]
+            c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
+            defer delete(c.raw)
+
+            write_cel(img, c, lay, info.md, info.palette) or_return
+
+        } else {
+            write_cel(img, cel, lay, info.md, info.palette) or_return
+        }
+
+        res[i] = Image{{cel.width, cel.height, .RGBA, 0}, img}
+    }
+
+    return
+}
+
+
+get_all_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Image, err: Errors) {
     context.allocator = alloc
 
     info := get_info(doc) or_return
@@ -247,16 +290,6 @@ get_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res
 
         if !slice.is_sorted_by(frame.cels, cel_less) {
             slice.sort_by(frame.cels, cel_less)
-        }
-        
-        if !info.layers[0].is_background && info.md.bpp == .Indexed {
-            img := make([]byte, info.md.width * info.md.height * 4) or_return
-            img_p := mem.slice_data_cast([]Pixel, img)
-            c := info.palette[info.md.trans_idx].color
-            c.a = 0
-            slice.fill(img_p, c)
-            append(&imgs, Image{info.md, img[:]}) or_return
-            continue
         }
 
         for cel in frame.cels {
