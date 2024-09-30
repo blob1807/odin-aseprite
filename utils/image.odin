@@ -257,20 +257,7 @@ get_cels_as_imgs :: proc(doc: ^ase.Document, frame_idx := 0, alloc := context.al
         lay := info.layers[cel.layer]
         if !lay.visiable { continue }
 
-        img := make([]byte, cel.width * cel.height * 4) or_return
-
-        if cel.tilemap.tiles != nil {
-            ts := info.tilesets[lay.tileset]
-            c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
-            defer delete(c.raw)
-
-            write_cel(img, c, lay, info.md, info.palette) or_return
-
-        } else {
-            write_cel(img, cel, lay, info.md, info.palette) or_return
-        }
-
-        res[i] = Image{{cel.width, cel.height, .RGBA, 0}, img}
+        res[i] = get_image_from_cel(cel, lay, info) or_return
     }
 
     return
@@ -296,20 +283,8 @@ get_all_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
             lay := info.layers[cel.layer]
             if !lay.visiable { continue }
 
-            img := make([]byte, cel.width * cel.height * 4) or_return
-
-            if cel.tilemap.tiles != nil {
-                ts := info.tilesets[lay.tileset]
-                c := cel_from_tileset(cel, ts, info.md.bpp, info.allocator) or_return
-                defer delete(c.raw)
-
-                write_cel(img, c, lay, info.md, info.palette) or_return
-
-            } else {
-                write_cel(img, cel, lay, info.md, info.palette) or_return
-            }
-            
-            append(&imgs, Image{{cel.width, cel.height, .RGBA, 0}, img})
+            img := get_image_from_cel(cel, lay, info) or_return
+            append(&imgs, img)
         } 
     }
 
