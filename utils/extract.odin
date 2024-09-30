@@ -2,8 +2,6 @@ package aseprite_file_handler_utility
 
 import "base:runtime"
 import "core:math/fixed"
-import "core:mem"
-import "core:reflect"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
@@ -54,12 +52,12 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
             case ase.Com_Image_Cel:
                 cel.width = int(v.width)
                 cel.height = int(v.height)
-                cel.raw = v.pixel
+                cel.raw = v.pixels
 
             case ase.Raw_Cel:
                 cel.width = int(v.width)
                 cel.height = int(v.height)
-                cel.raw = v.pixel
+                cel.raw = v.pixels
 
             case ase.Linked_Cel:
                 cel.link = int(v)
@@ -347,8 +345,10 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
 get_tileset :: proc{tileset_from_doc, tileset_from_doc_frame}
 
 
-get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info err: Errors) {
+get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info, err: Errors) {
     context.allocator = alloc
+    info.allocator = alloc
+
     layer_valid_opacity := .Layer_Opacity in doc.header.flags
     has_new := has_new_palette(doc)
 
@@ -360,11 +360,10 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
     sls    := make([dynamic]Slice) or_return
     md     := get_metadata(doc.header)
 
-    all_lays := make([dynamic]^ase.Layer_Chunk, 0, 64) or_return
+    all_lays := make([dynamic]^ase.Layer_Chunk) or_return
     defer delete(all_lays)
 
-    ud_parent: User_Data_Parent
-    ud_index: int
+    hue_sat_warn: bool
 
     // TODO: Make big assumption that only Cel Chunks appear after first frame.
 
@@ -388,15 +387,15 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                 case ase.Com_Image_Cel:
                     cel.width = int(v.width)
                     cel.height = int(v.height)
-                    cel.raw = v.pixel
+                    cel.raw = v.pixels
 
                 case ase.Raw_Cel:
                     cel.width = int(v.width)
                     cel.height = int(v.height)
-                    cel.raw = v.pixel
+                    cel.raw = v.pixels
 
                 case ase.Linked_Cel: 
-                    for l, p in frames[v].cels {
+                    for l in frames[v].cels {
                         if l.layer == cel.layer {
                             cel.height = l.height
                             cel.width = l.width
@@ -445,6 +444,15 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                     tileset = int(c.tileset_index),
                 }
 
+                when !ASE_USE_BUGGED_SAT {
+                    if !hue_sat_warn && (lay.blend_mode == .Saturation || lay.blend_mode == .Hue) {
+                        log.infof("Layer: \"%v\"; \"%v\" blend mode is bugged in Aseprite, in ways we can't replicate.", lay.name, lay.blend_mode)
+                        log.info("By default we use a fixed version. Compile with `ASE_USE_BUGGED_SAT=true` to use a bugged version.")
+                        hue_sat_warn = true
+                    }
+                }
+                
+
                 if c.child_level != 0 {
                     #reverse for l in all_lays {
                         if l.type == .Group {
@@ -472,7 +480,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                     }
                     append(&tags, tag) or_return
                 }
-                ud_parent = .Tag
             
             case ase.Palette_Chunk:
                 if int(c.last_index) >= len(pal) {
@@ -490,7 +497,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                     }
                     pal[i].color = c.entries[i].color
                 }
-                ud_parent = .Sprite
     
             case ase.Old_Palette_256_Chunk:
                 if has_new { continue }
@@ -543,18 +549,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                     }
                 }
 
-            case ase.User_Data_Chunk:
-                switch ud_parent {
-                case .Sprite:
-                case .Tag:
-                case .Tileset:
-                case .None: fallthrough
-                case:
-                    err = User_Data_Error.No_Parent
-                    return
-                }
-                ud_index += 1
-
             case ase.Tileset_Chunk:
                 ts: Tileset
                 ts.id = int(c.id)
@@ -568,7 +562,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
 
                 append(&all_ts, ts) or_return
             
-            case ase.Slice_Chunk:
+            /*case ase.Slice_Chunk:
                 sl: Slice
                 sl.name = c.name
                 sl.flags = c.flags
@@ -593,7 +587,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info 
                         key.pivot = { int(pivot.x), int(pivot.y) }
                     }
                 }
-                append(&sls, sl)
+                append(&sls, sl)*/
             }
         }
 
