@@ -372,7 +372,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         frame.duration = i64(doc_frame.header.duration)
         cels := make([dynamic]Cel) or_return
 
-        for chunk in doc_frame.chunks {
+        for &chunk in doc_frame.chunks {
 
             #partial switch &c in chunk {
             case ase.Cel_Chunk:
