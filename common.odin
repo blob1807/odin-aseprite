@@ -3,7 +3,6 @@ package aseprite_file_handler
 import "base:runtime"
 import "core:mem/virtual"
 
-@(require) import "core:fmt"
 @(require) import "core:log"
 
 
@@ -12,7 +11,6 @@ destroy_value :: proc(p: ^Property_Value, alloc := context.allocator) -> (err: r
     context.allocator = alloc
     #partial switch &val in p {
     case string:
-        // FIXME: Strings fail to free sometimes.
         delete(val) or_return
     case UD_Vec:
         for &v in val {
@@ -58,9 +56,9 @@ destroy_doc_alloc :: proc(doc: ^Document, alloc := context.allocator) -> (err: r
                 switch &cel in v.cel {
                 case Linked_Cel:
                 case Raw_Cel:
-                    delete(cel.pixel)
+                    delete(cel.pixels)
                 case Com_Image_Cel:
-                    delete(cel.pixel)
+                    delete(cel.pixels)
                 case Com_Tilemap_Cel:
                     delete(cel.tiles)
                 }
@@ -161,9 +159,9 @@ _destroy_cel :: proc(c: Cel_Chunk, alloc := context.allocator) -> (err: runtime.
     switch cel in c.cel {
     case Linked_Cel:
     case Raw_Cel:
-        delete(cel.pixel, alloc) or_return
+        delete(cel.pixels, alloc) or_return
     case Com_Image_Cel:
-        delete(cel.pixel, alloc) or_return
+        delete(cel.pixels, alloc) or_return
     case Com_Tilemap_Cel:
         delete(cel.tiles, alloc) or_return
     }

@@ -4,12 +4,10 @@ import "base:runtime"
 import "base:intrinsics"
 import "core:io"
 import "core:os"
+import "core:log"
 import "core:bytes"
 import "core:bufio"
 import "core:mem/virtual"
-
-@(require) import "core:fmt"
-@(require) import "core:log"
 
 
 unmarshal_from_bytes_buff :: proc(doc: ^Document, r: ^bytes.Reader, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
@@ -149,7 +147,6 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
 
             case .tileset:
                 if !tm_warn {
-                    //log.warn("Tilemaps & Tilesets are currently unsuported.")
                     tm_warn = true
                 }
                 chunk = read_tileset(r, rt) or_return

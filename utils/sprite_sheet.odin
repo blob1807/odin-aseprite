@@ -1,5 +1,7 @@
 package aseprite_file_handler_utility
 
+// TODO: Maybe
+/*
 import "base:runtime"
 import "vendor:stb/rect_pack"
 
@@ -20,3 +22,4 @@ sprite_sheet_from_bytes :: proc(img: []byte, md: Metadata, alloc := context.allo
 }
 
 make_sprite_sheet :: proc{sprite_sheet_from_img, sprite_sheet_from_bytes}
+*/

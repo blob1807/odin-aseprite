@@ -2,12 +2,10 @@ package aseprite_file_handler
 
 import "core:io"
 import "core:os"
+import "core:log"
 import "core:bytes"
 import "core:bufio"
 import "vendor:zlib"
-
-@(require) import "core:fmt"
-@(require) import "core:log"
 
 
 marshal_to_bytes_buff :: proc(doc: ^Document, b: ^bytes.Buffer, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
@@ -181,7 +179,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 case Raw_Cel:
                     write(cw, cel.width, cs) or_return
                     write(cw, cel.height, cs) or_return
-                    write(cw, cel.pixel[:], cs) or_return
+                    write(cw, cel.pixels[:], cs) or_return
 
                 case Linked_Cel:
                     write(cw, WORD(cel), cs) or_return
@@ -190,13 +188,13 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     write(cw, cel.width, cs) or_return
                     write(cw, cel.height, cs) or_return
 
-                    com_buf := make([]byte, len(cel.pixel)+64, allocator) or_return
+                    com_buf := make([]byte, len(cel.pixels)+64, allocator) or_return
                     defer delete(com_buf)
-                    data_rd: [^]u8 = raw_data(cel.pixel[:])
+                    data_rd: [^]u8 = raw_data(cel.pixels[:])
                     com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
                     config := zlib.z_stream {
-                        avail_in=zlib.uInt(len(cel.pixel)), 
+                        avail_in=zlib.uInt(len(cel.pixels)), 
                         next_in=&data_rd[0],
                         avail_out=zlib.uInt(len(com_buf)),
                         next_out=&com_buf_rd[0],
@@ -408,7 +406,6 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     }
 
                     map_size += 4
-                    //fmt.println(map_size, len(m), len(mb.buf))
                     write(cw, DWORD(map_size), cs) or_return
                     write(cw, mb.buf[:map_size-4], cs) or_return
                 }

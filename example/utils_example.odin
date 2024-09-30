@@ -24,7 +24,7 @@ single_image :: proc() {
         fmt.eprintln("Fail to get image:", img_err)
         return
     }
-    defer utils.destroy(&img)
+    defer utils.destroy(img)
 }
 
 
@@ -67,7 +67,7 @@ nth_image :: proc() {
         fmt.eprintln("Fail to get image:", img_err)
         return
     }
-    defer utils.destroy(&img)
+    defer utils.destroy(img)
 }
 
 
@@ -86,7 +86,7 @@ animation :: proc() {
     anim: utils.Animation
     anim_err := utils.get_animation(&doc, &anim)
     if anim_err != nil {
-        fmt.eprintln("Fail to animation:", anim_err)
+        fmt.eprintln("Fail to make animation:", anim_err)
         return
     }
     defer utils.destroy(&anim)
@@ -109,7 +109,7 @@ animation_tag :: proc() {
     anim: utils.Animation
     anim_err := utils.get_animation(&doc, &anim, "Squish")
     if anim_err != nil {
-        fmt.eprintln("Fail to animation:", anim_err)
+        fmt.eprintln("Fail to make animation:", anim_err)
         return
     }
     defer utils.destroy(&anim)

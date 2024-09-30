@@ -2,12 +2,10 @@ package aseprite_file_handler
 
 import "base:intrinsics"
 import "core:io"
+import "core:log"
 import "core:bytes"
 import "core:compress/zlib"
-import "core:mem"
 
-@(require) import "core:fmt"
-@(require) import "core:log"
 
 read_file_header :: proc(r: io.Reader, rt: ^int) -> (h: File_Header, err: Unmarshal_Error) {
     h.size = read_dword(r, rt) or_return
@@ -124,8 +122,8 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
         cel: Raw_Cel
         cel.width = read_word(r, rt) or_return
         cel.height = read_word(r, rt) or_return
-        cel.pixel = make([]PIXEL, int(cel.width * cel.height)) or_return
-        read_bytes(r, cel.pixel[:], rt) or_return
+        cel.pixels = make([]PIXEL, int(cel.width * cel.height)) or_return
+        read_bytes(r, cel.pixels[:], rt) or_return
         chunk.cel = cel
 
     case .Linked_Cel:
@@ -153,8 +151,8 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
         exp_size := color_depth / 8 * int(cel.height) * int(cel.width)
         zlib.inflate(data[:], &buf, expected_output_size=exp_size) or_return
 
-        cel.pixel = make([]byte, exp_size) or_return
-        copy(cel.pixel[:], buf.buf[:])
+        cel.pixels = make([]byte, exp_size) or_return
+        copy(cel.pixels[:], buf.buf[:])
 
         chunk.cel = cel
 
@@ -299,7 +297,6 @@ read_palette :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
 
 read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: User_Data_Chunk, err: Unmarshal_Error) {
     flags := transmute(UD_Flags)read_dword(r, rt) or_return
-    //fmt.println(flags)
 
     if .Text in flags {
         chunk.text = read_string(r, rt) or_return
@@ -387,7 +384,6 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
         chunk.external = ex
     }
     if .Include_Tiles_Inside_This_File in chunk.flags {
-        tc: Tileset_Compressed
         size := int(read_dword(r, rt) or_return)
 
         buf: bytes.Buffer
@@ -400,9 +396,11 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
 
         res := len(buf.buf)-buf.off
         exp_size := int(chunk.width) * int(chunk.height) * int(chunk.num_of_tiles)
-        ok := (res == exp_size) || (res == exp_size*2) || (res == exp_size*4)
 
-        assert(ok, "Expected size not equal to uncompressed size") // TODO: Replace with error
+        if (res != exp_size) && (res != exp_size*2) && (res != exp_size*4) {
+            fast_log(.Error, "Expected size not equal to uncompressed size")
+            return chunk, Read_Error(Read_Errors.Comp_Tileset_Not_Expected_Size)
+        }
 
         chunk.compressed = (Tileset_Compressed)(buf.buf[buf.off:])
 

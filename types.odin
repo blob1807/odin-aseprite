@@ -10,11 +10,8 @@ import vzlib "vendor:zlib"
 
 //https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
-// TODO: Whole File rework.
-// Anything set by a flag should be a Maybe(). 
-// Only Size/Lengths that can't be gotten by len() are set.
-
 Unmarshal_Errors :: enum {
+    None,
     Unable_To_Open_File,
     Unable_Make_Reader,
     Bad_File_Magic_Number,
@@ -37,10 +34,12 @@ Unmarshal_Error :: union #shared_nil {
 }
 
 Read_Errors :: enum {
+    None,
     Unable_To_Decode_Data,
     Wrong_Read_Size,
     Array_To_Small,
     Unable_Make_Seeker,
+    Comp_Tileset_Not_Expected_Size,
 }
 Read_Error :: union #shared_nil {Read_Errors, io.Error, runtime.Allocator_Error}
 
@@ -280,14 +279,14 @@ Layer_Chunk :: struct {
 Raw_Cel :: struct{
     width: WORD, 
     height: WORD, 
-    pixel: []PIXEL
+    pixels: []PIXEL
 }
 Linked_Cel :: distinct WORD
 // raw cel ZLIB compressed
 Com_Image_Cel :: struct{
     width: WORD, 
     height: WORD, 
-    pixel: []PIXEL
+    pixels: []PIXEL
 }
 Tile_ID :: enum(DWORD) { byte=0xfffffff1, word=0xffff1fff, dword=0x1fffffff }
 Com_Tilemap_Cel :: struct{
