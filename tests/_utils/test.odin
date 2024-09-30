@@ -161,8 +161,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 pix, p, ok := rgba_is_equal(tb1, tb2)
 
                 if !ok {
-                    //testing.fail_now(t, fmt.tprint("RGBA Images don't match\n", file, pos, raw, pix, p*4))
-                    log.warn("RGBA Images don't match", file, pos, raw, pix, p*4)
+                    testing.fail_now(t, fmt.tprint("RGBA Images don't match\n", file, pos, raw, pix, p*4))
+                   // log.warn("RGBA Images don't match", file, pos, raw, pix, p*4)
                 }
 
             } else if len(buf) %% 3 == 0 {
@@ -177,8 +177,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 pix, p, ok := rgb_is_equal(tb1, tb2)
                 
                 if !ok {
-                    //testing.fail_now(t, fmt.tprint("RGB Images don't match", file, pos, raw, pix, p*3))
-                    log.warn("RGB Images don't match", file, pos, raw, pix, p*3)
+                    testing.fail_now(t, fmt.tprint("RGB Images don't match", file, pos, raw, pix, p*3))
+                    //log.warn("RGB Images don't match", file, pos, raw, pix, p*3)
                 }
 
             } else if len(img.data) / 4 == len(buf) {
@@ -220,8 +220,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 pix, p, ok := rgba_is_equal(tb1, tb2)
                 
                 if !ok {
-                    //testing.fail_now(t, fmt.tprint("RGB Images don't match\n", file, pos, raw, pix, p*3))
-                    log.warn("Indexed Images don't match", file, pos, raw, pix, p*3)
+                    testing.fail_now(t, fmt.tprint("Indexed Images don't match\n", file, pos, raw, pix, p*3))
+                    //log.warn("Indexed Images don't match", file, pos, raw, pix, p*3)
                 }
 
             } else if len(img.data) / 2 == len(buf) {
@@ -257,8 +257,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 pix, p, ok := rgba_is_equal(tb1, tb2)
                 
                 if !ok {
-                    //testing.fail_now(t, fmt.tprint("RGB Images don't match\n", file, pos, raw, pix, p*3))
-                    log.warn("Grayscale Images don't match", file, pos, raw, pix, p*3)
+                    testing.fail_now(t, fmt.tprint("Grayscale Images don't match\n", file, pos, raw, pix, p*3))
+                    //log.warn("Grayscale Images don't match", file, pos, raw, pix, p*3)
                 }
 
             } else {
@@ -268,10 +268,11 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
     }
 }
 
-//@(test)
+@(test)
 blob_test :: proc(t: ^testing.T) {
     PATH :: "blob"
-    SKIP_FILES := [?]string{}
+    // Hue & Saturation Bland tests due to being bugged in Aseprite
+    SKIP_FILES := [?]string{"hue", "saturation"}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
 }
@@ -287,7 +288,7 @@ asefile_test :: proc(t: ^testing.T) {
     free_all(context.temp_allocator)
 }
 
-//@(test)
+@(test)
 aseprite_test :: proc(t: ^testing.T) {
     PATH :: "aseprite"
     // Slices to be implematated, when asked
@@ -298,7 +299,7 @@ aseprite_test :: proc(t: ^testing.T) {
 }
 
 
-//@(test)
+@(test)
 community_test :: proc(t: ^testing.T) {
     PATH :: "community"
     SKIP_FILES := [?]string{}
