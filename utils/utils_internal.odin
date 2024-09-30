@@ -8,6 +8,8 @@ import "core:strconv"
 @(require) import "core:fmt"
 @(require) import "core:log"
 
+_ :: reflect
+
 
 @(private)
 fast_log_str :: proc(lvl: log.Level, str: string, loc := #caller_location) {
