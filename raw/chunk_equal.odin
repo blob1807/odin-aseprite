@@ -1,4 +1,4 @@
-//+private
+#+private
 package raw_aseprite_file_handler
 
 import "core:slice"

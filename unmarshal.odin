@@ -26,11 +26,11 @@ unmarshal_from_bufio :: proc(doc: ^Document, r: ^bufio.Reader, alloc: runtime.Al
     return unmarshal(doc, rr, alloc)
 }
 
-unmarshal_from_filename :: proc(doc: ^Document, name: string, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
-    fd, err_no := os.open(name, os.O_RDONLY)
-    if err_no != 0 {
-        log.error("Unable to read because of:", err_no)
-        return .Unable_To_Open_File
+unmarshal_from_filename :: proc(name: string, doc: ^Document, alloc := context.allocator) -> (err: Unmarshal_Error) {
+    fd, fd_err := os.open(name, os.O_RDONLY, 0)
+    if fd_err != nil {
+        log.error("Unable to read because of:", fd_err)
+        return fd_err
     }
     defer os.close(fd)
     return unmarshal(doc, fd, alloc)
@@ -90,6 +90,10 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
         }
         fh.old_num_of_chunks = read_word(r, rt) or_return
         fh.duration = read_word(r, rt) or_return
+        if fh.duration == 0 {
+            fh.duration = doc.header.speed
+        }
+        
         read_skip(r, 2, rt) or_return
         fh.num_of_chunks = read_dword(r, rt) or_return
 

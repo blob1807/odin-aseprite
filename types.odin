@@ -3,6 +3,7 @@ package aseprite_file_handler
 
 import "base:runtime"
 import "core:io"
+import "core:os"
 import "core:math/fixed"
 import "core:mem/virtual"
 import "core:compress/zlib"
@@ -12,7 +13,6 @@ import vzlib "vendor:zlib"
 
 Unmarshal_Errors :: enum {
     None,
-    Unable_To_Open_File,
     Unable_Make_Reader,
     Bad_File_Magic_Number,
     Bad_Frame_Magic_Number,
@@ -26,11 +26,12 @@ Unmarshal_Errors :: enum {
 }
 Unmarshal_Error :: union #shared_nil {
     Unmarshal_Errors, 
-    runtime.Allocator_Error, 
-    io.Error,
     Read_Error,
-    zlib.Error,
     ZLIB_Errors,
+    runtime.Allocator_Error, 
+    zlib.Error,
+    io.Error,
+    os.Error,
 }
 
 Read_Errors :: enum {
@@ -44,6 +45,7 @@ Read_Errors :: enum {
 Read_Error :: union #shared_nil {Read_Errors, io.Error, runtime.Allocator_Error}
 
 Marshal_Errors :: enum {
+    None,
     Unable_Make_Writer,
     Buffer_Not_Big_Enough,
     Invalid_Chunk_Type,
@@ -54,13 +56,14 @@ Marshal_Errors :: enum {
 }
 Marshal_Error :: union #shared_nil {
     Marshal_Errors, 
-    runtime.Allocator_Error, 
     Write_Error,
-    io.Error,
     ZLIB_Errors,
+    io.Error,
+    runtime.Allocator_Error, 
 }
 
 Write_Errors :: enum {
+    None,
     Unable_To_Encode_Data,
     Wrong_Write_Size,
     Array_To_Small,
@@ -99,11 +102,11 @@ BYTE_N :: [dynamic]BYTE
 STRING :: string
 POINT :: struct {
     x: LONG,
-    y: LONG
+    y: LONG,
 }
 SIZE :: struct {
     w: LONG,
-    h: LONG
+    h: LONG,
 }
 RECT :: struct {
     origin: POINT,
@@ -220,7 +223,7 @@ Chunk_Set :: bit_set[Chunk_Types_Set]
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors: BYTE, // 0 == 256
-    colors: []Color_RGB
+    colors: []Color_RGB,
 }
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
 Old_Palette_64_Chunk :: distinct []Old_Palette_Packet
@@ -405,7 +408,7 @@ UD_Vec :: []Property_Value
 Property_Type :: enum(WORD) {
     Null, Bool, I8, U8, I16, U16, I32, U32, I64, U64,
     Fixed, F32, F64, String, Point, Size, Rect, 
-    Vector, Properties, UUID 
+    Vector, Properties, UUID, 
 }
 Property_Value :: union {
     bool, i8, BYTE, SHORT, WORD, LONG, DWORD, LONG64, QWORD, FIXED, FLOAT,
@@ -431,7 +434,7 @@ Slice_Center :: struct{
     x: LONG,
     y: LONG, 
     width: DWORD, 
-    height: DWORD
+    height: DWORD,
 }
 Slice_Pivot :: distinct POINT
 Slice_Key :: struct{
@@ -451,7 +454,7 @@ Slice_Flags :: bit_set[Slice_Flag; DWORD]
 Slice_Chunk :: struct {
     flags: Slice_Flags,
     name: string,
-    keys: []Slice_Key
+    keys: []Slice_Key,
 }
 
 
@@ -465,7 +468,7 @@ Tileset_Flag :: enum(DWORD) {
 }
 Tileset_Flags :: bit_set[Tileset_Flag; DWORD]
 Tileset_External :: struct{
-    file_id, tileset_id: DWORD
+    file_id, tileset_id: DWORD,
 }
 Tileset_Compressed :: distinct []PIXEL
 Tileset_Chunk :: struct {
