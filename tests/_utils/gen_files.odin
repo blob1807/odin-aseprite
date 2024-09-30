@@ -20,6 +20,7 @@ PATHS := [?]string{"asefile", "aseprite", "blob", "community"}
 SAVE_CMD := []string{ASE_PATH, "-b", "", "--save-as", "{title}-frame{frame}.png"}
 
 main :: proc() {
+    fmt.println(TEST_PATH,)
     fmt.println("Making PNG files")
     os.change_directory(UTIL_PATH)
 
@@ -28,18 +29,16 @@ main :: proc() {
         os.make_directory(path)
         os.change_directory(path)
 
-        m, _ := fp.glob(fmt.aprint(TEST_PATH, "/*", sep=""))
+        m, _ := fp.glob(fmt.aprint(TEST_PATH, path, "*", sep="/"))
         for file in m {
             switch fp.long_ext(file) {
             case ".aseprite", ".ase":
             case: continue
             }
-            os2.copy_file(file, ".")
             SAVE_CMD[2] = file
 
             p, _ := os2.process_start({command=SAVE_CMD})
             _, _ = os2.process_wait(p)
-            os.remove(file)
         }
         os.change_directory("..")
     }

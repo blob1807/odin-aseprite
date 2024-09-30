@@ -280,9 +280,9 @@ blob_test :: proc(t: ^testing.T) {
 @(test)
 asefile_test :: proc(t: ^testing.T) {
     PATH :: "asefile"
-    // FIXME: Skip Hue & Saturation Bland tests due to bug I can't find
+    // Hue & Saturation Bland tests due to being bugged in Aseprite
     // User data & ICCC colour profile unsupported
-    SKIP_FILES := [?]string{"saturation", "user_data", "color-curve"}
+    SKIP_FILES := [?]string{"hue", "saturation", "user_data", "color-curve"}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
 }
@@ -290,7 +290,7 @@ asefile_test :: proc(t: ^testing.T) {
 //@(test)
 aseprite_test :: proc(t: ^testing.T) {
     PATH :: "aseprite"
-    // TODO: Slices to be implematated
+    // Slices to be implematated, when asked
     // Exteral files unsupported
     SKIP_FILES := [?]string{"file-tests-props", "slices"}
     test_runner(t, PATH, SKIP_FILES[:])

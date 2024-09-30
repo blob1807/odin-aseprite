@@ -1,13 +1,14 @@
-//+private
-package aseprite_file_handler
+package ase_tests
 
 import "core:slice"
 import "core:reflect"
+import ase ".."
 
 @(require) import "core:fmt"
 @(require) import "core:log"
 
-_old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_old_palette_256_equal :: proc(x, y: ase.Old_Palette_256_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if len(x) != len(y) {
         return len(x), len(y), typeid_of(Old_Palette_256_Chunk), false
     }
@@ -35,7 +36,8 @@ _old_palette_256_equal :: proc(x, y: Old_Palette_256_Chunk) -> (a: any, b: any, 
     return
 }
 
-_old_plette_64_equal :: proc(x, y: Old_Palette_64_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_old_plette_64_equal :: proc(x, y: ase.Old_Palette_64_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if len(x) != len(y) {
         return len(x), len(y), typeid_of(Old_Palette_256_Chunk), false
     }
@@ -63,7 +65,8 @@ _old_plette_64_equal :: proc(x, y: Old_Palette_64_Chunk) -> (a: any, b: any, c: 
     return
 }
 
-_layer_equal :: proc(x, y: Layer_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_layer_equal :: proc(x, y: ase.Layer_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.type != y.type {
         return x.type, y.type, typeid_of(Layer_Chunk), false
     }
@@ -96,7 +99,8 @@ _layer_equal :: proc(x, y: Layer_Chunk) -> (a: any, b: any, c: typeid, eq: bool)
     return 
 }
 
-_cel_equal :: proc(x, y: Cel_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_cel_equal :: proc(x, y: ase.Cel_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.x != y.x {
         return y.x, y.x, typeid_of(Cel_Chunk), false
     } 
@@ -128,8 +132,8 @@ _cel_equal :: proc(x, y: Cel_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
         if xv.height != yv.height {
             return xv.height, yv.height, typeid_of(Raw_Cel), false
         }
-        if !slice.equal(xv.pixel[:], yv.pixel[:]) {
-            return xv.pixel[:], yv.pixel[:], typeid_of(Raw_Cel), false
+        if !slice.equal(xv.pixels[:], yv.pixels[:]) {
+            return xv.pixels[:], yv.pixels[:], typeid_of(Raw_Cel), false
         }
 
     case Linked_Cel:
@@ -152,8 +156,8 @@ _cel_equal :: proc(x, y: Cel_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
         if xv.height != yv.height {
             return xv.height, yv.height, typeid_of(Com_Image_Cel), false
         }
-        if !slice.equal(xv.pixel[:], yv.pixel[:]) {
-            return xv.pixel[:], yv.pixel[:], typeid_of(Com_Image_Cel), false
+        if !slice.equal(xv.pixels[:], yv.pixels[:]) {
+            return xv.pixels[:], yv.pixels[:], typeid_of(Com_Image_Cel), false
         }
 
     case Com_Tilemap_Cel:
@@ -199,23 +203,24 @@ _cel_equal :: proc(x, y: Cel_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     return
 }
 
-_cel_extra_equal :: proc(x, y: Cel_Extra_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_cel_extra_equal :: proc(x, y: ase.Cel_Extra_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if x != y { 
-        return x, y, typeid_of(Cel_Extra_Chunk), false 
+        return x, y, typeid_of(ase.Cel_Extra_Chunk), false 
     }
     eq = true
     return 
 }
 
-_color_profile_equal :: proc(x, y: Color_Profile_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_color_profile_equal :: proc(x, y: ase.Color_Profile_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.type != y.type {
-        return x.type, y.type, typeid_of(Color_Profile_Chunk), false
+        return x.type, y.type, typeid_of(ase.Color_Profile_Chunk), false
     }
     if x.flags != y.flags {
-        return x.flags, y.flags, typeid_of(Color_Profile_Chunk), false
+        return x.flags, y.flags, typeid_of(ase.Color_Profile_Chunk), false
     }
     if x.fixed_gamma != y.fixed_gamma {
-        return x.fixed_gamma, y.fixed_gamma, typeid_of(Color_Profile_Chunk), false
+        return x.fixed_gamma, y.fixed_gamma, typeid_of(ase.Color_Profile_Chunk), false
     }
 
     switch xv in x.icc {
@@ -239,7 +244,8 @@ _color_profile_equal :: proc(x, y: Color_Profile_Chunk) -> (a: any, b: any, c: t
     return 
 }
 
-_external_files_equal :: proc(x, y: External_Files_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_external_files_equal :: proc(x, y: ase.External_Files_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if len(x) != len(y) {
         return len(x), len(y), typeid_of(External_Files_Chunk), false
     }
@@ -260,7 +266,8 @@ _external_files_equal :: proc(x, y: External_Files_Chunk) -> (a: any, b: any, c:
     return
 }
 
-_mask_equal :: proc(x, y: Mask_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_mask_equal :: proc(x, y: ase.Mask_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.x != y.x {
         return x.x, y.x, typeid_of(Mask_Chunk), false
     } 
@@ -283,15 +290,16 @@ _mask_equal :: proc(x, y: Mask_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     return
 }
 
-_path_equal :: proc(x, y: Path_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_path_equal :: proc(x, y: ase.Path_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     if x != y { 
-        return x, y, typeid_of(Path_Chunk), false 
+        return x, y, typeid_of(ase.Path_Chunk), false 
     }
     eq = true
     return 
 }
 
-_tags_equal :: proc(x, y: Tags_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_tags_equal :: proc(x, y: ase.Tags_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if len(x) != len(y) {
         return len(x), len(y), typeid_of(Tags_Chunk), false
     }
@@ -322,7 +330,8 @@ _tags_equal :: proc(x, y: Tags_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
     return
 }
 
-_palette_equal :: proc(x, y: Palette_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_palette_equal :: proc(x, y: ase.Palette_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.size != y.size {
         return x.size, y.size, typeid_of(Palette_Chunk), false
     } 
@@ -349,7 +358,8 @@ _palette_equal :: proc(x, y: Palette_Chunk) -> (a: any, b: any, c: typeid, eq: b
     return
 }
 
-_ud_prop_val_eq :: proc(x,y: Property_Value) -> (a: any, b: any, c: typeid, eq: bool) {
+_ud_prop_val_eq :: proc(x,y: ase.Property_Value) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     switch xv in x {
     case bool:
         yv, ok := y.(bool)
@@ -534,7 +544,8 @@ _ud_prop_val_eq :: proc(x,y: Property_Value) -> (a: any, b: any, c: typeid, eq: 
     return
 }
 
-_ud_props_eq :: proc(x, y: Properties) -> (a: any, b: any, c: typeid, eq: bool) {
+_ud_props_eq :: proc(x, y: ase.Properties) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if len(x) != len(y) {
         log.error("len(x) != len(y)")
         return len(x), len(y), typeid_of(Properties), false
@@ -559,7 +570,8 @@ _ud_props_eq :: proc(x, y: Properties) -> (a: any, b: any, c: typeid, eq: bool) 
     return
 }
 
-_user_data_equal :: proc(x, y: User_Data_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_user_data_equal :: proc(x, y: ase.User_Data_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.text != y.text {
         return x.text, y.text, typeid_of(User_Data_Chunk), false
     }
@@ -598,7 +610,8 @@ _user_data_equal :: proc(x, y: User_Data_Chunk) -> (a: any, b: any, c: typeid, e
     return
 }
 
-_slice_equal :: proc(x, y: Slice_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_slice_equal :: proc(x, y: ase.Slice_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.flags != y.flags {
         return x.flags, y.flags, typeid_of(Slice_Chunk), false
     }
@@ -619,7 +632,8 @@ _slice_equal :: proc(x, y: Slice_Chunk) -> (a: any, b: any, c: typeid, eq: bool)
     return
 }
 
-_tileset_equal :: proc(x, y: Tileset_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+_tileset_equal :: proc(x, y: ase.Tileset_Chunk) -> (a: any, b: any, c: typeid, eq: bool) {
+    using ase
     if x.id != y.id {
         return x.id, y.id, typeid_of(Tileset_Chunk), false
     }

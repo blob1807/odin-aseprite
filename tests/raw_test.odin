@@ -1,4 +1,4 @@
-package tests
+package ase_tests
 
 import "core:os"
 import "core:fmt"
