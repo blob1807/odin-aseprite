@@ -1,14 +1,13 @@
 package aseprite_file_handler_utility
 
 import "core:math"
-import "core:simd"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
 
 
-// From https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L632
-ASEPRITE_SATURATION_BUG_COMPATIBLE :: #config(ASE_SAT_BUG_COMPT, true)
+ASE_USE_BUGGED_SAT :: #config(ASE_USE_BUGGED_SAT, false)
+
 
 // https://printtechnologies.org/standards/files/pdf-reference-1.6-addendum-blend-modes.pdf
 
@@ -374,8 +373,6 @@ blend_exclusion :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
 
 /* ------------------------------------------------------------------- */
 // HSV Blenders
-
-// FIXME: No worky
 blend_hue :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     /*
     https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L392
@@ -397,7 +394,6 @@ blend_hue :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     return blend_normal(last, {i32(cpix.r), i32(cpix.g), i32(cpix.b), cur.a}, opacity)
 }
 
-// FIXME: No worky
 blend_saturation :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     pix := [3]f64{f64(cur.r), f64(cur.g), f64(cur.b)}
     pix /= 255
@@ -527,19 +523,18 @@ set_luma :: proc(p: [3]f64, l: f64) -> [3]f64 {
 
 set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
     // https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L400
-    /*
-    Note(blob):
-        there's a bug with the og code when `r == g` and `g < b`.
-    */
+    // The chosen solution is a mix a asefile & pixman
+    // https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L522
+    // https://gitlab.freedesktop.org/pixman/pixman/-/blob/master/pixman/pixman-combine-float.c#L831
 
-    res = p    
-    // Taken from https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L632
-    /*when ASEPRITE_SATURATION_BUG_COMPATIBLE {
-        MIN :: proc(x,y: ^f64) -> ^f64 {
+
+    when ASE_USE_BUGGED_SAT == true {
+        res = p
+        MIN :: proc(x, y: ^f64) -> ^f64 {
             return (x^ < y^) ? x : y
         }
-        MAX :: proc(x,y: ^f64) -> ^f64 {
-            return (y^ < x^) ? x : y
+        MAX :: proc(x, y: ^f64) -> ^f64 {
+            return (x^ > y^) ? x : y
         }
 
         r, g, b := &res.r, &res.g, &res.b
@@ -547,81 +542,177 @@ set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
         max := MAX(r, MAX(g, b))
         mid := r > g ? (g > b ? g : (r > b ? b : r)) : (g > b ? (b > r ? b : r): g)
 
-    } else {
-        // From https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs#L522
-        res.rg = res.r < res.g ? res.rg : res.gr
-        res.rb = res.r < res.b ? res.rb : res.br
-        res.gb = res.g < res.b ? res.gb : res.bg
-        min, mid, max := &res.r, &res.g, &res.b
-    }*/
-
-    
-    /*res = p
-    val := [3][2]f64{{p.r, 0}, {p.g, 1}, {p.b, 2}}
-
-    val.rg = val.r[0] < val.g[0] ? val.rg : val.gr
-    val.rb = val.r[0] < val.b[0] ? val.rb : val.br
-    val.gb = val.g[0] < val.b[0] ? val.gb : val.bg
-    min, mid, max := int(val.r[1]), int(val.g[1]), int(val.b[1])
-    
-
-    if max > min {
-        res[mid] = ((res[mid] - res[min]) * s) / (res[max] - res[min])
-        res[max] = s
-    } else {
-        res[mid], res[max] = 0, 0
-    }
-    res[min] = 0*/
-    
-    res = p
-    min, mid, max: ^f64
-
-    if p.r > p.g {
-        if p.r > p.b {
-            max = &res.r
-            if p.g > p.b {
-                mid = &res.g
-                min = &res.b
-
-            } else {
-                mid = &res.b
-                min = &res.g
-            }
-
+        if max > min {
+            mid^ = ((mid^ - min^) * s) / (max^ - min^)
+            max^ = s
         } else {
-            max = &res.b
-            mid = &res.r
-            min = &res.g
+            mid^ = 0
+            max^ = 0
         }
+        min^ = 0
 
     } else {
-        if p.r > p.b {
-            max = &res.g
-            mid = &res.r
-            min = &res.b
+        val: [3]struct{v: f64, p: int} = {
+            {p.r, 0}, {p.g, 1}, {p.b, 2}
+        }
+        val.rg = val.r.v < val.g.v ? val.rg : val.gr
+        val.rb = val.r.v < val.b.v ? val.rb : val.br
+        val.gb = val.g.v < val.b.v ? val.gb : val.bg
+        min, mid, max := val.r.p, val.g.p, val.b.p
 
-        } else {
-            min = &res.r
-            if p.g > p.b {
-                max = &res.g
-                mid = &res.b
-
-            } else {
-                max = &res.b
-                mid = &res.g
-            }
+        if (p[max] - p[min]) != 0 {
+            res[mid] = ((p[mid] - p[min]) * s) / (p[max] - p[min])
+            res[max] = s
         }
     }
-
-    if max > min {
-        mid^ = ((mid^ - min^) * s) / (max^ - min^)
-        max^ = s
-    } else {
-        mid^ = 0
-        max^ = 0
-    }
-    min^ = 0
 
     return
 }
 
+
+/*
+    The following is for mine (blob) record keeping:
+
+    The way aseprite does set_set is very much bugged.
+    First the sorting doesn't work when if r == g  and g < b
+
+        MIN :: proc(x, y: ^f64) -> ^f64 {
+            return (x^ < y^) ? x : y
+        }
+        MAX :: proc(x, y: ^f64) -> ^f64 {
+            return (y^ < x^) ? x : y
+        }
+
+        r, g, b := &pix.r, &pix.g, &pix.b
+        min := MIN(r, MIN(g, b))
+        max := MAX(r, MAX(g, b))
+        mid := r > g ? (g > b ? g : (r > b ? b : r)) : (g > b ? (b > r ? b : r): g)
+
+    Second the way it's value calculations is also wrong & only leaves the blue channel
+        if max > min {
+            mid^ = ((mid^ - min^) * s) / (max^ - min^)
+            max^ = s
+        } else {
+            mid^ = 0
+            max^ = 0
+        }
+
+    The sullotion griven by asefile
+        //  r --*--*----- min 
+        //      |  |          
+        //  g --*--|--*-- mid 
+        //         |  |       
+        //  b -----*--*-- max 
+
+        res = p
+        val := [3][2]f64{{p.r, 0}, {p.g, 1}, {p.b, 2}}
+
+        val.rg = val.r[0] < val.g[0] ? val.rg : val.gr
+        val.rb = val.r[0] < val.b[0] ? val.rb : val.br
+        val.gb = val.g[0] < val.b[0] ? val.gb : val.bg
+        min, mid, max := int(val.r[1]), int(val.g[1]), int(val.b[1])
+        
+
+        if max > min {
+            res[mid] = ((res[mid] - res[min]) * s) / (res[max] - res[min])
+            res[max] = s
+        } else {
+            res[mid], res[max] = 0, 0
+        }
+        res[min] = 0
+
+    Pointer based version od working sullotion from pixman
+        res = p
+        min, mid, max: ^f64
+        if p.r > p.g {
+            if p.r > p.b {
+                max = &res.r
+                if p.g > p.b {
+                    mid = &res.g
+                    min = &res.b
+
+                } else {
+                    mid = &res.b
+                    min = &res.g
+                }
+
+            } else {
+                max = &res.b
+                mid = &res.r
+                min = &res.g
+            }
+
+        } else {
+            if p.r > p.b {
+                max = &res.g
+                mid = &res.r
+                min = &res.b
+
+            } else {
+                min = &res.r
+                if p.g > p.b {
+                    max = &res.g
+                    mid = &res.b
+
+                } else {
+                    max = &res.b
+                    mid = &res.g
+                }
+            }
+        }
+
+
+        if (max^ - min^) == 0 {
+            mid^ = 0
+            max^ = 0
+        } else {
+            mid^ = ((mid^ - min^) * s) / (max^ - min^)
+            max^ = s
+        }
+        min^ = 0
+    
+    
+    Pointerless pixman
+        min, mid, max: int
+        if p.r > p.g {
+            if p.r > p.b {
+                max = 0
+                if p.g > p.b {
+                    mid = 1
+                    min = 2
+
+                } else {
+                    mid = 2
+                    min = 1
+                }
+
+            } else {
+                max = 2
+                mid = 0
+                min = 1
+            }
+
+        } else {
+            if p.r > p.b {
+                max = 1
+                mid = 0
+                min = 2
+
+            } else {
+                min = 0
+                if p.g > p.b {
+                    max = 1
+                    mid = 2
+
+                } else {
+                    max = 2
+                    mid = 1
+                }
+            }
+        }
+
+        if (p[max] - p[min]) != 0 {
+            res[mid] = ((p[mid] - p[min]) * s) / (p[max] - p[min])
+            res[max] = s
+        }
+*/
