@@ -1,4 +1,4 @@
-package tests
+package ase_tests
 
 import "base:runtime"
 import "core:os"
@@ -190,8 +190,6 @@ ase_full_test :: proc(t: ^testing.T) {
                         }
                     }
                     
-                    // Removed check because User Data is only being read rn
-                    // So they will always be differant
                     /*a, b, ty, o := ase.document_equal(doc, doc2)
                     if !o {
                         errorf (
