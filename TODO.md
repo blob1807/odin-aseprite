@@ -1,25 +1,27 @@
 
 
 ## Examples
-- [ ] Utils
-    - [ ] Images
-    - [ ] Animation
-    - [ ] Sprite Sheets
+- [X] Utils
+    - [X] Images
+    - [X] Animation
 
 
 ## Utils
-- [ ] Images
-- [ ] Animation
-- [ ] Sprite Sheets
+- [X] Images
+- [X] Animation
+- [X] Sprite Sheets
 
 
 ## Fixes
-- [x] Fix User Data; again - Wasn't Broken I just an idiot
+- [X] Fix User Data; again - Wasn't Broken I just an idiot
 
 
 ## Tests
-- [ ] Rewrite tests
+- [X] Rewrite tests
 
+
+## General
+- [ ] Replace all simple `log.*` with `fast_log`
 
 ## ReadMe
 - [ ] Add bit about the bug with hue & sat blend modes
