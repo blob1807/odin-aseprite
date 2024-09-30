@@ -21,18 +21,21 @@ Image_Error :: enum {
     Frame_Index_Out_Of_Bounds, 
     Indexed_BPP_No_Palette,
     Invalid_BPP,
+    Cel_Out_Of_Bounds, 
+    Cel_Size_Not_Of_BPP,
+    Buffer_To_Small,
+    Buffer_Size_Not_Match_Metadata,
+    Buffer_Not_RGBA,
 }
 Animation_Error :: enum {
     None,
     Tag_Not_Found, 
     Tag_Index_Out_Of_Bounds,
 }
-User_Data_Error :: enum {
-    None,
-    No_Parent, 
-}
+
 Tileset_Error :: enum {
     None,
+    Tileset_Cel_Sizes_Mismatch,
 }
 
 Errors :: union #shared_nil {
@@ -42,7 +45,6 @@ Errors :: union #shared_nil {
     Tileset_Error, 
     Blend_Error, 
     Palette_Error, 
-    User_Data_Error, 
 }
 
 // Raw Types
@@ -123,7 +125,7 @@ Metadata :: struct {
     width: int, 
     height: int, 
     bpp: Pixel_Depth, 
-    trans_idx: int,
+    trans_idx: u8,
 }
 
 Slice_Key :: struct {
@@ -168,24 +170,12 @@ Image :: struct {
 }
 
 Animation :: struct {
-    fps: int,
     using md: Metadata,
+    fps: int,
     length: time.Duration, 
     frames: []Pixels, 
 }
 
-
-@(private)
-User_Data :: struct {
-    chunk: ase.User_Data_Chunk,
-    parent: User_Data_Parent, 
-    index: int,
-}
-
-@(private)
-User_Data_Parent :: enum {
-    None, Sprite, Tag, Tileset
-}
 
 Blend_Mode :: enum {
     Unspecified = -1,
