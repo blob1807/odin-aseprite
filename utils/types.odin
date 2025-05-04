@@ -59,9 +59,13 @@ Precise_Bounds :: struct {
     x, y, width, height: f64
 }
 
-Cel :: struct {
+Bounds :: struct {
     using pos: Vec2, 
     width, height: int,
+}
+
+Cel :: struct {
+    using bounds: Bounds,
     opacity: int,
     link: int,
     layer: int, 
