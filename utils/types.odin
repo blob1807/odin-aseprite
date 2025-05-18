@@ -59,17 +59,20 @@ Precise_Bounds :: struct {
     x, y, width, height: f64
 }
 
-Cel :: struct {
+Bounds :: struct {
     using pos: Vec2, 
-    width:     int,
-    height:    int,
-    opacity:   int,
-    link:      int,
-    layer:     int, 
-    z_index:   int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
-    raw:       Pixels `fmt:"-"`, 
-    tilemap:   Tilemap,
-    extra:     Maybe(Precise_Bounds),
+    width, height: int,
+}
+
+Cel :: struct {
+    using bounds: Bounds,
+    opacity: int,
+    link: int,
+    layer: int, 
+    z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
+    raw: Pixels `fmt:"-"`, 
+    tilemap: Tilemap,
+    extra: Maybe(Precise_Bounds),
 }
 
 Tilemap :: struct {

@@ -328,7 +328,7 @@ write_cel :: proc (
         return
     }
 
-    if len(buf) < (md.height * md.width * 4) {
+    if len(buf) <= (md.height * md.width * 4) {
         fast_log(.Error, "Image buffer size is smaller than Metadata.")
         return .Buffer_To_Small
     }
@@ -352,32 +352,32 @@ write_cel :: proc (
         }
     }
     
-    _cel := cel
+    bounds := cel.bounds
 
     offset := [2]int {
         abs(cel.x) if cel.x < 0 else 0,
         abs(cel.y) if cel.y < 0 else 0,
     }
 
-    _cel.x = clamp(cel.x, 0, md.width)
-    _cel.y = clamp(cel.y, 0, md.height)
-    _cel.width = clamp(cel.width, 0, md.width)
-    _cel.height = clamp(cel.height, 0, md.height)
+    bounds.x = clamp(cel.x, 0, md.width)
+    bounds.y = clamp(cel.y, 0, md.height)
+    bounds.width  = clamp(cel.width, 0, md.width)
+    bounds.height = clamp(cel.height, 0, md.height)
 
     when ODIN_DEBUG {
-        if !(_cel.x <= md.width && _cel.y <= md.height \
-        && _cel.width <= md.width && _cel.height <= md.height \
-        && offset.x <= md.width && offset.y <= md.height\
-        && _cel.x >= 0 && _cel.y >= 0 \
-        && _cel.width >= 0 && _cel.height >= 0 \
-        && offset.x >= 0 && offset.y >= 0) {
+        if !(  bounds.x <= md.width &&      bounds.y <= md.height \
+        && bounds.width <= md.width && bounds.height <= md.height \
+        &&     offset.x <= md.width &&      offset.y <= md.height \
+        &&     bounds.x >= 0        &&      bounds.y >= 0 \
+        && bounds.width >= 0        && bounds.height >= 0 \
+        &&     offset.x >= 0        &&      offset.y >= 0 ) {
             fast_log(.Error, "Cel out of bounds of Image bounds.")
             return .Cel_Out_Of_Bounds, 
         }
     }
 
-    for y in 0..<_cel.height {
-        for x in 0..<_cel.width {
+    for y in 0..<bounds.height {
+        for x in 0..<bounds.width {
             pix: [4]byte
             idx := (y + offset.y) * cel.width + x + offset.x
 
@@ -403,7 +403,7 @@ write_cel :: proc (
             } 
 
             if pix.a != 0 {
-                ipix := (^[4]byte)(&buf[((y + _cel.y) * md.width + x + _cel.x) * 4])
+                ipix := (^[4]byte)(&buf[((y + bounds.y) * md.width + x + bounds.x) * 4])
                 
                 if ipix.a != 0 {
                     // Blend pixels
