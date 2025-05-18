@@ -161,7 +161,7 @@ has_tileset :: proc(doc: ^ase.Document) -> bool {
 
 
 // Uses Nearest-neighbor Upscaling
-upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor: int = 10, alloc := context.allocator) -> (res: []byte, res_md: Metadata, err: Errors) {
+upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor := 10, alloc := context.allocator) -> (res: []byte, res_md: Metadata, err: Errors) {
     ch := int(md.bpp) >> 3
     if len(img) != (md.width * md.height * ch) {
         fast_log(.Error, "image size doesn't match metadata")
@@ -270,7 +270,7 @@ to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> 
     return
 }
 
-// Converts `utils.Image` to a `core:image.Image` with no allocations
+// Converts `utils.Image` to a `core:image.Image` with no allocation
 to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image) {
     img.width = md.width
     img.height = md.height

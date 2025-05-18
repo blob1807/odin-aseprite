@@ -1,5 +1,6 @@
 package aseprite_file_handler_utility
 
+import ir "base:intrinsics"
 import "core:slice"
 import "core:mem"
 
@@ -371,7 +372,7 @@ write_cel :: proc (
         && _cel.width >= 0 && _cel.height >= 0 \
         && offset.x >= 0 && offset.y >= 0) {
             fast_log(.Error, "Cel out of bounds of Image bounds.")
-            return .Frame_Index_Out_Of_Bounds, 
+            return .Cel_Out_Of_Bounds, 
         }
     }
 
@@ -389,15 +390,16 @@ write_cel :: proc (
                 pix = pal[cel.raw[idx]].color
 
             case .Grayscale:
-                pix.rgb = cel.raw[(idx) * 2]
-                pix.a = cel.raw[(idx) * 2 + 1]
+                pix.rgb = cel.raw[idx * 2]
+                pix.a = cel.raw[idx * 2 + 1]
 
             case .RGBA:
                 // Note(blob):
                 // This is comparable to slice casting before & idxing in to that.
                 //      `mem.slice_data_cast()` or `slice.reinterpret()`
                 // On average is slightly faster but more variable in optimized builds
-                pix = (^[4]byte)(&cel.raw[(idx) * 4])^
+                // pix = (^[4]byte)(&cel.raw[idx * 4])^
+                pix = ir.unaligned_load((^[4]byte)(&cel.raw[idx * 4]))
             } 
 
             if pix.a != 0 {
@@ -405,7 +407,7 @@ write_cel :: proc (
                 
                 if ipix.a != 0 {
                     // Blend pixels
-                    a := alpha(i32(cel.opacity), i32(layer.opacity))
+                    a := alpha(cel.opacity, layer.opacity)
                     pix = blend(ipix^, pix, a, layer.blend_mode) or_return
 
                 } else {

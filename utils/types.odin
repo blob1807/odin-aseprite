@@ -61,92 +61,97 @@ Precise_Bounds :: struct {
 
 Cel :: struct {
     using pos: Vec2, 
-    width, height: int,
-    opacity: int,
-    link: int,
-    layer: int, 
-    z_index: int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
-    raw: Pixels `fmt:"-"`, 
-    tilemap: Tilemap,
-    extra: Maybe(Precise_Bounds),
+    width:     int,
+    height:    int,
+    opacity:   int,
+    link:      int,
+    layer:     int, 
+    z_index:   int, // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
+    raw:       Pixels `fmt:"-"`, 
+    tilemap:   Tilemap,
+    extra:     Maybe(Precise_Bounds),
 }
 
 Tilemap :: struct {
-    width: int, 
-    height: int, 
-    x_flip: uint,
-    y_flip: uint,
+    width:     int, 
+    height:    int, 
+    x_flip:    uint,
+    y_flip:    uint,
     diag_flip: uint,
-    tiles: []int,
+    tiles:     []int,
 }
 
 Layer :: struct {
-    name: string,
-    opacity: int,
-    visiable: bool,
+    name:          string,
+    opacity:       int,
+    visiable:      bool,
     is_background: bool,
-    index: int, 
-    blend_mode: Blend_Mode,
-    tileset: int,
+    index:         int, 
+    blend_mode:    Blend_Mode,
+    tileset:       int,
 }
 
 Frame :: struct {
     duration: i64, // in milliseconds
-    cels: []Cel,
+    cels:     []Cel,
 }
 
 Tag :: struct {
-    from: int,
-    to: int,
+    from:      int,
+    to:        int,
     direction: ase.Tag_Loop_Dir,
-    name: string,
+    name:      string,
 }
 
 Palette :: []Color
 
 Color :: struct {
     using color: Pixel, 
-    name: string,
+    name:        string,
 }
 
 // Bits per pixel
 Pixel_Depth :: enum {
-    Indexed=8,
-    Grayscale=16, 
-    RGBA=32,
+    Indexed   = 8,
+    Grayscale = 16, 
+    RGBA      = 32,
 }
 
 // Not needed RN. We'll only ever handle sRGB.
 Color_Space :: enum {
-    None, sRGB, ICC,
+    None, 
+    sRGB, 
+    ICC
 }
 
 Metadata :: struct {
-    width: int, 
-    height: int, 
-    bpp: Pixel_Depth, 
+    width:     int, 
+    height:    int, 
+    bpp:       Pixel_Depth, 
     trans_idx: u8,
 }
 
 Slice_Key :: struct {
-    frame, x, y, w, h: int,
+    frame:  int, 
+    x, y:   int, 
+    w, h:   int,
     center: [4]int,
-    pivot: [2]int,
+    pivot:  [2]int,
 }
 
 Slice :: struct {
     flags: ase.Slice_Flags,
-    name: string,
-    keys: []Slice_Key
+    name:  string,
+    keys:  []Slice_Key
 }
 
 Tileset :: struct {
-    id: int,
-    width: int, 
+    id:     int,
+    width:  int, 
     height: int, 
-    num: int,
-    name: string,
-    tiles: Pixels, 
+    num:    int,
+    name:   string,
+    tiles:  Pixels, 
 }
 
 
@@ -166,14 +171,14 @@ Info :: struct {
 // Precomputed Types. They own all their data.
 Image :: struct {
     using md: Metadata, 
-    data: Pixels `fmt:"-"`, 
+    data:     Pixels `fmt:"-"`, 
 }
 
 Animation :: struct {
     using md: Metadata,
-    fps: int,
-    length: time.Duration, 
-    frames: []Pixels, 
+    fps:      int,
+    length:   time.Duration, 
+    frames:   []Pixels, 
 }
 
 

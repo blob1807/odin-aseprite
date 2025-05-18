@@ -90,7 +90,7 @@ read_old_palette_64 :: proc(r: io.Reader, rt: ^int, allocator := context.allocat
     return
 }
 
-read_layer :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (chunk: Layer_Chunk, err: Unmarshal_Error) {
+read_layer :: proc(r: io.Reader, rt: ^int, has_uuid: bool, allocator := context.allocator) -> (chunk: Layer_Chunk, err: Unmarshal_Error) {
     chunk.flags = transmute(Layer_Chunk_Flags)read_word(r, rt) or_return
     chunk.type = Layer_Types(read_word(r, rt) or_return)
     chunk.child_level = read_word(r, rt) or_return
@@ -104,6 +104,10 @@ read_layer :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (c
     if chunk.type == .Tilemap {
         chunk.tileset_index = read_dword(r, rt) or_return
     }
+    if has_uuid {
+        chunk.uuid = read_uuid(r, rt) or_return
+    }
+
     return
 }
 

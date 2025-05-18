@@ -216,7 +216,7 @@ blend_red_tint :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
 
 blend_blue_tint :: proc(last, cur: B_Pixel, opacity: i32) -> (res: B_Pixel) {
     luma := rgba_luma(cur)
-    res = { luma/2, luma/2, (255 + luma)/2, last.a}
+    res = { luma/2, luma/2, (255 + luma)/2, last.a }
     return blend_normal(last, res, opacity)
 }
 
@@ -621,7 +621,7 @@ set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
         }
         res[min] = 0
 
-    Pointer based version od working sullotion from pixman
+    Pointer based version og working sullotion from pixman
         res = p
         min, mid, max: ^f64
         if p.r > p.g {

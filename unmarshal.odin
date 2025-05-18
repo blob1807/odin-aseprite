@@ -65,7 +65,7 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
     
     temp_alloc := alloc
     if alloc == {} {
-        if doc.arena.curr_block == nil {
+        if doc.arena.curr_block == nil || doc.arena.total_reserved == 0 {
             virtual.arena_init_growing(&doc.arena) or_return
         }
         temp_alloc = virtual.arena_allocator(&doc.arena)
@@ -79,6 +79,7 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
     frames := doc.header.frames
     color_depth := doc.header.color_depth
     doc.frames = make([]Frame, int(frames)) or_return
+    flags := doc.header.flags
 
     for &frame in doc.frames {
         fh: Frame_Header
@@ -88,6 +89,7 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
         if frame_magic != FRAME_MAGIC_NUM {
             return .Bad_Frame_Magic_Number
         }
+
         fh.old_num_of_chunks = read_word(r, rt) or_return
         fh.duration = read_word(r, rt) or_return
         if fh.duration == 0 {
@@ -117,7 +119,7 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
                 chunk = read_old_palette_64(r, rt) or_return
 
             case .layer:
-                chunk = read_layer(r, rt) or_return
+                chunk = read_layer(r, rt, (.Has_UUID in flags)) or_return
 
             case .cel:
                 chunk = read_cel(r, rt, int(color_depth), c_size) or_return
@@ -189,15 +191,10 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
         }
     }
 
-    magic := read_word(r, rt) or_return
-    if magic != FILE_MAGIC_NUM {
-        return .Bad_File_Magic_Number
-    } 
-
-    frames := read_word(r, rt) or_return
-    read_skip(r, 4, rt) or_return
-    color_depth := int(read_word(r, rt) or_return)
-    read_skip(r, 114, rt) or_return
+    file_header := read_file_header(r, rt) or_return
+    frames      := file_header.frames
+    color_depth := int(file_header.color_depth)
+    flags       := file_header.flags
 
     for _ in 0..<frames {
         read_dword(r, rt) or_return
@@ -233,7 +230,7 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
                 }
             case .layer:
                 if .layer in chunks {
-                    chunk = read_layer(r, rt) or_return
+                    chunk = read_layer(r, rt, (.Has_UUID in flags)) or_return
                 } else { 
                     read_skip(r, c_size, rt) or_return 
                 }
