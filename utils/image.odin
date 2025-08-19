@@ -328,7 +328,7 @@ write_cel :: proc (
         return
     }
 
-    if len(buf) <= (md.height * md.width * 4) {
+    if len(buf) < (md.height * md.width * 4) {
         fast_log(.Error, "Image buffer size is smaller than Metadata.")
         return .Buffer_To_Small
     }
