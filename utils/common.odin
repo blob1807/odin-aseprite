@@ -11,6 +11,9 @@ import "core:image"
 import ase ".."
 
 
+UTILS_DEBUG_MODE :: #config(ASE_UTILS_DEBUG, ODIN_DEBUG)
+
+
 /* ================================== Destruction procs ================================== */
 destroy_frame :: proc(frame: Frame, alloc := context.allocator) -> runtime.Allocator_Error {
     for &cel in frame.cels {
@@ -126,14 +129,15 @@ cel_less :: proc(i, j: Cel) -> bool {
 // Use with slice.sort_by_cmp, .stable_sort_by_cmp, .is_sorted_cmp & .reverse_sort_by_cmp
 cel_cmp :: proc(i, j: Cel) -> slice.Ordering {
     // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md#note5
-    iz, jz := i.z_index, j.z_index
+    iz  := i.z_index
+    jz  := j.z_index
     ior := i.layer + iz
     jor := j.layer + jz
 
-    if ior < jor { return .Less } 
-    else if ior > jor { return .Greater} 
-    else if iz < jz { return .Less}
-    else if iz > jz { return .Greater}
+         if ior < jor { return .Less } 
+    else if ior > jor { return .Greater } 
+    else if iz < jz   { return .Less }
+    else if iz > jz   { return .Greater }
     return .Equal
 }
 
@@ -176,11 +180,13 @@ upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor := 10, alloc 
         for w in 0..<md.width {
             start := (h*md.width*factor + w) * factor * ch
             first := res[start:start + factor * ch]
+
             copy(first[:ch], img[(h*md.width + w) * ch:])
 
             for x in 1..<factor {
                 copy(res[start + x * ch:][:ch], first)
             }
+
             for y in 1..<factor {
                 copy(res[start + (y*md.width*factor*ch):], first)
             }
@@ -260,10 +266,10 @@ remove_alpha :: proc(img: []u8, alloc := context.allocator) -> (res: []u8, err: 
 
 // Converts `utils.Image` to a `core:image.Image` with allocation
 to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> (img: image.Image, err: runtime.Allocator_Error) {
-    img.width = md.width
-    img.height = md.height
-    img.depth = 8
-    img.channels = 4
+    img.width      = md.width
+    img.height     = md.height
+    img.depth      = 8
+    img.channels   = 4
     img.pixels.buf = make([dynamic]byte, len(buf), alloc) or_return
 
     copy(img.pixels.buf[:], buf)
@@ -272,15 +278,15 @@ to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> 
 
 // Converts `utils.Image` to a `core:image.Image` with no allocation
 to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image) {
-    img.width = md.width
-    img.height = md.height
-    img.depth = 8
+    img.width    = md.width
+    img.height   = md.height
+    img.depth    = 8
     img.channels = 4
 
     raw := runtime.Raw_Dynamic_Array {
-        data = raw_data(buf),
-        len = len(buf),
-        cap = len(buf),
+        data      = raw_data(buf),
+        len       = len(buf),
+        cap       = len(buf),
         allocator = runtime.nil_allocator()
     }
 

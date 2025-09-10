@@ -333,7 +333,7 @@ write_cel :: proc (
         return .Buffer_To_Small
     }
 
-    when ODIN_DEBUG {
+    when UTILS_DEBUG_MODE {
         switch md.bpp {
         case .Indexed:
             if pal == nil {
@@ -364,7 +364,7 @@ write_cel :: proc (
     bounds.width  = clamp(cel.width, 0, md.width)
     bounds.height = clamp(cel.height, 0, md.height)
 
-    when ODIN_DEBUG {
+    when UTILS_DEBUG_MODE {
         if !(  bounds.x <= md.width &&      bounds.y <= md.height \
         && bounds.width <= md.width && bounds.height <= md.height \
         &&     offset.x <= md.width &&      offset.y <= md.height \
@@ -398,7 +398,6 @@ write_cel :: proc (
                 // This is comparable to slice casting before & idxing in to that.
                 //      `mem.slice_data_cast()` or `slice.reinterpret()`
                 // On average is slightly faster but more variable in optimized builds
-                // pix = (^[4]byte)(&cel.raw[idx * 4])^
                 pix = ir.unaligned_load((^[4]byte)(&cel.raw[idx * 4]))
             } 
 

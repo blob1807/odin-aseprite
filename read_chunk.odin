@@ -272,11 +272,13 @@ read_tags :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> (ch
         tag.to_frame = read_word(r, rt) or_return
         tag.loop_direction = Tag_Loop_Dir(read_byte(r, rt) or_return)
         tag.repeat = read_word(r, rt) or_return
+
         read_skip(r, 6, rt) or_return
         read_bytes(r, tag.tag_color[:], rt) or_return
         read_byte(r, rt) or_return
         tag.name = read_string(r, rt, allocator) or_return
     }
+
     return
 }
 
@@ -296,6 +298,7 @@ read_palette :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
             entry.name = read_string(r, rt, allocator) or_return
         }
     }
+
     return
 }
 
@@ -317,6 +320,7 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
         read_skip(r, 4, rt) or_return
         map_num := read_dword(r, rt) or_return
         maps := make(Properties_Map, map_num) or_return
+
         for _ in 0..<map_num {
             key := read_dword(r, rt) or_return
 
@@ -334,6 +338,7 @@ read_user_data :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -
         }
         chunk.maps = maps
     }
+
     return
 }
 
@@ -368,6 +373,7 @@ read_slice :: proc(r: io.Reader, rt: ^int, alloc := context.allocator) -> (chunk
             key.pivot = p
         }
     }
+
     return
 }
 
@@ -387,6 +393,7 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
         ex.tileset_id = read_dword(r, rt) or_return
         chunk.external = ex
     }
+
     if .Include_Tiles_Inside_This_File in chunk.flags {
         size := int(read_dword(r, rt) or_return)
 
@@ -394,6 +401,7 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
 
         data := make([]byte, size, allocator) or_return
         defer delete(data)
+
         read_bytes(r, data, rt) or_return
 
         zlib.inflate_from_byte_array(data, &buf) or_return
@@ -409,5 +417,7 @@ read_tileset :: proc(r: io.Reader, rt: ^int, allocator := context.allocator) -> 
         chunk.compressed = (Tileset_Compressed)(buf.buf[buf.off:])
 
     }
+
     return
 }
+

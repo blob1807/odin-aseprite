@@ -89,10 +89,12 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
     for frame in doc.frames {
         fb: bytes.Buffer
         defer bytes.buffer_destroy(&fb)
+
         fw, ok2 := io.to_writer(bytes.buffer_to_stream(&fb))
         if !ok2 {
             return file_size, .Unable_Make_Writer
         }
+
         frame_size: int
         fs := &frame_size
         
@@ -105,10 +107,12 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
         for chunk in frame.chunks {
             cb: bytes.Buffer
             defer bytes.buffer_destroy(&cb)
+
             cw, ok3 := io.to_writer(bytes.buffer_to_stream(&cb))
             if !ok3 {
                 return file_size, .Unable_Make_Writer
             }
+
             chunk_size: int
             cs := &chunk_size
 
@@ -118,15 +122,19 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
             switch val in chunk {
             case Old_Palette_256_Chunk:
                 write(cw, WORD(len(val)), cs) or_return
+
                 for p in val {
                     write(cw, p.entries_to_skip, cs) or_return
                     if len(p.colors) > 256 {
                         return file_size, .Invalid_Old_Palette
+
                     } else if len(p.colors) == 256 {
                         write_byte(cw, 0, cs) or_return
+
                     } else {
                         write(cw, p.num_colors, cs) or_return
                     }
+
                     for c in p.colors {
                         write(cw, c[2], cs) or_return
                         write(cw, c[1], cs) or_return
@@ -136,15 +144,20 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
 
             case Old_Palette_64_Chunk:
                 write(cw, WORD(len(val)), cs) or_return
+
                 for p in val {
                     write(cw, p.entries_to_skip, cs) or_return
+
                     if len(p.colors) > 256 {
                         return file_size, .Invalid_Old_Palette
+
                     } else if len(p.colors) == 256 {
                         write_byte(cw, 0, cs) or_return
+
                     } else {
                         write(cw, p.num_colors, cs) or_return
                     }
+
                     for c in p.colors {
                         write(cw, c[2], cs) or_return
                         write(cw, c[1], cs) or_return
@@ -161,6 +174,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 write(cw, val.opacity, cs) or_return
                 write_skip(cw, 3, cs) or_return
                 write(cw, val.name, cs) or_return
+
                 if val.type == .Tilemap {
                     write(cw, val.tileset_index, cs) or_return
                 }
@@ -170,6 +184,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 write(cw, val.x, cs) or_return
                 write(cw, val.y, cs) or_return
                 write(cw, val.opacity_level, cs) or_return
+
                 cel_type := get_cel_type(val.cel) or_return
                 write(cw, cel_type, cs) or_return
                 write(cw, val.z_index, cs) or_return
@@ -190,6 +205,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
 
                     com_buf := make([]byte, len(cel.pixels)+64, allocator) or_return
                     defer delete(com_buf)
+
                     data_rd: [^]u8 = raw_data(cel.pixels[:])
                     com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
@@ -204,10 +220,12 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflate(&config, zlib.FINISH)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflateEnd(&config)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
@@ -225,13 +243,13 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     write(cw, cel.bitmask_diagonal, cs) or_return
                     write_skip(cw, 10, cs) or_return
 
-
                     buf := make([]u8, len(cel.tiles)*4, allocator) or_return
                     defer delete(buf)
-                    n := tiles_to_u8(cel.tiles[:], buf[:]) or_return
 
+                    n := tiles_to_u8(cel.tiles[:], buf[:]) or_return
                     com_buf := make([]byte, n+64, allocator) or_return
                     defer delete(com_buf)
+
                     data_rd: [^]u8 = raw_data(buf[:n])
                     com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
@@ -246,10 +264,12 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflate(&config, zlib.FINISH)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflateEnd(&config)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
@@ -275,6 +295,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 } else {
                     write(cw, WORD(val.type), cs) or_return
                 }
+
                 write(cw, transmute(WORD)val.flags, cs) or_return
                 write(cw, val.fixed_gamma, cs) or_return
                 write_skip(cw, 8, cs) or_return
@@ -350,13 +371,9 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
 
             case User_Data_Chunk:
                 flags: UD_Flags
-                if val.text != nil {
-                    flags += {.Text}
-                }if val.color != nil {
-                    flags += {.Color}
-                }if val.maps != nil {
-                    flags += {.Properties}
-                }
+                if val.text  != nil { flags += {.Text} }
+                if val.color != nil { flags += {.Color} }
+                if val.maps  != nil { flags += {.Properties} }
 
                 write(cw, transmute(DWORD)flags, cs) or_return
 
@@ -483,20 +500,22 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     com_buf_rd: [^]u8 = raw_data(com_buf[:])
 
                     config := zlib.z_stream {
-                        avail_in=zlib.uInt(len(v)), 
-                        next_in=&data_rd[0],
-                        avail_out=zlib.uInt(len(v)),
-                        next_out=&com_buf_rd[0],
+                        avail_in  = zlib.uInt(len(v)), 
+                        next_in   = &data_rd[0],
+                        avail_out = zlib.uInt(len(v)),
+                        next_out  = &com_buf_rd[0],
                     }
                     
                     en := zlib.deflateInit(&config, zlib.DEFAULT_COMPRESSION)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflate(&config, zlib.FINISH)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
                     }
+
                     en = zlib.deflateEnd(&config)
                     if en < zlib.OK {
                         return file_size, ZLIB_Errors(en)
@@ -509,9 +528,11 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
             case:
                 return file_size, .Invalid_Chunk_Type
             }
+            
             write(fw, DWORD(chunk_size + 4), fs) or_return
             write(fw, cb.buf[:chunk_size], fs) or_return
         }
+
         write(w, DWORD(frame_size + 4), s) or_return
         write(w, fb.buf[:frame_size], s) or_return
     }
@@ -520,6 +541,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
     file_size += 4
     write(ww, DWORD(file_size), &written) or_return
     write(ww, b.buf[:file_size-4], &written) or_return
+
     if written != file_size {
         return file_size, Marshal_Errors.Wrong_Write_Size
     }

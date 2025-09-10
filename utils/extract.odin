@@ -20,8 +20,8 @@ cels_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: [
                 for l in cels[c.link:] {
                     if l.layer == c.layer {
                         c.height = l.height
-                        c.width = l.width
-                        c.raw = l.raw
+                        c.width  = l.width
+                        c.raw    = l.raw
                     }
                 }
             }
@@ -42,22 +42,22 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         #partial switch c in chunk {
         case ase.Cel_Chunk:
             cel := Cel {
-                pos = {int(c.x), int(c.y)},
+                pos    = { int(c.x), int(c.y) },
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
-                layer = int(c.layer_index)
+                layer   = int(c.layer_index)
             }
     
             switch v in c.cel {
             case ase.Com_Image_Cel:
-                cel.width = int(v.width)
+                cel.width  = int(v.width)
                 cel.height = int(v.height)
-                cel.raw = v.pixels
+                cel.raw    = v.pixels
 
             case ase.Raw_Cel:
-                cel.width = int(v.width)
+                cel.width  = int(v.width)
                 cel.height = int(v.height)
-                cel.raw = v.pixels
+                cel.raw    = v.pixels
 
             case ase.Linked_Cel:
                 cel.link = int(v)
@@ -65,12 +65,12 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
             case ase.Com_Tilemap_Cel:
                 
                 cel.tilemap = Tilemap {
-                    width = int(v.width), 
-                    height = int(v.height), 
-                    x_flip = uint(v.bitmask_x), // Bitmask for X flip
-                    y_flip = uint(v.bitmask_y), // Bitmask for Y flip
+                    width     = int(v.width), 
+                    height    = int(v.height), 
+                    x_flip    = uint(v.bitmask_x), // Bitmask for X flip
+                    y_flip    = uint(v.bitmask_y), // Bitmask for Y flip
                     diag_flip = uint(v.bitmask_diagonal), // Bitmask for diagonal flip (swap X/Y axis)
-                    tiles = make([]int, len(v.tiles), alloc) or_return, 
+                    tiles     = make([]int, len(v.tiles), alloc) or_return, 
                 }
 
                 for &n, p in cel.tilemap.tiles {
@@ -87,7 +87,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         case ase.Cel_Extra_Chunk:
             if ase.Cel_Extra_Flag.Precise in c.flags {
                 extra := Precise_Bounds {
-                    fixed.to_f64(c.x), fixed.to_f64(c.y), 
+                    fixed.to_f64(c.x),     fixed.to_f64(c.y), 
                     fixed.to_f64(c.width), fixed.to_f64(c.height), 
                 }
                 cels[len(cels)-1].extra = extra
@@ -98,7 +98,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
     return cels[:], nil
 }
 
-get_cels :: proc{cels_from_doc_frame, cels_from_doc}
+get_cels :: proc{ cels_from_doc_frame, cels_from_doc }
 
 
 layers_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Layer, err: runtime.Allocator_Error) {
@@ -125,12 +125,12 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
         #partial switch &v in chunk {
         case ase.Layer_Chunk:
             lay := Layer {
-                name = v.name, 
-                opacity = int(v.opacity) if layer_valid_opacity else 255,
-                index = len(layers),
-                blend_mode = Blend_Mode(v.blend_mode),
-                visiable = .Visiable in v.flags,
-                tileset = int(v.tileset_index),
+                name          = v.name, 
+                opacity       = int(v.opacity) if layer_valid_opacity else 255,
+                index         = len(layers),
+                blend_mode    = Blend_Mode(v.blend_mode),
+                visiable      = .Visiable in v.flags,
+                tileset       = int(v.tileset_index),
                 is_background = .Background in v.flags,
             }
 
@@ -154,7 +154,7 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
     return layers[:], nil
 }
 
-get_layers :: proc{layers_from_doc_frame, layers_from_doc}
+get_layers :: proc{ layers_from_doc_frame, layers_from_doc }
 
 
 tags_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Tag, err: runtime.Allocator_Error) {
@@ -179,10 +179,10 @@ tags_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         case ase.Tags_Chunk:
             for t in v {
                 tag := Tag {
-                    int(t.from_frame), 
-                    int(t.to_frame), 
-                    t.loop_direction, 
-                    t.name, 
+                    from      = int(t.from_frame), 
+                    to        = int(t.to_frame), 
+                    direction = t.loop_direction, 
+                    name      = t.name, 
                 }
                 append(&tags, tag) or_return
             }
@@ -192,7 +192,7 @@ tags_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
     return tags[:], nil
 }
 
-get_tags :: proc{tags_from_doc_frame, tags_from_doc}
+get_tags :: proc{ tags_from_doc_frame, tags_from_doc }
 
 
 frames_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (frames: []Frame, err: runtime.Allocator_Error) {
@@ -299,7 +299,7 @@ palette_from_doc_frame:: proc(frame: ase.Frame, pal: ^[dynamic]Color, has_new: b
     return
 }
 
-get_palette :: proc{palette_from_doc, palette_from_doc_frame}
+get_palette :: proc{ palette_from_doc, palette_from_doc_frame }
 
 
 tileset_from_doc :: proc(doc: ^ase.Document, alloc := context.allocator) -> (ts: []Tileset, err: runtime.Allocator_Error) {
@@ -329,7 +329,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
                 nil, 
             }
 
-            if t, ok := v.compressed.?; ok {
+            if t, ok := v.compressed.(ase.Tileset_Compressed); ok {
                 ts.tiles = (Pixels)(t)
             }
 
@@ -342,7 +342,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
     return
 }
 
-get_tileset :: proc{tileset_from_doc, tileset_from_doc_frame}
+get_tileset :: proc{ tileset_from_doc, tileset_from_doc_frame }
 
 
 get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info, err: Errors) {
@@ -556,13 +556,13 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                 ts.height = int(c.height)
                 ts.name = c.name
 
-                if t, ok := c.compressed.?; ok {
+                if t, ok := c.compressed.(ase.Tileset_Compressed); ok {
                     ts.tiles = (Pixels)(t)
                 }
 
                 append(&all_ts, ts) or_return
             
-            /*case ase.Slice_Chunk:
+            case ase.Slice_Chunk:
                 sl: Slice
                 sl.name = c.name
                 sl.flags = c.flags
@@ -571,23 +571,24 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                 for &key, pos in sl.keys {
                     c_key := c.keys[pos]
                     key.frame = int(c_key.frame_num)
+                    
                     key.x = int(c_key.x)
                     key.y = int(c_key.y)
                     key.w = int(c_key.width)
                     key.h = int(c_key.height)
 
-                    if center, ok := c_key.center.?; ok {
+                    if center, ok := c_key.center.(ase.Slice_Center); ok {
                         key.center = {
                             int(center.x), int(center.y),
                             int(center.width), int(center.height)
                         }
                     }
 
-                    if pivot, ok := c_key.pivot.?; ok {
+                    if pivot, ok := c_key.pivot.(ase.Slice_Pivot); ok {
                         key.pivot = { int(pivot.x), int(pivot.y) }
                     }
                 }
-                append(&sls, sl)*/
+                append(&sls, sl)
             }
         }
 
@@ -595,5 +596,17 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         append(&frames, frame) or_return
     }
 
-    return {frames[:], lays[:], tags[:], all_ts[:], sls[:], pal[:], md, alloc}, nil
+    info = { 
+        frames    = frames[:], 
+        layers    = lays[:], 
+        tags      = tags[:],
+        tilesets  = all_ts[:], 
+        slices    = sls[:], 
+        palette   = pal[:], 
+        md        = md, 
+        allocator = alloc,
+    }
+
+    return info, nil
 }
+
