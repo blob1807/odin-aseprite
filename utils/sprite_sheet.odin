@@ -86,6 +86,8 @@ sprite_sheet_from_info :: proc (
     y_count := max( 1, len(info.frames) / s_info.count )
     width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
+
+    fmt.println(y_count, width, height)
     
     sprite_size  := s_info.size.x * s_info.size.y * 4
     img_size     := (width * height * 4)
@@ -111,21 +113,19 @@ sprite_sheet_from_info :: proc (
     defer virtual.arena_destroy(&tileset_arena)
 
     sprite_pos: [2]int
-    sprite_idx: int
 
     for frame, f_idx in info.frames {
         defer {
-            sprite_pos.x += 1
-            if sprite_pos.x == s_info.count {
+            // fmt.println(f_idx, sprite_pos)
+            sprite_pos.x += s_info.size.x + s_info.spacing.x
+            if width <= sprite_pos.x {
                 sprite_pos.x = 0
-                sprite_pos.y += 1
-            }
-            if y_count < sprite_pos.y {
-                panic("This shouldn't happen... help.")
+                sprite_pos.y += s_info.size.y + s_info.spacing.y
             }
 
-            spacing := s_info.spacing * sprite_pos
-            // sprite_idx = ((sprite_pos.y * s_info.count + spacing.y) + sprite_pos.x + spacing.x) * 4
+            if height + s_info.spacing.y < sprite_pos.y {
+                panic("This shouldn't happen... help.")
+            }
         }
 
         if len(frame.cels) == 0 {
@@ -201,9 +201,9 @@ sprite_sheet_from_info :: proc (
                 return
             }
 
-            s_cel.pos += write_rules.offset + (s_info.spacing * sprite_pos) // I think this is the right place
+            s_cel.pos += write_rules.offset
 
-            write_cel(res.img.data, cel, layer, res.img.md, info.palette) or_return
+            write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
         }
     }
 

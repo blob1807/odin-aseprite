@@ -358,9 +358,9 @@ write_cel :: proc (
         abs(cel.x) if cel.x < 0 else 0,
         abs(cel.y) if cel.y < 0 else 0,
     }*/
-    offset := [2]int {
-        abs(max(0, cel.x)), 
-        abs(max(0, cel.y)),
+   offset := [2]int {
+        abs(min(0, cel.x)), 
+        abs(min(0, cel.y)),
     }
 
     bounds := Bounds {
