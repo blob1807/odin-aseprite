@@ -15,11 +15,11 @@ get_animation_from_doc :: proc(
 ) -> (err: Errors) {
     info := get_info(doc, alloc) or_return
     defer destroy(&info)
-    return get_animation_from_frames(info, anim, use_tag)
+    return get_animation_from_info(info, anim, use_tag)
 }
 
 
-get_animation_from_frames :: proc (
+get_animation_from_info :: proc (
     info: Info, anim: ^Animation, use_tag := "",
 ) -> (err: Errors) {
     context.allocator = info.allocator
@@ -131,7 +131,7 @@ get_animation_from_bytes :: proc(imgs: [][]byte, md: Metadata, anim: ^Animation,
 
 get_animation :: proc {
     get_animation_from_doc, 
-    get_animation_from_frames, 
+    get_animation_from_info, 
     get_animation_from_images, 
     get_animation_from_bytes, 
 }

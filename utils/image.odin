@@ -1,6 +1,8 @@
 package aseprite_file_handler_utility
 
+import "base:runtime"
 import ir "base:intrinsics"
+
 import "core:slice"
 import "core:mem"
 
@@ -292,7 +294,7 @@ get_all_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
     return imgs[:], nil
 }
 
-cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc := context.allocator) -> (c: Cel, err: Errors) {
+cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc: runtime.Allocator) -> (c: Cel, err: Errors) {
     c = cel
     c.width = cel.tilemap.width * ts.width
     c.height = cel.tilemap.height * ts.height
@@ -351,18 +353,22 @@ write_cel :: proc (
             return .Invalid_BPP
         }
     }
-    
-    bounds := cel.bounds
 
-    offset := [2]int {
+    /*offset := [2]int {
         abs(cel.x) if cel.x < 0 else 0,
         abs(cel.y) if cel.y < 0 else 0,
+    }*/
+    offset := [2]int {
+        abs(max(0, cel.x)), 
+        abs(max(0, cel.y)),
     }
 
-    bounds.x = clamp(cel.x, 0, md.width)
-    bounds.y = clamp(cel.y, 0, md.height)
-    bounds.width  = clamp(cel.width, 0, md.width)
-    bounds.height = clamp(cel.height, 0, md.height)
+    bounds := Bounds {
+        x = clamp(cel.x, 0, md.width),
+        y = clamp(cel.y, 0, md.height),
+        width  = clamp(cel.width, 0, md.width),
+        height = clamp(cel.height, 0, md.height),
+    }
 
     when UTILS_DEBUG_MODE {
         if !(  bounds.x <= md.width &&      bounds.y <= md.height \

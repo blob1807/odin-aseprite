@@ -293,3 +293,64 @@ to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image)
     img.pixels.buf = transmute([dynamic]byte)raw
     return
 }
+
+
+find_bounding_box :: proc(img: Image, bg_colour: [4]u8 = 0, check_trans := true) -> (min_pos, max_pos: [2]int) {
+    assert(img.md.bpp == .RGBA)
+    raw := mem.slice_data_cast([][4]u8, img.data)
+
+    top, bottom, left, right: [2]int 
+
+    for y in 0..<img.height {
+        for x in 0..<img.width {
+            pix := raw[y * img.width + x]
+            if (pix.a == 0 && check_trans) || pix == bg_colour {
+                continue
+            }
+
+            top = { x, y }
+            break
+        }
+    }
+
+    for x in 0..<img.width {
+        for y in 0..<img.height {
+            pix := raw[x * img.height + y]
+            if (pix.a == 0 && check_trans) || pix == bg_colour {
+                continue
+            }
+
+            left = { x, y }
+            break
+        }
+    }
+
+    for y := img.height; 0 <= y; y -= 1 {
+        for x := img.width; 0 <= x; x -= 1 {
+            pix := raw[y * img.width + x]
+            if (pix.a == 0 && check_trans) || pix == bg_colour {
+                continue
+            }
+
+            bottom = { x, y }
+            break
+        }
+    }
+
+    for x := img.width; 0 <= x; x -= 1 {
+        for y := img.height; 0 <= y; y -= 1 {
+            pix := raw[x * img.height + y]
+            if (pix.a == 0 && check_trans) || pix == bg_colour {
+                continue
+            }
+
+            right = { x, y }
+            break
+        }
+    }
+
+    min_pos = { min(left.x, top.x),      min(left.y, top.y) } 
+    max_pos = { max(bottom.x, right.x),  max(bottom.y, right.y) }
+
+    return
+}

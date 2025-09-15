@@ -38,6 +38,13 @@ Tileset_Error :: enum {
     Tileset_Cel_Sizes_Mismatch,
 }
 
+Sprite_Sheet_Error :: enum {
+    None,
+    Frame_To_Big,
+    Invalid_Alignment,
+    Invalid_Offset,
+}
+
 Errors :: union #shared_nil {
     runtime.Allocator_Error, 
     Image_Error, 
@@ -45,6 +52,7 @@ Errors :: union #shared_nil {
     Tileset_Error, 
     Blend_Error, 
     Palette_Error, 
+    Sprite_Sheet_Error,
 }
 
 // Raw Types
@@ -124,7 +132,7 @@ Pixel_Depth :: enum {
 Color_Space :: enum {
     None, 
     sRGB, 
-    ICC
+    ICC,
 }
 
 Metadata :: struct {
