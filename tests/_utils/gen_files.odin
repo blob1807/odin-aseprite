@@ -12,14 +12,13 @@ import "../../utils"
 
 // Set to your Aseprite exe path, needed to make pngs via CLI interface https://www.aseprite.org/docs/cli/
 ASE_PATH :: "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Aseprite\\Aseprite.exe"
-
-UTIL_PATH := fp.dir(os.args[0])
-TEST_PATH := fp.dir(UTIL_PATH)
 PATHS := [?]string{"asefile", "aseprite", "blob", "community"}
-
 SAVE_CMD := []string{ASE_PATH, "-b", "", "--save-as", "{title}-frame{frame}.png"}
 
 main :: proc() {
+    UTIL_PATH := fp.dir(os.args[0])
+    TEST_PATH := fp.dir(UTIL_PATH)
+
     fmt.println(TEST_PATH,)
     fmt.println("Making PNG files")
     os.change_directory(UTIL_PATH)

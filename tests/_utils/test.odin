@@ -282,8 +282,8 @@ blob_test :: proc(t: ^testing.T) {
 asefile_test :: proc(t: ^testing.T) {
     PATH :: "asefile"
     // Hue & Saturation Bland tests due to being bugged in Aseprite
-    // User data & ICCC colour profile unsupported
-    SKIP_FILES := [?]string{"hue", "saturation", "user_data", "color-curve"}
+    // ICCC colour profile unsupported
+    SKIP_FILES := [?]string{"hue", "saturation", "color-curve"}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
 }
@@ -305,4 +305,10 @@ community_test :: proc(t: ^testing.T) {
     SKIP_FILES := [?]string{}
     test_runner(t, PATH, SKIP_FILES[:])
     free_all(context.temp_allocator)
+}
+
+
+@(test)
+sprite_sheet_test :: proc(t: ^testing.T) {
+
 }
