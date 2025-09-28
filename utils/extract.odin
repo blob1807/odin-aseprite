@@ -442,6 +442,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     blend_mode = Blend_Mode(c.blend_mode),
                     visiable = .Visiable in c.flags,
                     tileset = int(c.tileset_index),
+                    is_background = .Background in c.flags,
                 }
 
                 when !ASE_USE_BUGGED_SAT {
