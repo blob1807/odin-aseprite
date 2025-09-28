@@ -68,7 +68,7 @@ Precise_Bounds :: struct {
 }
 
 Bounds :: struct {
-    using pos:     Vec2, 
+    using pos:     Vec2,
     width, height: int,
 }
 
