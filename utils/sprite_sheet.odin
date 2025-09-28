@@ -11,21 +11,41 @@ import ase ".."
 
 
 Sprite_Sheet :: struct {
-    img: Image,
+    using img: Image,
     info: Sprite_Info
 }
 
 Sprite_Info :: struct {
     size:    [2]int, // Size of a sprite.
     spacing: [2]int, // Spacing between each sprite.
+    boarder: [2]int, // Boarder between sheet & image edge.
     count:   int,    // Sprites per row.
 }
 
-
+// Govern's how Frames are writen a Sprite
 Sprite_Write_Rules :: struct {
-    align:  Sprite_Alignment, // What point on the Frame & Sprite to align 
-    offset: [2]int,           // Offset from the aligment point
-    allow_oversize: bool,
+
+    // What point on the Frame & Sprite to align. 
+    // Effective when Frame.size < Sprite.Size.
+    // Currently not in use.
+    align:  Sprite_Alignment,
+
+    // Offset from the aligment point
+    offset: [2]int,
+
+    // Shrinks Frame to the bounds of visable pixels
+    shrink_to_pixels: bool,
+
+    // Resulting sheet's Background Colour
+    background_colour: [4]u8,
+
+    // Whether to use the Background Colour
+    // of the ase file or use `background_colour`;
+    // Only used for `Indexed` colour mode.
+    use_index_bg_colour: bool,
+
+    // Whether to ignore Background layers.
+    ingore_bg_layers: bool,
 }
 
 Sprite_Alignment :: enum {
@@ -34,13 +54,13 @@ Sprite_Alignment :: enum {
     Bot_Left, Bot_Center, Bot_Right,
 
     Center = Mid_Center,
-    // https://www.desmos.com/geometry/zstbhwznmu
+    // https://www.desmos.com/geometry/k0wurod44w
 }
 
 DEFAULT_SPRITE_WRITE_RULES :: Sprite_Write_Rules {
-    align  = .Top_Left,
+    align  = .Center,
     offset = 0,
-    allow_oversize = false
+    shrink_to_pixels = false,
 }
 
 
@@ -57,6 +77,8 @@ create_sprite_sheet :: proc {
     sprite_sheet_from_info,
 }
 
+
+// Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
 sprite_sheet_from_doc :: proc (
     doc: ^ase.Document, s_info: Sprite_Info, 
     write_rules := DEFAULT_SPRITE_WRITE_RULES, alloc := context.allocator
@@ -69,6 +91,7 @@ sprite_sheet_from_doc :: proc (
 }
 
 
+// Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
 sprite_sheet_from_info :: proc (
     info: Info, s_info: Sprite_Info, 
     write_rules := DEFAULT_SPRITE_WRITE_RULES, alloc := context.allocator
@@ -87,30 +110,31 @@ sprite_sheet_from_info :: proc (
     width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
 
-    fmt.println(y_count, width, height)
-    
-    sprite_size  := s_info.size.x * s_info.size.y * 4
-    img_size     := (width * height * 4)
+    img_width  := width  + (s_info.boarder.x * 2)
+    img_height := height + (s_info.boarder.y * 2)
+    img_size   := img_width * img_height * 4
 
     res.info = s_info
     res.img  = {
-        width  = width,
-        height = height,
+        width  = img_width,
+        height = img_height,
         bpp    = .RGBA,
         data   = make([]u8, img_size, alloc) or_return
     }
+    
 
-    if !info.layers[0].is_background && info.md.bpp == .Indexed {
+    if write_rules.use_index_bg_colour && info.md.bpp == .Indexed && !info.layers[0].is_background {
         img_p := slice.reinterpret([]Pixel, res.img.data)
         c := info.palette[info.md.trans_idx].color
         c.a = 0
         slice.fill(img_p, c)
+    
+    } else {
+        fill_colour(res.img.data, write_rules.background_colour)
     }
 
-    tileset_arena: virtual.Arena
-    _ = virtual.arena_init_growing(&tileset_arena)
-    tileset_alloc := virtual.arena_allocator(&tileset_arena)
-    defer virtual.arena_destroy(&tileset_arena)
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(context.allocator == context.temp_allocator)
+    tileset_alloc := context.temp_allocator
 
     sprite_pos: [2]int
 
@@ -136,11 +160,12 @@ sprite_sheet_from_info :: proc (
             slice.sort_by(frame.cels, cel_less)
         }
 
-        min_pos, max_pos: [2]int
+        /*min_pos, max_pos: [2]int
 
         for cel in frame.cels {
             layer := info.layers[cel.layer]
-            if !layer.visiable { continue }
+            skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
+            if skip { continue }
 
             size := [2]int{cel.width, cel.height}
             if cel.tilemap.tiles != nil {
@@ -150,26 +175,28 @@ sprite_sheet_from_info :: proc (
             
             min_pos = { 
                 min(min_pos.x, cel.pos.x), 
-                min(min_pos.y, cel.pos.y),
+                min(min_pos.y, cel.pos.y), 
             }
             max_pos = { 
                 max(max_pos.x, cel.pos.x + size.x), 
-                max(max_pos.y, cel.pos.y + size.y),
+                max(max_pos.y, cel.pos.y + size.y), 
             }
         }
 
         frame_pos  := min_pos
-        frame_size := max_pos - min_pos
+        frame_size := max_pos - min_pos*/
 
-        if !write_rules.allow_oversize \
-        && (s_info.size.x < frame_size.x || s_info.size.y < frame_size.y ) {
+        /*if s_info.size.x < frame_size.x || s_info.size.y < frame_size.y {
+            fmt.println(frame_size)
             err = .Frame_To_Big
             return
-        }
+        }*/
+        sw, sh := s_info.size.x, s_info.size.y
 
         for cel in frame.cels {
             layer := info.layers[cel.layer]
-            if !layer.visiable { continue }
+            skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
+            if skip { continue }
 
             s_cel := cel
             if cel.tilemap.tiles != nil {
@@ -177,31 +204,45 @@ sprite_sheet_from_info :: proc (
                 s_cel = cel_from_tileset(cel, ts, info.md.bpp, tileset_alloc) or_return
             }
 
-            // https://www.desmos.com/geometry/zstbhwznmu
-            sp := sprite_pos
+            bounds := Bounds{s_cel.pos, info.md.width, info.md.height}
+            if write_rules.shrink_to_pixels {
+                bounds = find_bounding_box({
+                    data = s_cel.raw, 
+                    md = { width = s_cel.width, height = s_cel.height, bpp = .RGBA}
+                })
+                bounds.pos += s_cel.pos
+            }
+
+            //fmt.println(bounds, s_cel.bounds)
+
+            fw, fh := bounds.width, bounds.height
+            //fmt.print(s_cel.pos, "")
+
+            s_cel.pos += sprite_pos
             cp := s_cel.pos
-            sw, sh := s_info.size.x, s_info.size.y
-            cw, ch := s_cel.width, s_cel.height
-
-            switch write_rules.align {
-            case .Top_Left:   s_cel.pos = sprite_pos + s_cel.pos - frame_pos
-            case .Top_Center: s_cel.pos = { sp.x + sw/2, sp.y } + { cp.x - cw/2, cp.y } - frame_pos
-            case .Top_Right:  s_cel.pos = { sp.x + sw  , sp.y } + { cp.x - cw  , cp.y } - frame_pos
             
-            case .Mid_Left:   s_cel.pos = { sp.x       , sp.y - sh/2 } + { cp.x       , cp.y + ch/2 } - frame_pos
-            case .Mid_Center: s_cel.pos = { sp.x + sw/2, sp.y - sh/2 } + { cp.x - cw/2, cp.y + ch/2 } - frame_pos
-            case .Mid_Right:  s_cel.pos = { sp.x + sw  , sp.y - sh/2 } + { cp.x - cw  , cp.y + ch/2 } - frame_pos
+            // Sprite Sheet Aligment - Frame  https://www.desmos.com/geometry/k0wurod44w
+            // Sprite Sheet Aligment - Center https://www.desmos.com/geometry/miqzk9ijus
+            /*switch write_rules.align {
+            case .Top_Left:   s_cel.pos   -= bounds.pos
+            case .Top_Center: s_cel.pos.x += (sw - fw)/2
+            case .Top_Right:  s_cel.pos.x +=  sw - fw
+            
+            case .Mid_Left:   s_cel.pos.y -= (sh - fh)/2
+            case .Mid_Center: //s_cel.pos    = { cp.x + (sw - fw)/2, cp.y - (sh - fh)/2 }
+            case .Mid_Right:  s_cel.pos    = { cp.x +  sw - fw   , cp.y - (sh - fh)/2 }
 
-            case .Bot_Left:   s_cel.pos = { sp.x       , sp.y - sh } + { cp.x       , cp.y + ch } - frame_pos
-            case .Bot_Center: s_cel.pos = { sp.x + sw/2, sp.y - sh } + { cp.x - cw/2, cp.y + ch } - frame_pos
-            case .Bot_Right:  s_cel.pos = { sp.x + sw  , sp.y - sh } + { cp.x - cw  , cp.y + ch } - frame_pos
+            case .Bot_Left:   s_cel.pos.y -= sh + fh
+            case .Bot_Center: s_cel.pos    = { cp.x + (sw -fw)/2, cp.y - sh + fh }
+            case .Bot_Right:  s_cel.pos    = { cp.x +  sw - fw  , cp.y - sh + fh }
             
             case:
                 err = .Invalid_Alignment
                 return
-            }
+            }*/
 
-            s_cel.pos += write_rules.offset
+            s_cel.pos += write_rules.offset + s_info.boarder
+            //fmt.println(s_cel.pos)
 
             write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
         }
