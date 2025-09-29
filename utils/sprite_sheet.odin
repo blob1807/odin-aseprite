@@ -27,10 +27,9 @@ Sprite_Write_Rules :: struct {
 
     // What point on the Frame & Sprite to align. 
     // Effective when Frame.size < Sprite.Size.
-    // Currently not in use.
     align:  Sprite_Alignment,
 
-    // Offset from the aligment point
+    // Offset from the alignment point
     offset: [2]int,
 
     // Shrinks Frame to the bounds of visable pixels
@@ -54,7 +53,7 @@ Sprite_Alignment :: enum {
     Bot_Left, Bot_Center, Bot_Right,
 
     Center = Mid_Center,
-    // https://www.desmos.com/geometry/k0wurod44w
+    // Sprite Sheet Alignment https://www.desmos.com/geometry/miqzk9ijus
 }
 
 DEFAULT_SPRITE_WRITE_RULES :: Sprite_Write_Rules {
@@ -106,6 +105,16 @@ sprite_sheet_from_info :: proc (
         return
     }
 
+    if (s_info.size.x * s_info.size.y) <= (info.md.width * info.md.height) {
+        log.error("Be warned. If a `cel.size < sprite.size``, it'll error.")
+        log.debug("I am working on it though")
+    }
+
+    if len(info.frames) %% s_info.count != 0 {
+        log.error("Currently only works if `mod(len(frames), count) == 0.")
+        log.debug("I am working on it though")
+    }
+
     y_count := max( 1, len(info.frames) / s_info.count )
     width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
@@ -137,6 +146,7 @@ sprite_sheet_from_info :: proc (
     tileset_alloc := context.temp_allocator
 
     sprite_pos: [2]int
+    sw, sh := s_info.size.x, s_info.size.y
 
     for frame, f_idx in info.frames {
         defer {
@@ -160,38 +170,48 @@ sprite_sheet_from_info :: proc (
             slice.sort_by(frame.cels, cel_less)
         }
 
-        /*min_pos, max_pos: [2]int
+        fw, fh := info.md.width, info.md.height
+        fp: [2]int = 0
 
-        for cel in frame.cels {
-            layer := info.layers[cel.layer]
-            skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
-            if skip { continue }
+        if write_rules.shrink_to_pixels {
+            min_pos := [2]int{fw, fh}
+            max_pos: [2]int
 
-            size := [2]int{cel.width, cel.height}
-            if cel.tilemap.tiles != nil {
-                ts := info.tilesets[layer.tileset]
-                size = {ts.width, ts.height}
+            for cel in frame.cels {
+                layer := info.layers[cel.layer]
+                skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
+                if skip { continue }
+
+                size := [2]int{cel.width, cel.height}
+                if cel.tilemap.tiles != nil {
+                    ts := info.tilesets[layer.tileset]
+                    size = {ts.width, ts.height}
+                }
+                
+                min_pos = { 
+                    min(min_pos.x, cel.pos.x), 
+                    min(min_pos.y, cel.pos.y), 
+                }
+                max_pos = { 
+                    max(max_pos.x, cel.pos.x + size.x), 
+                    max(max_pos.y, cel.pos.y + size.y), 
+                }
             }
-            
-            min_pos = { 
-                min(min_pos.x, cel.pos.x), 
-                min(min_pos.y, cel.pos.y), 
-            }
-            max_pos = { 
-                max(max_pos.x, cel.pos.x + size.x), 
-                max(max_pos.y, cel.pos.y + size.y), 
-            }
+
+            frame_size := max_pos - min_pos
+
+            fw, fh = frame_size.x, frame_size.y
+            fp = min_pos
         }
 
-        frame_pos  := min_pos
-        frame_size := max_pos - min_pos*/
+        cel_offset := write_rules.offset + s_info.boarder + sprite_pos - fp
+        
 
         /*if s_info.size.x < frame_size.x || s_info.size.y < frame_size.y {
             fmt.println(frame_size)
             err = .Frame_To_Big
             return
         }*/
-        sw, sh := s_info.size.x, s_info.size.y
 
         for cel in frame.cels {
             layer := info.layers[cel.layer]
@@ -203,46 +223,27 @@ sprite_sheet_from_info :: proc (
                 ts := info.tilesets[layer.tileset]
                 s_cel = cel_from_tileset(cel, ts, info.md.bpp, tileset_alloc) or_return
             }
-
-            bounds := Bounds{s_cel.pos, info.md.width, info.md.height}
-            if write_rules.shrink_to_pixels {
-                bounds = find_bounding_box({
-                    data = s_cel.raw, 
-                    md = { width = s_cel.width, height = s_cel.height, bpp = .RGBA}
-                })
-                bounds.pos += s_cel.pos
-            }
-
-            //fmt.println(bounds, s_cel.bounds)
-
-            fw, fh := bounds.width, bounds.height
-            //fmt.print(s_cel.pos, "")
-
-            s_cel.pos += sprite_pos
-            cp := s_cel.pos
             
-            // Sprite Sheet Aligment - Frame  https://www.desmos.com/geometry/k0wurod44w
-            // Sprite Sheet Aligment - Center https://www.desmos.com/geometry/miqzk9ijus
-            /*switch write_rules.align {
-            case .Top_Left:   s_cel.pos   -= bounds.pos
-            case .Top_Center: s_cel.pos.x += (sw - fw)/2
-            case .Top_Right:  s_cel.pos.x +=  sw - fw
+            // Sprite Sheet Aligment https://www.desmos.com/geometry/miqzk9ijus
+            switch write_rules.align {
+            case .Top_Left:   // Default Alignment
+            case .Top_Center: s_cel.pos.x += (sw - fw) / 2
+            case .Top_Right:  s_cel.pos.x += (sw - fw)
             
-            case .Mid_Left:   s_cel.pos.y -= (sh - fh)/2
-            case .Mid_Center: //s_cel.pos    = { cp.x + (sw - fw)/2, cp.y - (sh - fh)/2 }
-            case .Mid_Right:  s_cel.pos    = { cp.x +  sw - fw   , cp.y - (sh - fh)/2 }
+            case .Mid_Left:   s_cel.pos.y +=   (sh - fh) / 2
+            case .Mid_Center: s_cel.pos   += { (sw - fw) / 2, (sh - fh) / 2 }
+            case .Mid_Right:  s_cel.pos   += { (sw - fw),     (sh - fh) / 2 }
 
-            case .Bot_Left:   s_cel.pos.y -= sh + fh
-            case .Bot_Center: s_cel.pos    = { cp.x + (sw -fw)/2, cp.y - sh + fh }
-            case .Bot_Right:  s_cel.pos    = { cp.x +  sw - fw  , cp.y - sh + fh }
+            case .Bot_Left:   s_cel.pos.y +=    sh - fh
+            case .Bot_Center: s_cel.pos   += { (sw - fw) / 2, sh - fh }
+            case .Bot_Right:  s_cel.pos   += { (sw - fw),     sh - fh }
             
             case:
                 err = .Invalid_Alignment
                 return
-            }*/
+            }
 
-            s_cel.pos += write_rules.offset + s_info.boarder
-            //fmt.println(s_cel.pos)
+            s_cel.pos += cel_offset
 
             write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
         }
