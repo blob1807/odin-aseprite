@@ -287,7 +287,7 @@ to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image)
         data      = raw_data(buf),
         len       = len(buf),
         cap       = len(buf),
-        allocator = runtime.nil_allocator()
+        allocator = runtime.nil_allocator(),
     }
 
     img.pixels.buf = transmute([dynamic]byte)raw
@@ -327,92 +327,4 @@ find_pixel_bounds_min_max :: proc(img: [][4]u8, width, height: int, bg_colour: [
     return
 }
 
-
-draw_sheet_grid :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
-    fill_sheet_spacing(sheet, colour, true)
-}
-
-
-fill_sheet_spacing :: proc(sheet: Sprite_Sheet, colour: [4]u8, always_fill: bool) {
-    img := sheet.img
-    info := sheet.info
-    assert(img.bpp == .RGBA)
-
-    raw := slice.reinterpret([][4]u8, img.data)
-
-    row_count := (img.height - info.size.y - (info.boarder.y * 2)) / ( info.size.y + info.spacing.y )
-    if 0 < row_count {
-        row_block := img.width * info.size.y
-        row_space := img.width * info.spacing.y
-        row_step  := row_block + row_space 
-        row_fill  := always_fill ? max(img.width, row_space) : row_space
-
-        row_offset := row_block + img.width * info.boarder.x
-        base := raw[row_offset:][:row_fill]
-
-        slice.fill(base, colour)
-
-        for row in 1..<row_count {
-            start := row_step * row + row_offset
-            copy(raw[start:], base)
-        }
-    }
-
-    col_count := info.count - 1
-    if 0 < col_count {
-        col_block := info.size.x + info.spacing.x
-        col_fill  := always_fill ? max(1, info.spacing.y) : info.spacing.y
-        col_offset := info.size.x + info.boarder.x
-
-        base := raw[col_offset:][:col_fill]
-        slice.fill(base, colour)
-
-        for col in 1..<col_count {
-            pos := col_block * col + col_offset
-            copy(raw[pos:], base)
-        }
-
-        for y in 1..<img.height {
-            start := img.width * y + col_offset
-            for col in 0..<col_count {
-                pos := col_block * col + start
-                copy(raw[pos:], base)
-            }
-        }
-    }
-
-    return
-}
-
-
-fill_sheet_boarder :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
-    img := sheet.img
-    info := sheet.info
-    assert(img.bpp == .RGBA)
-
-    raw := slice.reinterpret([][4]u8, img.data)
-
-    if 0 < info.boarder.y {
-        base := raw[:img.width * info.boarder.y]
-        slice.fill(base, colour)
-        copy(raw[(img.height - info.boarder.y) * img.width:], base)
-    }
-
-    if 0 < info.boarder.x {
-        base_start := img.width * info.boarder.y
-        base := raw[base_start:][:info.boarder.x]
-        count := img.height - (info.boarder.y * 2)
-
-        slice.fill(base, colour)
-        copy(raw[base_start + img.width - info.boarder.x:], base)
-
-        for pos in 0..<count {
-            start := base_start + (img.width * pos)
-            copy(raw[start:], base)
-            copy(raw[start + img.width - info.boarder.x:], base)
-        }
-    }
-
-    return
-}
 

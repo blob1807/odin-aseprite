@@ -1,123 +1,86 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
-import "core:c"
-import "core:fmt"
-import "core:log"
 import "core:slice"
-import "core:mem/virtual"
+
+@require import "core:fmt"
+@require import "core:log"
 
 import ase ".."
 
 
-Sprite_Sheet :: struct {
-    using img: Image,
-    info: Sprite_Info
-}
-
-Sprite_Info :: struct {
-    size:    [2]int, // Size of a sprite.
-    spacing: [2]int, // Spacing between each sprite.
-    boarder: [2]int, // Boarder between sheet & image edge.
-    count:   int,    // Sprites per row.
-}
-
-// Govern's how Frames are writen a Sprite
-Sprite_Write_Rules :: struct {
-
-    // What point on the Frame & Sprite to align. 
-    // Effective when Frame.size < Sprite.Size.
-    align:  Sprite_Alignment,
-
-    // Offset from the alignment point
-    offset: [2]int,
-
-    // Shrinks Frame to the bounds of visable pixels
-    shrink_to_pixels: bool,
-
-    // Resulting sheet's Background Colour
-    background_colour: [4]u8,
-
-    // Whether to use the Background Colour
-    // of the ase file or use `background_colour`;
-    // Only used for `Indexed` colour mode.
-    use_index_bg_colour: bool,
-
-    // Whether to ignore Background layers.
-    ingore_bg_layers: bool,
-}
-
-Sprite_Alignment :: enum {
-    Top_Left, Top_Center, Top_Right,
-    Mid_Left, Mid_Center, Mid_Right,
-    Bot_Left, Bot_Center, Bot_Right,
-
-    Center = Mid_Center,
-    // Sprite Sheet Alignment https://www.desmos.com/geometry/miqzk9ijus
-}
-
-DEFAULT_SPRITE_WRITE_RULES :: Sprite_Write_Rules {
-    align  = .Center,
-    offset = 0,
-    shrink_to_pixels = false,
+create_sprite_sheet :: proc {
+    create_sprite_sheet_from_doc,
+    create_sprite_sheet_from_info,
 }
 
 
 /*
-https://github.com/houmain/rect_pack
-https://www.david-colson.com/2020/03/10/exploring-rect-packing.html
-https://github.com/ThomasMiz/RectpackSharp
-https://cran.r-project.org/web/packages/rectpacker/rectpacker.pdf
-https://link.springer.com/chapter/10.1007/978-3-642-21827-9_29
+Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
 */
-
-create_sprite_sheet :: proc {
-    sprite_sheet_from_doc,
-    sprite_sheet_from_info,
-}
-
-
-// Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
-sprite_sheet_from_doc :: proc (
+create_sprite_sheet_from_doc :: proc (
     doc: ^ase.Document, s_info: Sprite_Info, 
     write_rules := DEFAULT_SPRITE_WRITE_RULES, alloc := context.allocator
 ) -> (res: Sprite_Sheet, err: Errors) {
 
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(context.allocator == context.temp_allocator)
-    info := get_info(doc, context.temp_allocator) or_return
+    info: Info
+    get_info(doc, &info, context.temp_allocator) or_return
 
-    return sprite_sheet_from_info(info, s_info, write_rules, alloc)
+    return create_sprite_sheet_from_info(info, s_info, write_rules, alloc)
 }
 
 
-// Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
-sprite_sheet_from_info :: proc (
+/*
+Creates internal allocation on `context.temp_allocator`, will attempt to clean up after itself.
+*/
+create_sprite_sheet_from_info :: proc (
     info: Info, s_info: Sprite_Info, 
     write_rules := DEFAULT_SPRITE_WRITE_RULES, alloc := context.allocator
 ) -> (res: Sprite_Sheet, err: Errors) {
 
-    if write_rules.align < min(Sprite_Alignment) || max(Sprite_Alignment) < write_rules.align {
+    switch {
+    case write_rules.align < min(Sprite_Alignment) || max(Sprite_Alignment) < write_rules.align:
         err = .Invalid_Alignment
         return
-    }
-    if s_info.size.x < write_rules.offset.x || s_info.size.y < write_rules.offset.y {
+
+    case s_info.size.x < write_rules.offset.x || s_info.size.y < write_rules.offset.y:
         err = .Invalid_Offset
         return
+    
+    case s_info.spacing.x < 0 || s_info.spacing.y < 0:
+        err = .Invalid_Spacing
+        return
+
+    case s_info.boarder.x < 0 || s_info.boarder.y < 0:
+        err = .Invalid_Boarder
+        return
+
+    case s_info.count <= 0:
+        err = .Invalid_Count
+        return
+
+    case (s_info.size.x * s_info.size.y) < (info.md.width * info.md.height):
+        if !write_rules.ingore_sprite_size {
+            err = .Sprite_Size_to_Small
+            return
+        }
+        if !write_rules.shrink_to_pixels {
+            fast_log(.Warning, "Sprite smaller than Frame. Ingoring & continuing.")
+        }
     }
 
-    if (s_info.size.x * s_info.size.y) <= (info.md.width * info.md.height) {
-        log.error("Be warned. If a `cel.size < sprite.size``, it'll error.")
-        log.debug("I am working on it though")
-    }
 
-    if len(info.frames) %% s_info.count != 0 {
-        log.error("Currently only works if `mod(len(frames), count) == 0.")
-        log.debug("I am working on it though")
-    }
+    // Note(blob):
+    // Gets the clostest multiple of `s_info.count` that's `>=` to `len(info.frames)`.
+    // Allows for `len(info.frames)` to not be a multiple of `s_info.count`;
+    // and still make a valid grid.
+    frame_count := len(info.frames) + (s_info.count - ((len(info.frames) - 1) %% s_info.count + 1))
 
-    y_count := max( 1, len(info.frames) / s_info.count )
+    y_count := max( 1, frame_count / s_info.count )
     width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
+
 
     img_width  := width  + (s_info.boarder.x * 2)
     img_height := height + (s_info.boarder.y * 2)
@@ -128,7 +91,7 @@ sprite_sheet_from_info :: proc (
         width  = img_width,
         height = img_height,
         bpp    = .RGBA,
-        data   = make([]u8, img_size, alloc) or_return
+        data   = make([]u8, img_size, alloc) or_return,
     }
     
 
@@ -148,9 +111,8 @@ sprite_sheet_from_info :: proc (
     sprite_pos: [2]int
     sw, sh := s_info.size.x, s_info.size.y
 
-    for frame, f_idx in info.frames {
+    for frame in info.frames {
         defer {
-            // fmt.println(f_idx, sprite_pos)
             sprite_pos.x += s_info.size.x + s_info.spacing.x
             if width <= sprite_pos.x {
                 sprite_pos.x = 0
@@ -158,7 +120,7 @@ sprite_sheet_from_info :: proc (
             }
 
             if height + s_info.spacing.y < sprite_pos.y {
-                panic("This shouldn't happen... help.")
+                panic("Sprite Y Pos is OOB. This shouldn't happen... send help.")
             }
         }
 
@@ -207,12 +169,6 @@ sprite_sheet_from_info :: proc (
         cel_offset := write_rules.offset + s_info.boarder + sprite_pos - fp
         
 
-        /*if s_info.size.x < frame_size.x || s_info.size.y < frame_size.y {
-            fmt.println(frame_size)
-            err = .Frame_To_Big
-            return
-        }*/
-
         for cel in frame.cels {
             layer := info.layers[cel.layer]
             skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
@@ -244,8 +200,127 @@ sprite_sheet_from_info :: proc (
             }
 
             s_cel.pos += cel_offset
+            // Make sure we don't pass a negitive position.
+            s_cel.pos = { max(s_cel.pos.x, 0), max(s_cel.pos.y, 0) }
 
             write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
+        }
+    }
+
+    return
+}
+
+
+// Finds the smallest Sprite size need to fit all visable pixels.
+// Ingores Background Layers
+find_sprite_size :: proc(info: Info, make_square := true) -> (res: [2]int) {
+
+    for frame in info.frames {
+        for cel in frame.cels {
+            layer := info.layers[cel.layer]
+            if !layer.visiable || layer.is_background { continue }
+
+            size := [2]int{ cel.width, cel.height }
+            if cel.tilemap.tiles != nil {
+                ts := info.tilesets[layer.tileset]
+                size = {ts.width, ts.height}
+            }
+
+            res.x = max(res.x, size.x)
+            res.y = max(res.y, size.y)
+        }
+    }
+
+    if make_square {
+        res = max(res.x, res.y)
+    }
+
+    return
+}
+
+
+draw_sheet_grid :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
+    draw_sheet_spacing(sheet, colour, true)
+}
+
+
+draw_sheet_spacing :: proc(sheet: Sprite_Sheet, colour: [4]u8, always_draw: bool) {
+    img := sheet.img
+    info := sheet.info
+    assert(img.bpp == .RGBA)
+
+    raw := slice.reinterpret([][4]u8, img.data)
+
+    row_count := (img.height - info.size.y - (info.boarder.y * 2)) / ( info.size.y + info.spacing.y )
+    if 0 < row_count {
+        row_block := img.width * info.size.y
+        row_space := img.width * info.spacing.y
+        row_step  := row_block + row_space 
+        row_fill  := always_draw ? max(img.width, row_space) : row_space
+
+        row_offset := row_block + img.width * info.boarder.x
+        base := raw[row_offset:][:row_fill]
+
+        slice.fill(base, colour)
+
+        for row in 1..<row_count {
+            start := row_step * row + row_offset
+            copy(raw[start:], base)
+        }
+    }
+
+    col_count := info.count - 1
+    if 0 < col_count {
+        col_block := info.size.x + info.spacing.x
+        col_fill  := always_draw ? max(1, info.spacing.y) : info.spacing.y
+        col_offset := info.size.x + info.boarder.x
+
+        base := raw[col_offset:][:col_fill]
+        slice.fill(base, colour)
+
+        for col in 1..<col_count {
+            pos := col_block * col + col_offset
+            copy(raw[pos:], base)
+        }
+
+        for y in 1..<img.height {
+            start := img.width * y + col_offset
+            for col in 0..<col_count {
+                pos := col_block * col + start
+                copy(raw[pos:], base)
+            }
+        }
+    }
+
+    return
+}
+
+
+draw_sheet_boarder :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
+    img := sheet.img
+    info := sheet.info
+    assert(img.bpp == .RGBA)
+
+    raw := slice.reinterpret([][4]u8, img.data)
+
+    if 0 < info.boarder.y {
+        base := raw[:img.width * info.boarder.y]
+        slice.fill(base, colour)
+        copy(raw[(img.height - info.boarder.y) * img.width:], base)
+    }
+
+    if 0 < info.boarder.x {
+        base_start := img.width * info.boarder.y
+        base := raw[base_start:][:info.boarder.x]
+        count := img.height - (info.boarder.y * 2)
+
+        slice.fill(base, colour)
+        copy(raw[base_start + img.width - info.boarder.x:], base)
+
+        for pos in 0..<count {
+            start := base_start + (img.width * pos)
+            copy(raw[start:], base)
+            copy(raw[start + img.width - info.boarder.x:], base)
         }
     }
 
