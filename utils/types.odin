@@ -207,6 +207,9 @@ Sprite_Write_Rules :: struct {
     background_colour: [4]u8,
 
     // Shrinks Frame to the bounds of its visable pixels.
+    // NOTE(blob): 
+    //     Using this does slighly change the positioning.
+    //     IDK if this is correct behaviour or not.
     shrink_to_pixels: bool,
 
     // Whether to use the Background Colour
