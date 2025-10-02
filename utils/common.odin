@@ -91,6 +91,10 @@ destroy_slice :: proc(sl: Slice, alloc := context.allocator) -> runtime.Allocato
     return delete(sl.keys)
 }
 
+destroy_sheet :: proc(s: Sprite_Sheet, alloc := context.allocator) -> runtime.Allocator_Error {
+    return destroy_image(s.img, alloc)
+}
+
 destroy :: proc {
     destroy_frames, 
     destroy_image, 
@@ -104,6 +108,7 @@ destroy :: proc {
     destroy_palette,
     destroy_slices,
     destroy_slice,
+    destroy_sheet,
 }
 /* ======================================================================================= */
 

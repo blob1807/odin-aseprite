@@ -116,7 +116,8 @@ get_image_bytes_from_doc_frame :: proc(
     frame: ase.Frame, info: Info,
 )  -> (img: []byte, err: Errors) {
 
-    raw_frame := get_frame(frame) or_return
+    raw_frame := get_frame(frame, info.allocator) or_return
+    defer destroy(raw_frame, info.allocator)
     return get_image_bytes(raw_frame, info)
 }
 

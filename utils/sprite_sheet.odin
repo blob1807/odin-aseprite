@@ -92,6 +92,12 @@ create_sprite_sheet_from_info :: proc (
         bpp    = .RGBA,
         data   = make([]u8, img_size, alloc) or_return,
     }
+
+    defer {
+        if err != nil {
+            delete(res.img.data, alloc)
+        }
+    }
     
 
     if write_rules.use_index_bg_colour && info.md.bpp == .Indexed && !info.layers[0].is_background {
