@@ -70,7 +70,6 @@ create_sprite_sheet_from_info :: proc (
         }
     }
 
-
     // Note(blob):
     // Gets the clostest multiple of `s_info.count` that's `>=` to `len(info.frames)`.
     // Allows for `len(info.frames)` to not be a multiple of `s_info.count`;
@@ -213,7 +212,7 @@ create_sprite_sheet_from_info :: proc (
 
 // Finds the smallest Sprite size need to fit all visable pixels.
 // Ingores Background Layers
-find_sprite_size :: proc(info: Info, make_square := true) -> (res: [2]int) {
+find_min_sprite_size :: proc(info: Info, make_square := true) -> (res: [2]int) {
 
     for frame in info.frames {
         for cel in frame.cels {
@@ -239,12 +238,12 @@ find_sprite_size :: proc(info: Info, make_square := true) -> (res: [2]int) {
 }
 
 
-draw_sheet_grid :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
+draw_sheet_grid :: proc(sheet: ^Sprite_Sheet, colour: [4]u8) {
     draw_sheet_spacing(sheet, colour, true)
 }
 
 
-draw_sheet_spacing :: proc(sheet: Sprite_Sheet, colour: [4]u8, always_draw: bool) {
+draw_sheet_spacing :: proc(sheet: ^Sprite_Sheet, colour: [4]u8, always_draw: bool) {
     img := sheet.img
     info := sheet.info
     assert(img.bpp == .RGBA)
@@ -296,7 +295,7 @@ draw_sheet_spacing :: proc(sheet: Sprite_Sheet, colour: [4]u8, always_draw: bool
 }
 
 
-draw_sheet_boarder :: proc(sheet: Sprite_Sheet, colour: [4]u8) {
+draw_sheet_boarder :: proc(sheet: ^Sprite_Sheet, colour: [4]u8) {
     img := sheet.img
     info := sheet.info
     assert(img.bpp == .RGBA)
