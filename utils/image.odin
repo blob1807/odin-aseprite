@@ -20,14 +20,15 @@ get_image_from_doc :: proc(doc: ^ase.Document, frame := 0, alloc := context.allo
         return {}, Image_Error.Frame_Index_Out_Of_Bounds
     }
 
-    info := get_info(doc) or_return
+    info: Info
+    get_info(doc, &info) or_return
     defer destroy(&info)
     
     return get_image_from_frame(info.frames[frame], info)
 }
 
 get_image_from_doc_frame :: proc(
-    frame: ase.Frame, info: Info
+    frame: ase.Frame, info: Info,
 )  -> (img: Image, err: Errors) {
 
     raw_frame := get_frame(frame, info.allocator) or_return
@@ -201,7 +202,8 @@ get_all_images :: proc(doc: ^ase.Document, alloc := context.allocator) -> (imgs:
     imgs = make([]Image, len(doc.frames)) or_return
     defer if err != nil { destroy(imgs)}
 
-    info := get_info(doc) or_return
+    info: Info
+    get_info(doc, &info) or_return
     defer destroy(&info)
 
     for frame, p in info.frames {
@@ -240,7 +242,8 @@ get_all_images_bytes :: proc(doc: ^ase.Document, alloc := context.allocator) -> 
 get_cels_as_imgs :: proc(doc: ^ase.Document, frame_idx := 0, alloc := context.allocator) -> (res: []Image, err: Errors) {
     context.allocator = alloc
 
-    info := get_info(doc) or_return
+    info: Info
+    get_info(doc, &info) or_return
     defer destroy(&info)
 
     if len(info.frames) < frame_idx {
@@ -270,7 +273,8 @@ get_cels_as_imgs :: proc(doc: ^ase.Document, frame_idx := 0, alloc := context.al
 get_all_cels_as_imgs :: proc(doc: ^ase.Document, alloc := context.allocator) -> (res: []Image, err: Errors) {
     context.allocator = alloc
 
-    info := get_info(doc) or_return
+    info: Info
+    get_info(doc, &info) or_return
     defer destroy(&info)
 
     imgs := make([dynamic]Image) or_return
@@ -358,7 +362,7 @@ write_cel :: proc (
         abs(cel.x) if cel.x < 0 else 0,
         abs(cel.y) if cel.y < 0 else 0,
     }*/
-   offset := [2]int {
+    offset := [2]int {
         abs(min(0, cel.x)), 
         abs(min(0, cel.y)),
     }
@@ -382,7 +386,7 @@ write_cel :: proc (
         }
     }
 
-    for y in 0..<bounds.height {
+    y_loop: for y in 0..<bounds.height {
         for x in 0..<bounds.width {
             pix: [4]byte
             idx := (y + offset.y) * cel.width + x + offset.x
@@ -408,19 +412,25 @@ write_cel :: proc (
             } 
 
             if pix.a != 0 {
-                ipix := (^[4]byte)(&buf[((y + bounds.y) * md.width + x + bounds.x) * 4])
+                iidx := ((y + bounds.y) * md.width + x + bounds.x) * 4
+                if len(buf) <= iidx {
+                    break y_loop
+                }
+
+                ipix := (^[4]byte)(&buf[iidx])
                 
                 if ipix.a != 0 {
-                    // Blend pixels
+                    // Blend pixels)
+                    p := ir.unaligned_load(ipix)
                     a := alpha(cel.opacity, layer.opacity)
-                    pix = blend(ipix^, pix, a, layer.blend_mode) or_return
+                    pix = blend(p, pix, a, layer.blend_mode) or_return
 
                 } else {
                     // Merge Alpha & Opacities
                     pix.a = u8(alpha(i32(pix.a), alpha(cel.opacity, layer.opacity)))
                 }
-                
-                ipix^ = pix
+
+                ir.unaligned_store(ipix, pix)
             }
         }
     }

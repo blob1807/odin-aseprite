@@ -13,7 +13,8 @@ get_animation_from_doc :: proc(
     doc: ^ase.Document, anim: ^Animation, 
     use_tag := "", alloc := context.allocator
 ) -> (err: Errors) {
-    info := get_info(doc, alloc) or_return
+    info: Info 
+    get_info(doc, &info, alloc) or_return
     defer destroy(&info)
     return get_animation_from_info(info, anim, use_tag)
 }

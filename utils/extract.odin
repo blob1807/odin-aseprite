@@ -45,7 +45,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
                 pos    = { int(c.x), int(c.y) },
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
-                layer   = int(c.layer_index)
+                layer   = int(c.layer_index),
             }
     
             switch v in c.cel {
@@ -345,7 +345,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
 get_tileset :: proc{ tileset_from_doc, tileset_from_doc_frame }
 
 
-get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info, err: Errors) {
+get_info :: proc(doc: ^ase.Document, info: ^Info, alloc := context.allocator) -> (err: Errors) {
     context.allocator = alloc
     info.allocator = alloc
 
@@ -380,7 +380,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     pos = {int(c.x), int(c.y)},
                     opacity = int(c.opacity_level),
                     z_index = int(c.z_index),
-                    layer = int(c.layer_index)
+                    layer = int(c.layer_index),
                 } 
         
                 switch v in c.cel {
@@ -477,7 +477,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                         int(t.from_frame), 
                         int(t.to_frame), 
                         t.loop_direction, 
-                        t.name
+                        t.name,
                     }
                     append(&tags, tag) or_return
                 }
@@ -581,7 +581,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     if center, ok := c_key.center.(ase.Slice_Center); ok {
                         key.center = {
                             int(center.x), int(center.y),
-                            int(center.width), int(center.height)
+                            int(center.width), int(center.height),
                         }
                     }
 
@@ -597,7 +597,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         append(&frames, frame) or_return
     }
 
-    info = { 
+    info^ = { 
         frames    = frames[:], 
         layers    = lays[:], 
         tags      = tags[:],
@@ -608,6 +608,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         allocator = alloc,
     }
 
-    return info, nil
+    return nil
 }
 
