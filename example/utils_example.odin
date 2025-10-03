@@ -213,7 +213,7 @@ sprite_sheet :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        count = 16,
+        row_count = 16,
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(&doc, sheet_info)
@@ -238,7 +238,7 @@ sprite_sheet_custom_rules :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {64, 64},
-        count = 4,
+        row_count = 4,
     }
 
     rules := utils.Sprite_Write_Rules {
@@ -280,19 +280,20 @@ sprite_sheet_dynamic_count_and_size :: proc() {
     // Allows for a very basic form of sprite packing.
     sheet_info := utils.Sprite_Info {
         size  = utils.find_min_sprite_size(info, false),
-        count = len(info.frames),
+        row_count = len(info.frames),
     }
 
     /*
-    `ingore_sprite_size` is to allow a sprite's size to be less then the OG file's size.
-    `shrink_to_pixels` & `ingore_bg_layers` will ensure we're not over write what was writen. 
+    `ingore_sprite_size` allow the sprite's size to be less then the OG file's size.
+    `shrink_to_pixels` ensures the position correct.
+    `ingore_bg_layers` ensures we're not overwritting what was already writen. 
     */
     rules := utils.Sprite_Write_Rules {
         align = .Middle,
         shrink_to_pixels   = true,
         ingore_bg_layers   = true,
         ingore_sprite_size = true,
-        background_colour  = {20, 20, 248, 255},
+        background_colour  = {53, 124, 187, 255},
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(info, sheet_info, rules)
@@ -317,7 +318,7 @@ sprite_sheet_draw_spacing_and_boarder :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        count = 6,
+        row_count = 6,
         spacing = 2,
         boarder = 5,
     }

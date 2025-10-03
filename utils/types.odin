@@ -187,17 +187,17 @@ Info :: struct {
 
 // Sprite Sheet
 Sprite_Info :: struct {
-    size:    [2]int, // Size of a sprite.
-    spacing: [2]int, // Spacing between each sprite.
-    boarder: [2]int, // Boarder between sheet & image edge.
-    count:   int,    // Sprites per row.
+    size:      [2]int, // Size of a sprite.
+    spacing:   [2]int, // Spacing between each sprite.
+    boarder:   [2]int, // Boarder between sheet & image edge.
+    row_count: int,    // Sprites per row.
 }
 
 // Govern's how Frames are writen a Sprite
 Sprite_Write_Rules :: struct {
 
     // What point on the Frame & Sprite to align. 
-    // Effective when Frame.size < Sprite.Size.
+    // Effective when Frame.size < Sprite.size.
     align:  Sprite_Alignment,
 
     // Offset from the alignment point.
@@ -206,10 +206,10 @@ Sprite_Write_Rules :: struct {
     // Resulting Sheet's Background Colour
     background_colour: [4]u8,
 
-    // Shrinks Frame to the bounds of its visable pixels.
-    // NOTE(blob): 
-    //     Using this does slighly change the positioning.
-    //     IDK if this is correct behaviour or not.
+    // Shrinks Frame to the bounds of its visable pixels.  
+    // NOTE(blob):  
+    //     Using this may slighly change the positioning. 
+    //     This is expected & intended behaviour. 
     shrink_to_pixels: bool,
 
     // Whether to use the Background Colour
@@ -234,7 +234,7 @@ Sprite_Alignment :: enum {
     // Default Alignment
     Base   = Top_Left,
 
-    // Some helper... cause why not.
+    // Some helpers... cause why not.
     Top    = Top_Center,
     Middle = Mid_Center,
     Bottom = Bot_Center,
