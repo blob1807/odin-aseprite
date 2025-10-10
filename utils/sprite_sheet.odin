@@ -56,7 +56,7 @@ create_sprite_sheet_from_info :: proc (
         err = .Invalid_Boarder
         return
 
-    case s_info.row_count <= 0:
+    case s_info.count <= 0:
         err = .Invalid_Count
         return
 
@@ -65,7 +65,7 @@ create_sprite_sheet_from_info :: proc (
             err = .Sprite_Size_to_Small
             return
         }
-        
+
         // If `shrink_to_pixels` is set the new bounds may fit just fine.
         // However it's not reasonable to check them all, instead we just assume they will be.
         if !write_rules.shrink_to_pixels {
@@ -77,10 +77,10 @@ create_sprite_sheet_from_info :: proc (
     // Gets the clostest multiple of `s_info.count` that's `>=` to `len(info.frames)`.
     // Allows for `len(info.frames)` to not be a multiple of `s_info.count`;
     // and still make a valid grid.
-    frame_count := len(info.frames) + (s_info.row_count - ((len(info.frames) - 1) %% s_info.row_count + 1))
+    frame_count := len(info.frames) + (s_info.count - ((len(info.frames) - 1) %% s_info.count + 1))
 
-    y_count := max( 1, frame_count / s_info.row_count )
-    width   := ( s_info.row_count * s_info.size.x ) + ( (s_info.row_count - 1) * s_info.spacing.x )
+    y_count := max( 1, frame_count / s_info.count )
+    width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
 
 
@@ -278,7 +278,7 @@ draw_sheet_spacing :: proc(sheet: ^Sprite_Sheet, colour: [4]u8, always_draw: boo
         }
     }
 
-    col_count := info.row_count - 1
+    col_count := info.count - 1
     if 0 < col_count {
         col_block := info.size.x + info.spacing.x
         col_fill  := always_draw ? max(1, info.spacing.y) : info.spacing.y

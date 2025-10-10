@@ -213,7 +213,7 @@ sprite_sheet :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        row_count = 16,
+        count = 16,
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(&doc, sheet_info)
@@ -238,7 +238,7 @@ sprite_sheet_custom_rules :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {64, 64},
-        row_count = 4,
+        count = 4,
     }
 
     rules := utils.Sprite_Write_Rules {
@@ -280,7 +280,7 @@ sprite_sheet_dynamic_count_and_size :: proc() {
     // Allows for a very basic form of sprite packing.
     sheet_info := utils.Sprite_Info {
         size  = utils.find_min_sprite_size(info, false),
-        row_count = len(info.frames),
+        count = len(info.frames),
     }
 
     /*
@@ -318,7 +318,7 @@ sprite_sheet_draw_spacing_and_boarder :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        row_count = 6,
+        count = 6,
         spacing = 2,
         boarder = 5,
     }

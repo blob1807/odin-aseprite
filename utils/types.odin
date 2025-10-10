@@ -187,10 +187,10 @@ Info :: struct {
 
 // Sprite Sheet
 Sprite_Info :: struct {
-    size:      [2]int, // Size of a sprite.
-    spacing:   [2]int, // Spacing between each sprite.
-    boarder:   [2]int, // Boarder between sheet & image edge.
-    row_count: int,    // Sprites per row.
+    size:    [2]int, // Size of a sprite.
+    spacing: [2]int, // Spacing between each sprite.
+    boarder: [2]int, // Boarder between sheet & image edge.
+    count:   int,    // Sprites per row.
 }
 
 // Govern's how Frames are writen a Sprite
