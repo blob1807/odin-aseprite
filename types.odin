@@ -297,7 +297,7 @@ Layer_Chunk :: struct {
     opacity:        BYTE, // valid when header flag is 1
     name:           string,
     tileset_index:  DWORD, // set if type == Tilemap
-    uuid:           Maybe(UUID)
+    uuid:           Maybe(UUID),
 }
 
 

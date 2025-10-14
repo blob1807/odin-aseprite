@@ -33,12 +33,12 @@ get_chunk_type :: proc(c: Chunk) -> (type: WORD, err: Marshal_Error) {
 
 get_cel_type :: proc(c: Cel_Type) -> (type: WORD, err: Marshal_Error) {
     switch _ in c {
-        case Raw_Cel:         type = WORD(Cel_Types.Raw)
-        case Linked_Cel:      type = WORD(Cel_Types.Linked_Cel)
-        case Com_Image_Cel:   type = WORD(Cel_Types.Compressed_Image)
-        case Com_Tilemap_Cel: type = WORD(Cel_Types.Compressed_Tilemap)
-        case:
-            err = .Invalid_Cel_Type
+    case Raw_Cel:         type = WORD(Cel_Types.Raw)
+    case Linked_Cel:      type = WORD(Cel_Types.Linked_Cel)
+    case Com_Image_Cel:   type = WORD(Cel_Types.Compressed_Image)
+    case Com_Tilemap_Cel: type = WORD(Cel_Types.Compressed_Tilemap)
+    case:
+        err = .Invalid_Cel_Type
     }
 
     return

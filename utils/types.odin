@@ -38,6 +38,16 @@ Tileset_Error :: enum {
     Tileset_Cel_Sizes_Mismatch,
 }
 
+Sprite_Sheet_Error :: enum {
+    None,
+    Sprite_Size_to_Small,
+    Invalid_Alignment,
+    Invalid_Offset,
+    Invalid_Count,
+    Invalid_Spacing,
+    Invalid_Boarder,
+}
+
 Errors :: union #shared_nil {
     runtime.Allocator_Error, 
     Image_Error, 
@@ -45,6 +55,7 @@ Errors :: union #shared_nil {
     Tileset_Error, 
     Blend_Error, 
     Palette_Error, 
+    Sprite_Sheet_Error,
 }
 
 // Raw Types
@@ -54,13 +65,15 @@ Pixels  :: []byte
 
 Vec2 :: [2]int
 
+// ASE Document types
+
 Precise_Bounds :: struct {
     // Truely fixpoint but I anit dealing with that shit
-    x, y, width, height: f64
+    x, y, width, height: f64,
 }
 
 Bounds :: struct {
-    using pos:     Vec2, 
+    using pos:     Vec2,
     width, height: int,
 }
 
@@ -124,7 +137,7 @@ Pixel_Depth :: enum {
 Color_Space :: enum {
     None, 
     sRGB, 
-    ICC
+    ICC,
 }
 
 Metadata :: struct {
@@ -145,7 +158,7 @@ Slice_Key :: struct {
 Slice :: struct {
     flags: ase.Slice_Flags,
     name:  string,
-    keys:  []Slice_Key
+    keys:  []Slice_Key,
 }
 
 Tileset :: struct {
@@ -171,6 +184,65 @@ Info :: struct {
 }
 
 
+
+// Sprite Sheet
+Sprite_Info :: struct {
+    size:    [2]int, // Size of a sprite.
+    spacing: [2]int, // Spacing between each sprite.
+    boarder: [2]int, // Boarder between sheet & image edge.
+    count:   int,    // Sprites per row.
+}
+
+// Govern's how Frames are writen a Sprite
+Sprite_Write_Rules :: struct {
+
+    // What point on the Frame & Sprite to align. 
+    // Effective when Frame.size < Sprite.size.
+    align:  Sprite_Alignment,
+
+    // Offset from the alignment point.
+    offset: [2]int,
+
+    // Resulting Sheet's Background Colour
+    background_colour: [4]u8,
+
+    // Shrinks Frame to the bounds of its visable pixels.  
+    // NOTE(blob):  
+    //     Using this may slighly change the positioning. 
+    //     This is expected & intended behaviour. 
+    shrink_to_pixels: bool,
+
+    // Whether to use the Background Colour
+    // of the ase file or use `background_colour`;
+    // Only used for `Indexed` colour mode.
+    use_index_bg_colour: bool,
+
+    // Whether to ignore Background layers.
+    ingore_bg_layers: bool,
+
+    // Whether to ingore the Sprite size being
+    // smaller then the Frame frame.
+    ingore_sprite_size: bool,
+}
+
+// Sprite Sheet Alignment https://www.desmos.com/geometry/miqzk9ijus
+Sprite_Alignment :: enum {
+    Top_Left, Top_Center, Top_Right,
+    Mid_Left, Mid_Center, Mid_Right,
+    Bot_Left, Bot_Center, Bot_Right,
+
+    // Default Alignment
+    Base   = Top_Left,
+
+    // Some helpers... cause why not.
+    Top    = Top_Center,
+    Middle = Mid_Center,
+    Bottom = Bot_Center,
+    Left   = Mid_Left,
+    Right  = Mid_Right,
+}
+
+
 // Precomputed Types. They own all their data.
 Image :: struct {
     using md: Metadata, 
@@ -183,6 +255,12 @@ Animation :: struct {
     length:   time.Duration, 
     frames:   []Pixels, 
 }
+
+Sprite_Sheet :: struct {
+    using img: Image,
+    info: Sprite_Info,
+}
+
 
 
 Blend_Mode :: enum {
@@ -214,3 +292,15 @@ Blend_Mode :: enum {
     Subtract    = 17,
     Divide      = 18,
 }
+
+
+DEFAULT_SPRITE_WRITE_RULES :: Sprite_Write_Rules {
+    align               = .Mid_Center,
+    offset              = {0, 0},
+    background_colour   = {0, 0, 0, 0},
+    shrink_to_pixels    = false,
+    use_index_bg_colour = true,
+    ingore_bg_layers    = false,
+    ingore_sprite_size  = false,
+}
+

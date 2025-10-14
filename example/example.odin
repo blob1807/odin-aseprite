@@ -33,5 +33,10 @@ main :: proc() {
     animation()
     animation_tag()
     animation_images()
+
+    sprite_sheet()
+    sprite_sheet_custom_rules()
+    sprite_sheet_dynamic_count_and_size()
+    sprite_sheet_draw_spacing_and_boarder()
     
 }

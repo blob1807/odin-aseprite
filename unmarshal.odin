@@ -152,14 +152,6 @@ unmarshal_multi_chunks :: proc(r: io.Reader, buf: ^[dynamic]Chunk, chunks: Chunk
     }
     rt := &tr
 
-    size := read_dword(r, rt) or_return
-    if io.Stream_Mode.Size in io.query(r) {
-        stream_size := io.size(r) or_return
-        if stream_size != i64(size) {
-            return .Data_Size_Not_Equal_To_Header
-        }
-    }
-
     file_header := read_file_header(r, rt) or_return
     frames      := file_header.frames
     color_depth := int(file_header.color_depth)
@@ -313,24 +305,12 @@ unmarshal_single_chunk :: proc (
     }
     rt := &tr
 
-    size := read_dword(r, rt) or_return
-    if io.Stream_Mode.Size in io.query(r) {
-        stream_size := io.size(r) or_return
-        if stream_size != i64(size) {
-            return .Data_Size_Not_Equal_To_Header
-        }
-    }
+    file_header := read_file_header(r, rt) or_return
 
-    magic := read_word(r, rt) or_return
-    if magic != FILE_MAGIC_NUM {
-        return .Bad_File_Magic_Number
-    } 
-
-    frames := read_word(r, rt) or_return
-    read_skip(r, 4, rt) or_return
-    color_depth := int(read_word(r, rt) or_return)
+    frames := file_header.frames
+    color_depth := file_header.color_depth
     _ = color_depth
-    read_skip(r, 114, rt) or_return
+    flags := file_header.flags
 
     for _ in 0..<frames {
         read_dword(r, rt) or_return
@@ -369,14 +349,14 @@ unmarshal_single_chunk :: proc (
 
             case .layer:
                 when T == Layer_Chunk {
-                    append(buf, read_layer(r, rt) or_return) or_return
+                    append(buf, read_layer(r, rt, (.Has_UUID in flags)) or_return) or_return
                 } else { 
                     read_skip(r, c_size, rt) or_return 
                 }
 
             case .cel:
                 when T == Cel_Chunk {
-                    append(buf, read_cel(r, rt, color_depth, c_size+6) or_return) or_return
+                    append(buf, read_cel(r, rt, int(color_depth), c_size+6) or_return) or_return
                 } else { 
                     read_skip(r, c_size, rt) or_return 
                 }

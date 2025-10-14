@@ -4,6 +4,7 @@ import ir "base:intrinsics"
 import "base:runtime"
 import "core:reflect"
 import "core:strconv"
+import "core:slice"
 
 @(require) import "core:fmt"
 @(require) import "core:log"
@@ -37,7 +38,7 @@ fast_log_str_enum :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc 
 }
 
 @(private)
-fast_log_str_num :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc := #caller_location) where ir.type_is_numeric(T) {
+fast_log_str_num :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc := #caller_location) where ir.type_is_integer(T) {
     logger := context.logger
     if logger.procedure == nil { return }
     if lvl < logger.lowest_level { return }
@@ -75,7 +76,7 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
             append(&sb, '|') or_return
         }
 
-        s := strconv.itoa(buf[:], int(img.data[n*ch]))
+        s := strconv.write_int(buf[:], i64(img.data[n*ch]), 10)
         for _ in 0..<3-len(s) {
             append(&sb, ' ') or_return
         }
@@ -83,7 +84,7 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
 
         for i in 1..<ch {
             append(&sb, ',')
-            s = strconv.itoa(buf[:], int(img.data[n*ch+i]))
+            s = strconv.write_int(buf[:], i64(img.data[n*ch+i]), 10)
             for _ in 0..<3-len(s) {
                 append(&sb, ' ') or_return
             }
@@ -102,4 +103,8 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
     }
 
     return string(sb[:]), nil
+}
+
+fill_colour :: proc(data: []u8, colour: [4]u8) {
+    slice.fill(slice.reinterpret([][4]u8, data), colour)
 }
