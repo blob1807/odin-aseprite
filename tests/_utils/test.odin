@@ -15,6 +15,8 @@ import fp "core:path/filepath"
 import ase "../.."
 import "../../utils"
 
+import stbi "vendor:stb/image"
+
 
 rgba_is_equal :: proc(a, b: [][4]u8) -> ([2][4]byte, int, bool) {
     if len(a) != len(b) {
@@ -96,6 +98,9 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
             tf := fp.stem(rf)
             i := strings.index(tf, "-frame")
             if i == -1 {
+                if strings.contains(tf, "-sheet") {
+                    continue
+                }
                 testing.fail_now(t, fmt.tprint("Failed to find \"-frame\" in file", file, rf))
             }
 
@@ -308,7 +313,201 @@ community_test :: proc(t: ^testing.T) {
 }
 
 
+
 @(test)
 sprite_sheet_test :: proc(t: ^testing.T) {
+    ASE_FILE :: "../blob/marshmallow.aseprite"
+    FILES :: []string {
+        "./blob/marshmallow-sheet-16x1.raw",
+        "./blob/marshmallow-sheet-4x4.raw",
+        "./blob/marshmallow-sheet-5x4.raw",
+        "./blob/marshmallow-sheet-3x6.raw",
+        "./blob/marshmallow-sheet-16x1-Trim.raw",
+        "./blob/marshmallow-sheet-4x4-Trim.raw",
+        "./blob/marshmallow-sheet-5x4-Trim.raw",
+        "./blob/marshmallow-sheet-3x6-Trim.raw",
+    }
+
+    doc: ase.Document
+    uerr := ase.unmarshal(&doc, ASE_FILE)
+    defer ase.destroy_doc(&doc)
+
+    info: utils.Info
+    ierr := utils.get_info(&doc, &info)
+    defer utils.destroy(&info)
+
+
+    sheet_info := utils.Sprite_Info {
+        size = {info.md.width, info.md.height},
+        count = len(info.frames)
+    }
+    rules := utils.Sprite_Write_Rules {
+        align = .Middle,
+        background_colour = 0
+    }
+    sheet_16x1, err_16x1 := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_16x1 == nil, "failed to create sheet_16x1", err_16x1) {
+        return
+    }
+    defer utils.destroy(&sheet_16x1)
+
+    data, err := os.read_entire_file_or_err(FILES[0])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[0] + "\" %v", err) {
+        return
+    }
+
+    ok := slice.equal(sheet_16x1.img.data, data)
+    if !testing.expect(t, ok, "sheet_16x1 not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+    sheet_info.count = 4
+    sheet_4x4, err_4x4 := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_4x4 == nil, "failed to create sheet_4x4", err_4x4) {
+        return
+    }
+    defer utils.destroy(&sheet_4x4)
+    
+    data, err = os.read_entire_file_or_err(FILES[1])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[1] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_4x4.img.data, data)
+    if !testing.expect(t, ok, "sheet_4x4 not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+
+    sheet_info.count = 5
+    sheet_5x4, err_5x4 := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_5x4 == nil, "failed to create sheet_5x4", err_5x4) {
+        return
+    }
+    defer utils.destroy(&sheet_5x4)
+    
+    data, err = os.read_entire_file_or_err(FILES[2])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[2] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_5x4.img.data, data)
+    if !testing.expect(t, ok, "sheet_5x4 not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+
+    sheet_info.count = 3
+    sheet_3x6, err_3x6 := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_3x6 == nil, "failed to create sheet_3x6", err_3x6) {
+        return
+    }
+    defer utils.destroy(&sheet_3x6)
+    
+    data, err = os.read_entire_file_or_err(FILES[3])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[3] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_3x6.img.data, data)
+    if !testing.expect(t, ok, "sheet_3x6 not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+
+    sheet_info = {
+        size = utils.find_min_sprite_size(info, false),
+        count = 16,
+    }
+    rules = {
+        align = .Bot_Center,
+        shrink_to_pixels = true, 
+        ingore_sprite_size = true,
+        background_colour = 0,
+    }
+    sheet_16x1_trim, err_16x1_trim := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_16x1_trim == nil, "failed to create sheet_16x1_trim", err_16x1_trim) {
+        return
+    }
+    defer utils.destroy(&sheet_16x1_trim)
+
+    data, err = os.read_entire_file_or_err(FILES[4])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[2] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_16x1_trim.img.data, data)
+    if !testing.expect(t, ok, "sheet_16x1_trim not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+    sheet_info.count = 4
+    sheet_4x4_trim, err_4x4_trim := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_4x4_trim == nil, "failed to create sheet_4x4_trim", err_4x4_trim) {
+        return
+    }
+    defer utils.destroy(&sheet_4x4_trim)
+
+    data, err = os.read_entire_file_or_err(FILES[5])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[3] + "\" %v", err) {
+        return
+    }
+    delete(data)
+
+    ok = slice.equal(sheet_4x4_trim.img.data, data)
+    if !testing.expect(t, ok, "sheet_4x4_trim not equal") {
+        return
+    }
+
+
+    sheet_info.count = 5
+    sheet_5x4_trim, err_5x4_trim := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_5x4_trim == nil, "failed to create sheet_5x4_trim", err_5x4_trim) {
+        return
+    }
+    defer utils.destroy(&sheet_5x4_trim)
+    
+    data, err = os.read_entire_file_or_err(FILES[6])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[6] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_5x4_trim.img.data, data)
+    if !testing.expect(t, ok, "sheet_5x4_trim not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
+
+
+    sheet_info.count = 3
+    sheet_3x6_trim, err_3x6_trim := utils.create_sprite_sheet(info, sheet_info, rules)
+    if !testing.expectf(t, err_3x6_trim == nil, "failed to create sheet_3x6_trim", err_3x6_trim) {
+        return
+    }
+    defer utils.destroy(&sheet_3x6_trim)
+    
+    data, err = os.read_entire_file_or_err(FILES[7])
+    if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[7] + "\" %v", err) {
+        return
+    }
+
+    ok = slice.equal(sheet_3x6_trim.img.data, data)
+    if !testing.expect(t, ok, "sheet_3x6_trim not equal") {
+        delete(data)
+        return
+    }
+    delete(data)
 
 }
+
