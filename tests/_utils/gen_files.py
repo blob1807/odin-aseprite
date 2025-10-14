@@ -84,7 +84,43 @@ def main():
             "--sheet-columns", "4", 
             "--sheet", "marshmallow-sheet-4x4-Trim.png"
         ],
+        [ # 5x4
+            ASE_PATH, 
+            "-b", src,
+            "--color-mode", "rgb", 
+            "--sheet-columns", "5", 
+            "--sheet", "marshmallow-sheet-5x4.png"
+        ],
+        [ # 5x4 + Trim
+            ASE_PATH, 
+            "-b", src, "--trim-sprite",
+            "--color-mode", "rgb", 
+            "--sheet-columns", "5", 
+            "--sheet", "marshmallow-sheet-5x4-Trim.png"
+        ],
+        [ # 3x6
+            ASE_PATH, 
+            "-b", src,
+            "--color-mode", "rgb", 
+            "--sheet-columns", "3", 
+            "--sheet", "marshmallow-sheet-3x6.png"
+        ],
+        [ # 3x6 + Trim
+            ASE_PATH, 
+            "-b", src, "--trim-sprite",
+            "--color-mode", "rgb", 
+            "--sheet-columns", "3", 
+            "--sheet", "marshmallow-sheet-3x6-Trim.png"
+        ],
     ]
+
+    for cmd in commands:
+        cmd[-1] = str(Path(UTIL_PATH).joinpath("blob", cmd[-1]))
+        sp.run(cmd)
+
+        im = Image.open(cmd[-1])
+        with open(cmd[-1].removesuffix(".png") + ".raw", "wb") as f:
+            f.write(im.convert("RGBA").tobytes())
     
     return
 

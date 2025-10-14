@@ -378,3 +378,4 @@ find_pixel_bounds_min_max :: proc(img: [][4]u8, width, height: int, bg_colour: [
 
     return
 }
+
