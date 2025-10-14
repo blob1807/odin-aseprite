@@ -76,7 +76,7 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
             append(&sb, '|') or_return
         }
 
-        s := strconv.itoa(buf[:], int(img.data[n*ch]))
+        s := strconv.write_int(buf[:], i64(img.data[n*ch]), 10)
         for _ in 0..<3-len(s) {
             append(&sb, ' ') or_return
         }
@@ -84,7 +84,7 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
 
         for i in 1..<ch {
             append(&sb, ',')
-            s = strconv.itoa(buf[:], int(img.data[n*ch+i]))
+            s = strconv.write_int(buf[:], i64(img.data[n*ch+i]), 10)
             for _ in 0..<3-len(s) {
                 append(&sb, ' ') or_return
             }
