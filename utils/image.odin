@@ -328,8 +328,10 @@ cel_from_tileset :: proc(cel: Cel, ts: Tileset, chans: Pixel_Depth, alloc: runti
 // Write a cel to an image's data. Assumes tilemaps & linked cels have already been handled.
 write_cel :: proc (
     buf: []byte, cel: Cel, layer: Layer, md: Metadata, 
-    pal: Palette = nil,
+    pal: Palette = nil, 
 ) -> (err: Errors) {
+    // TODO: Allow for both arbitrary reads & writes, i.e. cropping.
+
     if len(cel.raw) <= 0 {
         fast_log(.Debug, "No Cel data to write.")
         return

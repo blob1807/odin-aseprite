@@ -300,36 +300,4 @@ to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image)
 }
 
 
-find_pixel_bounds :: proc(img: Image, bg_colour: [4]u8 = 0, check_trans := true) -> (bounds: Bounds) {
-    assert(img.md.bpp == .RGBA)
-    raw := mem.slice_data_cast([][4]u8, img.data)
-
-    min_pos, max_pos := find_pixel_bounds_min_max(raw, img.width, img.height, bg_colour, check_trans)
-
-    return { pos = min_pos, width = max_pos.x - min_pos.x, height = max_pos.y - min_pos.y }
-}
-
-
-find_pixel_bounds_min_max :: proc(img: [][4]u8, width, height: int, bg_colour: [4]u8, check_trans: bool) -> (min_pos, max_pos: [2]int) {
-
-    min_pos = { width, height }
-    max_pos = { 0, 0 }
-
-    for y in 0..<height {
-        for x in 0..<width {
-            pix := img[y * width + x]
-            if (pix.a == 0 && check_trans) || pix == bg_colour {
-                continue
-            }
-
-            min_pos = { min(x, min_pos.x), min(y, min_pos.y) }
-            max_pos = { max(x, max_pos.x), max(y, max_pos.y) }
-        }
-    }
-
-    max_pos += 1
-
-    return
-}
-
 

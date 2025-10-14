@@ -150,8 +150,7 @@ create_sprite_sheet_from_info :: proc (
 
             for cel in frame.cels {
                 layer := info.layers[cel.layer]
-                skip := (!layer.visiable) || (write_rules.ingore_bg_layers && layer.is_background)
-                if skip { continue }
+                if !layer.visiable || layer.is_background { continue }
 
                 size := [2]int{cel.width, cel.height}
                 if cel.tilemap.tiles != nil {
@@ -175,7 +174,7 @@ create_sprite_sheet_from_info :: proc (
             fp = min_pos
         }
 
-        cel_offset := write_rules.offset + s_info.boarder + sprite_pos - fp
+        cel_offset := write_rules.offset + s_info.boarder + sprite_pos
         
 
         for cel in frame.cels {
@@ -187,6 +186,17 @@ create_sprite_sheet_from_info :: proc (
             if cel.tilemap.tiles != nil {
                 ts := info.tilesets[layer.tileset]
                 s_cel = cel_from_tileset(cel, ts, info.md.bpp, tileset_alloc) or_return
+            }
+
+            if layer.is_background {
+                // NOTE(blob): 
+                // This isn't truly right & only for really works for solid colours.
+                // `write_cel` would need to rewrite support both arbitrary reads & writes.
+                s_cel.pos += cel_offset
+                s_cel.width = s_info.size.x
+                s_cel.height = s_info.size.y
+                write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
+                continue
             }
             
             // Sprite Sheet Aligment https://www.desmos.com/geometry/miqzk9ijus
@@ -208,10 +218,10 @@ create_sprite_sheet_from_info :: proc (
                 return
             }
 
-            s_cel.pos += cel_offset
+            s_cel.pos += cel_offset - fp
             // Make sure we don't pass a negitive position.
-            s_cel.pos = { max(s_cel.pos.x, 0), max(s_cel.pos.y, 0) }
-
+            s_cel.pos = { max(0, s_cel.pos.x), max(0, s_cel.pos.y) }
+            
             write_cel(res.img.data, s_cel, layer, res.img.md, info.palette) or_return
         }
     }
@@ -336,3 +346,35 @@ draw_sheet_boarder :: proc(sheet: ^Sprite_Sheet, colour: [4]u8) {
     return
 }
 
+
+find_pixel_bounds :: proc(img: Image, bg_colour: [4]u8 = 0, check_trans := true) -> (bounds: Bounds) {
+    assert(img.md.bpp == .RGBA)
+    raw := slice.reinterpret([][4]u8, img.data)
+
+    min_pos, max_pos := find_pixel_bounds_min_max(raw, img.width, img.height, bg_colour, check_trans)
+
+    return { pos = min_pos, width = max_pos.x - min_pos.x, height = max_pos.y - min_pos.y }
+}
+
+
+find_pixel_bounds_min_max :: proc(img: [][4]u8, width, height: int, bg_colour: [4]u8, check_trans: bool) -> (min_pos, max_pos: [2]int) {
+
+    min_pos = { width, height }
+    max_pos = { 0, 0 }
+
+    for y in 0..<height {
+        for x in 0..<width {
+            pix := img[y * width + x]
+            if (pix.a == 0 && check_trans) || pix == bg_colour {
+                continue
+            }
+
+            min_pos = { min(x, min_pos.x), min(y, min_pos.y) }
+            max_pos = { max(x, max_pos.x), max(y, max_pos.y) }
+        }
+    }
+
+    max_pos += 1
+
+    return
+}

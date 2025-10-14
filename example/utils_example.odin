@@ -286,12 +286,10 @@ sprite_sheet_dynamic_count_and_size :: proc() {
     /*
     `ingore_sprite_size` allow the sprite's size to be less then the OG file's size.
     `shrink_to_pixels` ensures the position correct.
-    `ingore_bg_layers` ensures we're not overwritting what was already writen. 
     */
     rules := utils.Sprite_Write_Rules {
         align = .Middle,
         shrink_to_pixels   = true,
-        ingore_bg_layers   = true,
         ingore_sprite_size = true,
         background_colour  = {53, 124, 187, 255},
     }
