@@ -71,7 +71,7 @@ main :: proc() {
             } else {
                 ib = im.pixels.buf[im.pixels.off:]
             }
-            os.write_entire_file(fmt.aprint(file, ".raw", sep=""), ib)
+            os.write_entire_file(fmt.aprint(strings.trim_suffix(file, ".png"), ".raw", sep=""), ib)
         }
         os.change_directory("..")
     }

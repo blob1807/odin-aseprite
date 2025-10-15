@@ -175,6 +175,26 @@ create_sprite_sheet_from_info :: proc (
         }
 
         cel_offset := write_rules.offset + s_info.boarder + sprite_pos
+
+        alignment: [2]int
+        // Sprite Sheet Aligment https://www.desmos.com/geometry/miqzk9ijus
+        switch write_rules.align {
+        case .Top_Left:   // Default Alignment
+        case .Top_Center: alignment.x = (sw - fw) / 2
+        case .Top_Right:  alignment.x = (sw - fw)
+        
+        case .Mid_Left:   alignment.y =   (sh - fh) / 2
+        case .Mid_Center: alignment   = { (sw - fw) / 2, (sh - fh) / 2 }
+        case .Mid_Right:  alignment   = { (sw - fw),     (sh - fh) / 2 }
+
+        case .Bot_Left:   alignment.y =    sh - fh
+        case .Bot_Center: alignment   = { (sw - fw) / 2, sh - fh }
+        case .Bot_Right:  alignment   = { (sw - fw),     sh - fh }
+        
+        case:
+            err = .Invalid_Alignment
+            return
+        }
         
 
         for cel in frame.cels {
@@ -199,26 +219,7 @@ create_sprite_sheet_from_info :: proc (
                 continue
             }
             
-            // Sprite Sheet Aligment https://www.desmos.com/geometry/miqzk9ijus
-            switch write_rules.align {
-            case .Top_Left:   // Default Alignment
-            case .Top_Center: s_cel.pos.x += (sw - fw) / 2
-            case .Top_Right:  s_cel.pos.x += (sw - fw)
-            
-            case .Mid_Left:   s_cel.pos.y +=   (sh - fh) / 2
-            case .Mid_Center: s_cel.pos   += { (sw - fw) / 2, (sh - fh) / 2 }
-            case .Mid_Right:  s_cel.pos   += { (sw - fw),     (sh - fh) / 2 }
-
-            case .Bot_Left:   s_cel.pos.y +=    sh - fh
-            case .Bot_Center: s_cel.pos   += { (sw - fw) / 2, sh - fh }
-            case .Bot_Right:  s_cel.pos   += { (sw - fw),     sh - fh }
-            
-            case:
-                err = .Invalid_Alignment
-                return
-            }
-
-            s_cel.pos += cel_offset - fp
+            s_cel.pos += alignment + cel_offset - fp
             // Make sure we don't pass a negitive position.
             s_cel.pos = { max(0, s_cel.pos.x), max(0, s_cel.pos.y) }
             
