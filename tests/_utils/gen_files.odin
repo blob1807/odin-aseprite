@@ -26,7 +26,7 @@ main :: proc() {
     fmt.println("  Making PNG files")
     os.change_directory(UTIL_PATH)
 
-    /*for path in PATHS {
+    for path in PATHS {
         fmt.println("    DIR", path)
         os.make_directory(path)
         os.change_directory(path)
@@ -74,7 +74,7 @@ main :: proc() {
             os.write_entire_file(fmt.aprint(file, ".raw", sep=""), ib)
         }
         os.change_directory("..")
-    }*/*/
+    }
 
     // Sprite Sheets. done file by file.
     {
