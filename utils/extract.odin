@@ -206,13 +206,11 @@ frames_from_doc_frames :: proc(data: []ase.Frame, alloc := context.allocator) ->
     for frame in data {
         append(&res, get_frame(frame) or_return) or_return
     }
-    return
+
+    return res[:], nil
 }
 
-get_frames :: proc {
-    frames_from_doc, 
-    frames_from_doc_frames, 
-}
+get_frames :: proc { frames_from_doc, frames_from_doc_frames }
 
 get_frame :: proc(data: ase.Frame, alloc := context.allocator) -> (frame: Frame, err: runtime.Allocator_Error) {
     frame.duration = i64(data.header.duration)
