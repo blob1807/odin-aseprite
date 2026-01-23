@@ -59,7 +59,7 @@ unmarshal_from_reader :: proc(doc: ^Document, r: io.Reader, alloc: runtime.Alloc
     tr: int
     defer {
         if err != nil {
-            log.errorf("Failed to unmarshal at %v (%X) cause of %v", tr, tr, err)
+            log.errorf("Failed to unmarshal at %v (%X) because of %v", tr, tr, err)
         }
     }
     

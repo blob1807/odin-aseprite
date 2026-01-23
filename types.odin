@@ -237,7 +237,7 @@ Chunk_Set :: bit_set[Chunk_Types_Set]
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors:      BYTE, // 0 == 256
-    colors:         []Color_RGB,
+    colors:          []Color_RGB,
 }
 
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
@@ -322,9 +322,9 @@ Com_Tilemap_Cel :: struct{
     width, height:    WORD,
     bits_per_tile:    WORD, // always 32
     bitmask_id:       Tile_ID,
-    bitmask_x:        DWORD `fmt:"b"`,
-    bitmask_y:        DWORD `fmt:"b"`,
-    bitmask_diagonal: DWORD `fmt:"b"`,
+    bitmask_x:        DWORD  `fmt:"b"`,
+    bitmask_y:        DWORD  `fmt:"b"`,
+    bitmask_diagonal: DWORD  `fmt:"b"`,
     tiles:            []TILE, // ZLIB compressed
 }
 
