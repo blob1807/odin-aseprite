@@ -113,7 +113,7 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
                         pal.green = c[1]
                         pal.blue = c[2]
                         pal.alpha = 255
-                        append(&entries)
+                        append(&entries, pal)
                     }
                 }
 
@@ -147,7 +147,7 @@ upgrade_doc :: proc(doc: ^ASE_Document, allocator := context.allocator) -> (err:
                         pal.green = scale(c[1]) or_return
                         pal.blue = scale(c[2]) or_return
                         pal.alpha = 255
-                        append(&entries)
+                        append(&entries, pal)
                     }
                 }
 
