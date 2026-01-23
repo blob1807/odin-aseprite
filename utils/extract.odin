@@ -42,7 +42,7 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         #partial switch c in chunk {
         case ase.Cel_Chunk:
             cel := Cel {
-                pos    = { int(c.x), int(c.y) },
+                pos     = { int(c.x), int(c.y) },
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
                 layer   = int(c.layer_index),
@@ -361,7 +361,8 @@ get_info :: proc(doc: ^ase.Document, info: ^Info, alloc := context.allocator) ->
     all_lays := make([dynamic]^ase.Layer_Chunk) or_return
     defer delete(all_lays)
 
-    hue_sat_warn: bool
+    @static hue_warn: bool
+    @static sat_warn: bool
 
     // TODO: Make big assumption that only Cel Chunks appear after first frame.
 
@@ -444,10 +445,15 @@ get_info :: proc(doc: ^ase.Document, info: ^Info, alloc := context.allocator) ->
                 }
 
                 when !ASE_USE_BUGGED_SAT {
-                    if !hue_sat_warn && (lay.blend_mode == .Saturation || lay.blend_mode == .Hue) {
-                        log.infof("Layer: \"%v\"; \"%v\" blend mode is bugged in Aseprite, in ways we can't replicate.", lay.name, lay.blend_mode)
-                        log.info("By default we use a fixed version. Compile with `ASE_USE_BUGGED_SAT=true` to use a bugged version.")
-                        hue_sat_warn = true
+                    if !hue_warn && lay.blend_mode == .Hue {
+                        log.infof("Layer: \"%v\"; \"Hue\" blend mode is bugged in Aseprite.", lay.name)
+                        log.info("By default we use a fixed version. Compile with `-define:ASE_USE_BUGGED_SAT=true` to use a bugged version.")
+                        hue_warn = true
+                    }
+					if !sat_warn && lay.blend_mode == .Saturation {
+                        log.infof("Layer: \"%v\"; \"Saturation\" blend mode is bugged in Aseprite.", lay.name)
+                        log.info("By default we use a fixed version. Compile with `-define:ASE_USE_BUGGED_SAT=true` to use a bugged version.")
+                        sat_warn = true
                     }
                 }
                 

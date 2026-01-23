@@ -15,7 +15,7 @@ _ :: reflect
 @(private)
 fast_log_str :: proc(lvl: log.Level, str: string, loc := #caller_location) {
     logger := context.logger
-    if logger.procedure == nil { return }
+    if logger.procedure == nil   { return }
     if lvl < logger.lowest_level { return }
     logger.procedure(logger.data, lvl, str, logger.options, loc)
 }
@@ -23,7 +23,7 @@ fast_log_str :: proc(lvl: log.Level, str: string, loc := #caller_location) {
 @(private)
 fast_log_str_enum :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc := #caller_location) where ir.type_is_enum(T) {
     logger := context.logger
-    if logger.procedure == nil { return }
+    if logger.procedure == nil   { return }
     if lvl < logger.lowest_level { return }
 
     s := reflect.enum_string(val)
@@ -40,7 +40,7 @@ fast_log_str_enum :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc 
 @(private)
 fast_log_str_num :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc := #caller_location) where ir.type_is_integer(T) {
     logger := context.logger
-    if logger.procedure == nil { return }
+    if logger.procedure == nil   { return }
     if lvl < logger.lowest_level { return }
 
     nb: [32]u8
@@ -56,7 +56,7 @@ fast_log_str_num :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc :
 }
 
 @(private)
-fast_log :: proc {fast_log_str, fast_log_str_enum, fast_log_str_num}
+fast_log :: proc { fast_log_str, fast_log_str_enum, fast_log_str_num }
 
 
 // Internal Debugging Tool.
@@ -68,7 +68,7 @@ format_pixels :: proc(img: Image, x := 4, y := 4, alloc := context.allocator) ->
     + (len(img.data)*2/ch)     /*<space>|*/ \
     + (img.width*img.height*4) /*tile gap*/
 
-    sb := make([dynamic]byte, 0, size) or_return
+    sb := make([dynamic]byte, 0, size, alloc) or_return
     buf: [3]byte 
 
     for n in 0..<len(img.data)/ch { 

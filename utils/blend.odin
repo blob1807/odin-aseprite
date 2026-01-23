@@ -56,7 +56,7 @@ blend_bytes :: proc(last, cur: []byte, opacity: int, mode: Blend_Mode) -> (err: 
 
 
 alpha :: mul
-mul :: proc{mul_u8, mul_i32, mul_int, mul_vec4, mul_vec3}
+mul :: proc{ mul_u8, mul_i32, mul_int, mul_vec4, mul_vec3 }
 
 mul_vec4 :: proc(a, b: [4]i32) -> [4]i32 {
     t := a * b + 128

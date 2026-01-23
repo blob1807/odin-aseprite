@@ -154,7 +154,7 @@ FILE_MAGIC_NUM : WORD : 0xA5E0
 FILE_HEADER_SIZE :: 128
 
 
-Color_Depth :: enum(WORD){
+Color_Depth :: enum(WORD) {
     Indexed   = 8,
     Grayscale = 16,
     RGBA      = 32,
