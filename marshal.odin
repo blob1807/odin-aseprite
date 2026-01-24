@@ -282,7 +282,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 }
 
             case Cel_Extra_Chunk:
-                write(cw, transmute(WORD)val.flags, cs) or_return
+                write(cw, transmute(DWORD)val.flags, cs) or_return
                 write(cw, val.x, cs) or_return
                 write(cw, val.y, cs) or_return
                 write(cw, val.width, cs) or_return

@@ -204,11 +204,12 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
 }
 
 read_cel_extra :: proc(r: io.Reader, rt: ^int) -> (chunk: Cel_Extra_Chunk, err: Unmarshal_Error) {
-    chunk.flags = transmute(Cel_Extra_Flags)read_word(r, rt) or_return
+    chunk.flags = transmute(Cel_Extra_Flags)read_dword(r, rt) or_return
     chunk.x = read_fixed(r, rt) or_return
     chunk.y = read_fixed(r, rt) or_return
     chunk.width = read_fixed(r, rt) or_return
     chunk.height = read_fixed(r, rt) or_return
+    read_skip(r, 16, rt) or_return
     return
 }
 

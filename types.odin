@@ -348,8 +348,8 @@ Cel_Chunk :: struct {
 }
 
 
-Cel_Extra_Flag  :: enum(WORD){ Precise }
-Cel_Extra_Flags :: bit_set[Cel_Extra_Flag; WORD]
+Cel_Extra_Flag  :: enum(DWORD){ Precise }
+Cel_Extra_Flags :: bit_set[Cel_Extra_Flag; DWORD]
 
 Cel_Extra_Chunk :: struct {
     flags:  Cel_Extra_Flags,
