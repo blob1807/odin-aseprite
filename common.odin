@@ -6,7 +6,8 @@ import "core:mem/virtual"
 @(require) import "core:log"
 
 
-ASE_DEBUG_MODE :: #config(ASE_DEBUG, ODIN_DEBUG)
+ASE_DEBUG_MODE     :: #config(ASE_DEBUG, ODIN_DEBUG)
+ASE_DEBUG_MESSAGES :: #config(ASE_DEBUG_MESSAGES, ASE_DEBUG_MODE)
 
 
 @(private)

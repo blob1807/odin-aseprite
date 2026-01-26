@@ -11,7 +11,8 @@ import "core:image"
 import ase ".."
 
 
-UTILS_DEBUG_MODE :: #config(ASE_UTILS_DEBUG, ODIN_DEBUG)
+UTILS_DEBUG_MODE   :: #config(ASE_UTILS_DEBUG, ODIN_DEBUG)
+ASE_DEBUG_MESSAGES :: #config(ASE_DEBUG_MESSAGES, UTILS_DEBUG_MODE)
 
 
 /* ================================== Destruction procs ================================== */
