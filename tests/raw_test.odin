@@ -98,34 +98,35 @@ raw_full_test :: proc(t: ^testing.T) {
 		}
 	}
     
-    fd, f_err := os.open("./tests", os.O_RDONLY, 0)
-    base_f, FF_err := os.read_dir(fd, 0)
+    fd, f_err := os.open("./tests", os.O_RDONLY)
+    base_f, FF_err := os.read_dir(fd, 0, context.allocator)
     defer delete(base_f)
     os.close(fd)
 
     for f in base_f {
-        if f.is_dir {
-            folder_h, f_err := os.open(f.fullpath, os.O_RDONLY, 0)
+        if f.type == .Directory {
+            folder_h, f_err := os.open(f.fullpath, os.O_RDONLY)
             defer os.close(folder_h)
-            sprites, ff_err := os.read_dir(folder_h, 0)
+            sprites, ff_err := os.read_dir(folder_h, 0, context.allocator)
             defer delete(sprites)
 
             for s in sprites {
                 if strings.has_suffix(s.name, ".aseprite") || strings.has_suffix(s.name, ".ase") {
-                    file_h, f_err := os.open(s.fullpath, os.O_RDONLY, 0)
+                    file_h, f_err := os.open(s.fullpath, os.O_RDONLY)
+                    if f_err != nil do testing.fail_now(t, fmt.tprintf("Failed to open file. %v", f_err))
                     defer os.close(file_h)
-                    data, ok := os.read_entire_file(file_h)
+                    data, err := os.read_entire_file(file_h, context.allocator)
                     defer delete(data)
 
-                    if !ok {
-                        testing.fail_now(t, "Failed to load file")
+                    if err != nil {
+                        testing.fail_now(t, fmt.tprintf("Failed to load file. OS error: %v", err))
                     }
                     doc: raw.ASE_Document
                     defer raw.destroy_doc(&doc)
 
-                    err := raw.unmarshal(data[:], &doc)
+                    unmarshal_err := raw.unmarshal(data[:], &doc)
 
-                    expect(t, err == nil, fmt.tprintf("%s Error: %v, File: %v", #procedure, err, s.fullpath))
+                    expect(t, err == nil, fmt.tprintf("%s Error: %v, File: %v", #procedure, unmarshal_err, s.fullpath))
 
                 }
             }

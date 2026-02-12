@@ -27,7 +27,7 @@ unmarshal_from_bufio :: proc(doc: ^Document, r: ^bufio.Reader, alloc: runtime.Al
 }
 
 unmarshal_from_filename :: proc(doc: ^Document, name: string, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
-    fd, fd_err := os.open(name, os.O_RDONLY, 0)
+    fd, fd_err := os.open(name, os.O_RDONLY)
     if fd_err != nil {
         log.error("Unable to read because of:", fd_err)
         return fd_err
@@ -36,8 +36,8 @@ unmarshal_from_filename :: proc(doc: ^Document, name: string, alloc: runtime.All
     return unmarshal(doc, fd, alloc)
 }
 
-unmarshal_from_handle :: proc(doc: ^Document, h: os.Handle, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
-    rr, ok := io.to_reader(os.stream_from_handle(h))
+unmarshal_from_handle :: proc(doc: ^Document, fd: ^os.File, alloc: runtime.Allocator = {}) -> (err: Unmarshal_Error) {
+    rr, ok := io.to_reader(os.to_stream(fd))
     if !ok {
         return .Unable_Make_Reader
     }

@@ -1,3 +1,4 @@
+#+feature using-stmt
 package ase_tests
 
 import "core:os"
@@ -43,8 +44,8 @@ report :: proc(t: ^testing.T) {
 // e.g. get_data_path("assets/blah") will return "/Odin_root/tests/assets/blah" if run within "/Odin_root",
 // "/Odin_root/tests" or "/Odin_root/tests/subdir" etc
 get_data_path :: proc(t: ^testing.T, sub_path: string) -> (data_path: string) {
-
-	cwd := os.get_current_directory()
+	cwd, err := os.get_working_directory(context.allocator)
+    assert(err != nil)
 	defer delete(cwd)
 
 	when ODIN_OS == .Windows {
