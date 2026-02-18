@@ -3,6 +3,7 @@ package aseprite_file_handler
 import "core:io"
 import "core:os"
 import "core:log"
+import "core:mem"
 import "core:bytes"
 import "core:bufio"
 import "vendor:zlib"
@@ -104,7 +105,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
         write_skip(fw, 2, fs) or_return
         write(fw, frame.header.num_of_chunks, fs) or_return
 
-        for chunk in frame.chunks {
+        for &chunk in frame.chunks {
             cb: bytes.Buffer
             defer bytes.buffer_destroy(&cb)
 
@@ -119,7 +120,7 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
             chunk_type := get_chunk_type(chunk) or_return
             write(cw, chunk_type, cs) or_return
 
-            switch val in chunk {
+            switch &val in chunk {
             case Old_Palette_256_Chunk:
                 write(cw, WORD(len(val)), cs) or_return
 
@@ -158,11 +159,12 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                         write(cw, p.num_colors, cs) or_return
                     }
 
-                    for c in p.colors {
+                    write(cw, mem.slice_data_cast([]u8, p.colors), cs) or_return
+                    /*for c in p.colors {
                         write(cw, c[2], cs) or_return
                         write(cw, c[1], cs) or_return
                         write(cw, c[0], cs) or_return
-                    }
+                    }*/
                 }
             case Layer_Chunk:
                 write(cw, transmute(WORD)val.flags, cs) or_return
@@ -332,15 +334,16 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 write(cw, WORD(len(val)), cs) or_return
                 write_skip(cw, 8, cs) or_return
 
-                for tag in val {
+                for &tag in val {
                     write(cw, tag.from_frame, cs) or_return
                     write(cw, tag.to_frame, cs) or_return
                     write(cw, BYTE(tag.loop_direction), cs) or_return
                     write(cw, tag.repeat, cs) or_return
                     write_skip(cw, 6, cs) or_return
-                    write(cw, tag.tag_color[2], cs) or_return
-                    write(cw, tag.tag_color[1], cs) or_return
-                    write(cw, tag.tag_color[0], cs) or_return
+                    write(cw, tag.tag_color[:], cs) or_return
+                    //write(cw, tag.tag_color[2], cs) or_return
+                    //write(cw, tag.tag_color[1], cs) or_return
+                    //write(cw, tag.tag_color[0], cs) or_return
                     write(cw, BYTE(0), cs) or_return
                     write(cw, tag.name, cs) or_return
                 }
@@ -351,17 +354,14 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                 write(cw, val.last_index, cs) or_return
                 write_skip(cw, 8, cs) or_return
 
-                for entry in val.entries {
+                for &entry in val.entries {
                     if entry.name != nil {
                         write(cw, WORD(1), cs) or_return
                     } else {
                         write(cw, WORD(0), cs) or_return
                     }
 
-                    write(cw, entry.color[3], cs) or_return
-                    write(cw, entry.color[2], cs) or_return
-                    write(cw, entry.color[1], cs) or_return
-                    write(cw, entry.color[0], cs) or_return
+                    write_bytes(cw, entry.color[:], cs) or_return
 
                     #partial switch v in entry.name {
                     case string:
@@ -382,12 +382,15 @@ marshal_to_writer :: proc(doc: ^Document, ww: io.Writer, allocator := context.al
                     write(cw, v, cs) or_return
                 }
 
-                switch v in val.color {
+                switch &v in val.color {
                 case Color_RGBA:
+                    write(cw, v[:], cs) or_return
+                    /*
                     write(cw, v[3], cs) or_return
                     write(cw, v[2], cs) or_return
                     write(cw, v[1], cs) or_return
                     write(cw, v[0], cs) or_return
+                    */
                 }
 
                 switch m in val.maps {
