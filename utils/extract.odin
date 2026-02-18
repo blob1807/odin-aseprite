@@ -182,6 +182,7 @@ tags_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
                     from      = int(t.from_frame), 
                     to        = int(t.to_frame), 
                     direction = t.loop_direction, 
+                    repeat    = int(t.repeat),
                     name      = t.name, 
                 }
                 append(&tags, tag) or_return
@@ -480,7 +481,8 @@ get_info :: proc(doc: ^ase.Document, info: ^Info, alloc := context.allocator) ->
                     tag := Tag {
                         int(t.from_frame), 
                         int(t.to_frame), 
-                        t.loop_direction, 
+                        t.loop_direction,
+                        int(t.repeat),
                         t.name,
                     }
                     append(&tags, tag) or_return
