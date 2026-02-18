@@ -56,8 +56,8 @@ create_sprite_sheet_from_info :: proc (
         err = .Invalid_Boarder
         return
 
-    case s_info.count <= 0:
-        err = .Invalid_Count
+    case s_info.per_row <= 0:
+        err = .Row_Count_to_Small
         return
 
     case (s_info.size.x * s_info.size.y) < (info.md.width * info.md.height):
@@ -74,13 +74,21 @@ create_sprite_sheet_from_info :: proc (
     }
 
     // Note(blob):
-    // Gets the clostest multiple of `s_info.count` that's `>=` to `len(info.frames)`.
+    // Gets the clostest multiple of `s_info.per_row` that's `>=` to `len(info.frames)`.
     // Allows for `len(info.frames)` to not be a multiple of `s_info.count`;
     // and still make a valid grid.
-    frame_count := len(info.frames) + (s_info.count - ((len(info.frames) - 1) %% s_info.count + 1))
+    frame_count := len(info.frames) + (s_info.per_row - ((len(info.frames) - 1) %% s_info.per_row + 1))
 
-    y_count := max( 1, frame_count / s_info.count )
-    width   := ( s_info.count * s_info.size.x ) + ( (s_info.count - 1) * s_info.spacing.x )
+    y_count := max( 1, frame_count / s_info.per_row )
+    if s_info.per_column > 0 {
+        if s_info.per_column < y_count {
+            err = .Column_Count_to_Small
+            return
+        }
+        y_count = s_info.per_column
+    }
+
+    width   := ( s_info.per_row * s_info.size.x ) + ( (s_info.per_row - 1) * s_info.spacing.x )
     height  := ( y_count * s_info.size.y ) + ( (y_count - 1) * s_info.spacing.y )
 
 
@@ -89,6 +97,7 @@ create_sprite_sheet_from_info :: proc (
     img_size   := img_width * img_height * 4
 
     res.info = s_info
+    res.info.per_column = y_count
     res.img  = {
         width  = img_width,
         height = img_height,
@@ -103,14 +112,16 @@ create_sprite_sheet_from_info :: proc (
     }
     
 
-    if write_rules.use_index_bg_colour && info.md.bpp == .Indexed && !info.layers[0].is_background {
-        img_p := slice.reinterpret([]Pixel, res.img.data)
-        c := info.palette[info.md.trans_idx].color
-        c.a = 0
-        slice.fill(img_p, c)
-    
-    } else {
-        fill_colour(res.img.data, write_rules.background_colour)
+    if write_rules.fill_background {
+        c := write_rules.background_color
+        if write_rules.use_index_bg_color && info.md.bpp == .Indexed && !info.layers[0].is_background {
+            c = info.palette[info.md.trans_idx].color
+            c.a = 0
+        }
+
+        if c != 0 {
+            fill_colour(res.img.data, write_rules.background_color)
+        }
     }
 
     runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(context.allocator == context.temp_allocator)
@@ -289,7 +300,7 @@ draw_sheet_spacing :: proc(sheet: ^Sprite_Sheet, colour: [4]u8, always_draw: boo
         }
     }
 
-    col_count := info.count - 1
+    col_count := info.per_row - 1
     if 0 < col_count {
         col_block := info.size.x + info.spacing.x
         col_fill  := always_draw ? max(1, info.spacing.y) : info.spacing.y

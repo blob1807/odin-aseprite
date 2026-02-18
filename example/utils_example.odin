@@ -213,7 +213,7 @@ sprite_sheet :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        count = 16,
+        per_row = 16,
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(&doc, sheet_info)
@@ -238,13 +238,13 @@ sprite_sheet_custom_rules :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {64, 64},
-        count = 4,
+        per_row = 4,
     }
 
     rules := utils.Sprite_Write_Rules {
         align = .Top,
         ingore_bg_layers = true,
-        background_colour = {20, 20, 248, 255},
+        background_color = {20, 20, 248, 255},
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(&doc, sheet_info, rules)
@@ -256,7 +256,7 @@ sprite_sheet_custom_rules :: proc() {
 }
 
 
-sprite_sheet_dynamic_count_and_size :: proc() {
+sprite_sheet_dynamic_pre_row_and_size :: proc() {
     data := #load("../tests/blob/marshmallow.aseprite")
     doc: ase.Document
     defer ase.destroy_doc(&doc)
@@ -280,7 +280,7 @@ sprite_sheet_dynamic_count_and_size :: proc() {
     // Allows for a very basic form of sprite packing.
     sheet_info := utils.Sprite_Info {
         size  = utils.find_min_sprite_size(info, false),
-        count = len(info.frames),
+        per_row = len(info.frames),
     }
 
     /*
@@ -291,7 +291,7 @@ sprite_sheet_dynamic_count_and_size :: proc() {
         align = .Middle,
         shrink_to_pixels   = true,
         ingore_sprite_size = true,
-        background_colour  = {53, 124, 187, 255},
+        background_color  = {53, 124, 187, 255},
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(info, sheet_info, rules)
@@ -316,9 +316,9 @@ sprite_sheet_draw_spacing_and_boarder :: proc() {
 
     sheet_info := utils.Sprite_Info {
         size  = {48, 48},
-        count = 6,
-        spacing = 2,
-        boarder = 5,
+        per_row = 6,
+        spacing = {2, 2},
+        boarder = {5, 5},
     }
 
     sheet, sheet_err := utils.create_sprite_sheet(&doc, sheet_info)
@@ -330,4 +330,47 @@ sprite_sheet_draw_spacing_and_boarder :: proc() {
 
     utils.draw_sheet_spacing(&sheet, {255, 0, 0, 255}, false)
     utils.draw_sheet_boarder(&sheet, {255, 0, 0, 255})
+}
+
+
+sprite_sheet_more_columns_then_needed :: proc() {
+    data := #load("../tests/blob/marshmallow.aseprite")
+    doc: ase.Document
+    defer ase.destroy_doc(&doc)
+
+    doc_err := ase.unmarshal(&doc, data)
+    if doc_err != nil {
+        fmt.eprintln("Fail to unmarshal:", doc_err)
+        return
+    }
+
+    info: utils.Info
+    defer utils.destroy_info(&info)
+
+    info_err := utils.get_info(&doc, &info)
+    if info_err != nil {
+        fmt.eprintln("Fail to get info:", info_err)
+        return
+    }
+
+    sheet_info := utils.Sprite_Info {
+        size  = {48, 48},
+        per_row = 4,
+        per_column = 6,
+    }
+
+    // The default color is blank
+    bc, ok := utils.get_background_color(info)
+    if !ok {
+        bc = {255, 255, 255, 255}
+    }
+    rules := utils.DEFAULT_SPRITE_WRITE_RULES
+    rules.background_color = bc
+
+    sheet, sheet_err := utils.create_sprite_sheet(info, sheet_info, rules)
+    if sheet_err != nil {
+        fmt.eprintln("Fail to create sheet:", sheet_err)
+        return
+    }
+    defer utils.destroy(sheet)
 }

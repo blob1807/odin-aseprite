@@ -1,6 +1,7 @@
 package aseprite_file_handler_utility
 
 import "base:runtime"
+import ir "base:intrinsics"
 import "core:mem"
 import "core:slice"
 import "core:image"
@@ -271,34 +272,74 @@ remove_alpha :: proc(img: []u8, alloc := context.allocator) -> (res: []u8, err: 
 
 
 // Converts `utils.Image` to a `core:image.Image` with allocation
-to_core_image :: proc(buf: []byte, md: Metadata, alloc := context.allocator) -> (img: image.Image, err: runtime.Allocator_Error) {
-    img.width      = md.width
-    img.height     = md.height
-    img.depth      = 8
-    img.channels   = 4
-    img.pixels.buf = make([dynamic]byte, len(buf), alloc) or_return
+to_core_image :: proc(img: Image, alloc := context.allocator) -> (res: image.Image, err: runtime.Allocator_Error) {
+    res.width      = img.md.width
+    res.height     = img.md.height
+    res.depth      = 8
+    res.channels   = 4
+    res.pixels.buf = make([dynamic]byte, len(img.data), alloc) or_return
 
-    copy(img.pixels.buf[:], buf)
+    copy(res.pixels.buf[:], img.data)
     return
 }
 
 // Converts `utils.Image` to a `core:image.Image` with no allocation
-to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image) {
-    img.width    = md.width
-    img.height   = md.height
-    img.depth    = 8
-    img.channels = 4
+to_core_image_non_alloc :: proc(img: Image) -> (res: image.Image) {
+    res.width    = img.md.width
+    res.height   = img.md.height
+    res.depth    = 8
+    res.channels = 4
 
     raw := runtime.Raw_Dynamic_Array {
-        data      = raw_data(buf),
-        len       = len(buf),
-        cap       = len(buf),
+        data      = raw_data(img.data),
+        len       = len(img.data),
+        cap       = len(img.data),
         allocator = runtime.nil_allocator(),
     }
 
-    img.pixels.buf = transmute([dynamic]byte)raw
+    res.pixels.buf = transmute([dynamic]byte)raw
     return
 }
 
 
+get_background_color :: proc {
+    get_background_color_from_doc,
+    get_background_color_from_info,
+}
 
+get_background_color_from_doc :: proc(doc: ^ase.Document, frame := 0) -> (res: [4]u8, ok: bool) {
+    runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(context.allocator == context.temp_allocator)
+
+    info: Info
+    err := get_info(doc, &info, context.temp_allocator)
+    if err != nil {
+        return 0, false
+    }
+
+    return get_background_color_from_info(info, frame)
+}
+
+get_background_color_from_info :: proc(info: Info, frame := 0) -> (res: [4]u8, ok: bool) {
+    for layer, idx in info.layers {
+        if !layer.is_background {
+            continue
+        }
+
+        for cel in info.frames[frame].cels {
+            if cel.layer == idx {
+                switch info.md.bpp {
+                case .Indexed:
+                    res = info.palette[info.md.trans_idx].color
+                case .Grayscale: 
+                    res.rgb = cel.raw[0]
+                    res.a = cel.raw[1]
+                case .RGBA:
+                    res = ir.unaligned_load((^[4]byte)(&cel.raw[0]))
+                }
+                return res, true
+            }
+        }
+    }
+
+    return 0, false
+}

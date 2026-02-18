@@ -36,7 +36,8 @@ main :: proc() {
 
     sprite_sheet()
     sprite_sheet_custom_rules()
-    sprite_sheet_dynamic_count_and_size()
+    sprite_sheet_dynamic_pre_row_and_size()
     sprite_sheet_draw_spacing_and_boarder()
+    sprite_sheet_more_columns_then_needed()
     
 }

@@ -41,9 +41,10 @@ Tileset_Error :: enum {
 Sprite_Sheet_Error :: enum {
     None,
     Sprite_Size_to_Small,
+    Row_Count_to_Small, 
+    Column_Count_to_Small, 
     Invalid_Alignment,
     Invalid_Offset,
-    Invalid_Count,
     Invalid_Spacing,
     Invalid_Boarder,
 }
@@ -59,7 +60,9 @@ Errors :: union #shared_nil {
 }
 
 // Raw Types
-B_Pixel :: [4]i32
+
+
+B_Pixel :: [4]i32 // Big Pixel; Only used for blending
 Pixel   :: [4]byte
 Pixels  :: []byte
 
@@ -116,6 +119,7 @@ Tag :: struct {
     from:      int,
     to:        int,
     direction: ase.Tag_Loop_Dir,
+    repeat:    int,
     name:      string,
 }
 
@@ -187,13 +191,14 @@ Info :: struct {
 
 // Sprite Sheet
 Sprite_Info :: struct {
-    size:    [2]int, // Size of a sprite.
-    spacing: [2]int, // Spacing between each sprite.
-    boarder: [2]int, // Boarder between sheet & image edge.
-    count:   int,    // Sprites per row.
+    size:       [2]int, // Size of a sprite (Required).
+    per_row:    int,    // Sprites per row (Required).
+    per_column: int,    // Sprites per column (Optional).
+    spacing:    [2]int, // Spacing between each sprite (Optional).
+    boarder:    [2]int, // Boarder between sheet & image edge (Optional).
 }
 
-// Govern's how Frames are writen a Sprite
+// Govern's how Frames are writen to a Sprite Sheet
 Sprite_Write_Rules :: struct {
 
     // What point on the Frame & Sprite to align. 
@@ -203,26 +208,30 @@ Sprite_Write_Rules :: struct {
     // Offset from the alignment point.
     offset: [2]int,
 
-    // Resulting Sheet's Background Colour
-    background_colour: [4]u8,
+    // Resulting Sheet's Background Color
+    background_color: [4]u8,
 
     // Shrinks Frame to the bounds of its visable pixels.  
     // NOTE(blob):  
-    //     Using this may slighly change the positioning. 
+    //     Setting this may slighly change the positioning. 
     //     This is expected & intended behaviour. 
     shrink_to_pixels: bool,
 
-    // Whether to use the Background Colour
-    // of the ase file or use `background_colour`;
-    // Only used for `Indexed` colour mode.
-    use_index_bg_colour: bool,
+    // Whether to use the Background Color
+    // of the ase file or use `background_color`;
+    // Only used for `Indexed` color mode.
+    use_index_bg_color: bool,
 
     // Whether to ignore Background layers.
     ingore_bg_layers: bool,
 
     // Whether to ingore the Sprite size being
-    // smaller then the Frame frame.
+    // smaller then the Frame size.
     ingore_sprite_size: bool,
+
+    // Whether to fill the sheet
+    // with the Background Color. 
+    fill_background: bool,
 }
 
 // Sprite Sheet Alignment https://www.desmos.com/geometry/miqzk9ijus
@@ -244,9 +253,10 @@ Sprite_Alignment :: enum {
 
 
 // Precomputed Types. They own all their data.
+@(raddbg_type_view)
 Image :: struct {
     using md: Metadata, 
-    data:     Pixels `fmt:"-"`, 
+    data:     Pixels `fmt:"-" raddbg:"bitmap(data.data, md.width, md.height)"`, 
 }
 
 Animation :: struct {
@@ -297,10 +307,11 @@ Blend_Mode :: enum {
 DEFAULT_SPRITE_WRITE_RULES :: Sprite_Write_Rules {
     align               = .Mid_Center,
     offset              = {0, 0},
-    background_colour   = {0, 0, 0, 0},
+    background_color    = {0, 0, 0, 0},
     shrink_to_pixels    = false,
-    use_index_bg_colour = true,
+    use_index_bg_color  = true,
     ingore_bg_layers    = false,
     ingore_sprite_size  = false,
+    fill_background     = true,
 }
 
