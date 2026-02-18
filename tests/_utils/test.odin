@@ -339,11 +339,11 @@ sprite_sheet_test :: proc(t: ^testing.T) {
 
     sheet_info := utils.Sprite_Info {
         size = {info.md.width, info.md.height},
-        count = len(info.frames)
+        per_row = len(info.frames)
     }
     rules := utils.Sprite_Write_Rules {
         align = .Middle,
-        background_colour = 0
+        background_color = 0
     }
     sheet_16x1, err_16x1 := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_16x1 == nil, "failed to create sheet_16x1", err_16x1) {
@@ -363,7 +363,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     delete(data)
 
-    sheet_info.count = 4
+    sheet_info.per_row = 4
     sheet_4x4, err_4x4 := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_4x4 == nil, "failed to create sheet_4x4", err_4x4) {
         return
@@ -383,7 +383,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     delete(data)
 
 
-    sheet_info.count = 5
+    sheet_info.per_row = 5
     sheet_5x4, err_5x4 := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_5x4 == nil, "failed to create sheet_5x4", err_5x4) {
         return
@@ -403,7 +403,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     delete(data)
 
 
-    sheet_info.count = 3
+    sheet_info.per_row = 3
     sheet_3x6, err_3x6 := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_3x6 == nil, "failed to create sheet_3x6", err_3x6) {
         return
@@ -451,7 +451,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     delete(data)
 
-    sheet_info.count = 4
+    sheet_info.per_row = 4
     sheet_4x4_trim, err_4x4_trim := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_4x4_trim == nil, "failed to create sheet_4x4_trim", err_4x4_trim) {
         return
@@ -470,7 +470,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
 
 
-    sheet_info.count = 5
+    sheet_info.per_row = 5
     sheet_5x4_trim, err_5x4_trim := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_5x4_trim == nil, "failed to create sheet_5x4_trim", err_5x4_trim) {
         return
@@ -490,7 +490,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     delete(data)
 
 
-    sheet_info.count = 3
+    sheet_info.per_row = 3
     sheet_3x6_trim, err_3x6_trim := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_3x6_trim == nil, "failed to create sheet_3x6_trim", err_3x6_trim) {
         return
