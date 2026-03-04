@@ -1,7 +1,6 @@
 package odin_aseprite_utils_test
 
 import "core:os"
-import "core:os/os2"
 import "core:mem"
 import "core:fmt"
 import "core:image/png"
@@ -39,8 +38,8 @@ main :: proc() {
             }
             SAVE_CMD[2] = file
 
-            p, _ := os2.process_start({command=SAVE_CMD})
-            _, _ = os2.process_wait(p)
+            p, _ := os.process_start({command=SAVE_CMD})
+            _, _ = os.process_wait(p)
         }
         os.change_directory("..")
     }
@@ -143,8 +142,8 @@ main :: proc() {
 
         for cmd in commands {
             cmd[len(cmd)-1] = fp.join({UTIL_PATH, "blob", cmd[len(cmd)-1]})
-            p, _ := os2.process_start({command=cmd})
-            _, _ = os2.process_wait(p)
+            p, _ := os.process_start({command=cmd})
+            _, _ = os.process_wait(p)
 
             ib: []byte
             im, _ := png.load(cmd[len(cmd)-1])
@@ -161,7 +160,8 @@ main :: proc() {
             } else {
                 ib = im.pixels.buf[im.pixels.off:]
             }
-            os.write_entire_file(fmt.aprint(strings.trim_right(cmd[len(cmd)-1], ".png"), ".raw", sep=""), ib)
+            path, _ := os.join_path({strings.trim_right(cmd[len(cmd)-1], ".png"), ".raw"}, context.temp_allocator)
+            os.write_entire_file(path, ib)
         }
     }
 

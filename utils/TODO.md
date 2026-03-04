@@ -86,6 +86,7 @@ Jarvis make automating things easier please.
 - [X] Tags
     - [X] Only selected Tag
     - [X] Use Tag durection
+- [ ] Repect Repeat value
 
 
 ### Tilemap:

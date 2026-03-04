@@ -171,7 +171,7 @@ Tileset :: struct {
     height: int, 
     num:    int,
     name:   string,
-    tiles:  Pixels, 
+    tiles:  Pixels `fmt:"-"`, 
 }
 
 

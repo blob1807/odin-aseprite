@@ -98,21 +98,21 @@ raw_full_test :: proc(t: ^testing.T) {
 		}
 	}
     
-    fd, f_err := os.open("./tests", os.O_RDONLY)
+    fd, f_err := os.open("./tests", {.Read})
     base_f, FF_err := os.read_dir(fd, 0, context.allocator)
     defer delete(base_f)
     os.close(fd)
 
     for f in base_f {
         if f.type == .Directory {
-            folder_h, f_err := os.open(f.fullpath, os.O_RDONLY)
+            folder_h, f_err := os.open(f.fullpath, {.Read})
             defer os.close(folder_h)
             sprites, ff_err := os.read_dir(folder_h, 0, context.allocator)
             defer delete(sprites)
 
             for s in sprites {
                 if strings.has_suffix(s.name, ".aseprite") || strings.has_suffix(s.name, ".ase") {
-                    file_h, f_err := os.open(s.fullpath, os.O_RDONLY)
+                    file_h, f_err := os.open(s.fullpath, {.Read})
                     if f_err != nil do testing.fail_now(t, fmt.tprintf("Failed to open file. %v", f_err))
                     defer os.close(file_h)
                     data, err := os.read_entire_file(file_h, context.allocator)

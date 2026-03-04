@@ -56,7 +56,7 @@ ase_marshal :: proc(t: ^testing.T) {
 
 @(test)
 ase_full_test :: proc(t: ^testing.T) {
-    fd, f_err := os.open(".", os.O_RDONLY)
+    fd, f_err := os.open(".", {.Read})
     base_f, FF_err := os.read_dir(fd, 0, context.allocator)
     defer {
         for b in base_f {
@@ -69,7 +69,7 @@ ase_full_test :: proc(t: ^testing.T) {
 
     for f in base_f {
         if f.type == .Directory {
-            folder_h, f_err := os.open(f.fullpath, os.O_RDONLY)
+            folder_h, f_err := os.open(f.fullpath, {.Read})
             defer os.close(folder_h)
             sprites, ff_err := os.read_dir(folder_h, 0, context.allocator)
             defer { 
@@ -82,7 +82,7 @@ ase_full_test :: proc(t: ^testing.T) {
 
             for s in sprites {
                 if strings.has_suffix(s.name, ".aseprite") || strings.has_suffix(s.name, ".ase") {
-                    file_h, f_err := os.open(s.fullpath, os.O_RDONLY)
+                    file_h, f_err := os.open(s.fullpath, {.Read})
                     defer os.close(file_h)
                     data, err := os.read_entire_file(file_h, context.allocator)
                     defer delete(data)
