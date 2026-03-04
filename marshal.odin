@@ -17,8 +17,8 @@ marshal_to_bytes_buff :: proc(doc: ^Document, b: ^bytes.Buffer, allocator := con
     return marshal(doc, w, allocator)
 }
 
-marshal_to_handle :: proc(doc: ^Document, h: os.Handle, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
-    w, ok := io.to_writer(os.stream_from_handle(h))
+marshal_to_handle :: proc(doc: ^Document, fd: ^os.File, allocator := context.allocator)-> (file_size: int, err: Marshal_Error) {
+    w, ok := io.to_writer(os.to_stream(fd))
     if !ok {
         return file_size, .Unable_Make_Writer
     }

@@ -1,3 +1,4 @@
+#+feature using-stmt
 package ase_tests
 
 import "core:slice"

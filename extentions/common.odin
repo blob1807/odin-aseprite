@@ -17,14 +17,13 @@ read_file :: proc(path: string, ext: ext_type) {
     
     dir := fmt.aprintf("./temp_%v", reflect.enum_name_from_value(ext))
     err := os.make_directory(dir)
-    if err != 0 {
+    if err != nil {
         fmt.println(err)
         return
     }
 
-    cur_dir := os.get_current_directory()
     err = os.set_current_directory(dir)
-    if err != 0 {
+    if err != nil {
         fmt.println(err)
         return
     }
