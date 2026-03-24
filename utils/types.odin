@@ -62,7 +62,7 @@ Errors :: union #shared_nil {
 // Raw Types
 
 
-B_Pixel :: [4]i32 // Big Pixel; Only used for blending
+F_Pixel :: [4]f64 // Big Pixel; Only used for blending
 Pixel   :: [4]byte
 Pixels  :: []byte
 

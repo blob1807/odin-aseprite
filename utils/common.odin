@@ -245,9 +245,9 @@ compute_alpha :: proc(img: []u8, alloc := context.allocator) -> (res: []u8, err:
     buf := make([][3]u8, len(img_buf), alloc) or_return
 
     for p, pos in img_buf {
-        bp := [4]i32{ i32(p.r), i32(p.g), i32(p.b), i32(p.a) }
-        bp.rgb = bp.rgb * bp.a / (255 + bp.a - alpha(bp.a, 255))
-        buf[pos] = { u8(bp.r), u8(bp.g), u8(bp.b) }
+        fp := pixel_to_f64(p)
+        fp.rgb *= fp.a
+        buf[pos] = pixel_from_f64(fp).rgb
     }
 
     return mem.slice_data_cast([]u8, buf), nil

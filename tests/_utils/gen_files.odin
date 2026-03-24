@@ -70,7 +70,7 @@ main :: proc() {
             } else {
                 ib = im.pixels.buf[im.pixels.off:]
             }
-            os.write_entire_file(fmt.aprint(strings.trim_suffix(file, ".png"), ".raw", sep=""), ib)
+            _ = os.write_entire_file(fmt.aprint(strings.trim_suffix(file, ".png"), ".raw", sep=""), ib)
         }
         os.change_directory("..")
     }
@@ -78,7 +78,7 @@ main :: proc() {
     // Sprite Sheets. done file by file.
     {
         fmt.println("Sprite Sheets")
-        src := fp.join({TEST_PATH, "blob/marshmallow.aseprite"})
+        src, _ := fp.join({TEST_PATH, "blob/marshmallow.aseprite"}, context.allocator)
 
         commands := [][]string {
             { // 16x1
@@ -141,7 +141,7 @@ main :: proc() {
         fmt.println("    DIR blob")
 
         for cmd in commands {
-            cmd[len(cmd)-1] = fp.join({UTIL_PATH, "blob", cmd[len(cmd)-1]})
+            cmd[len(cmd)-1], _ = fp.join({UTIL_PATH, "blob", cmd[len(cmd)-1]}, context.allocator)
             p, _ := os.process_start({command=cmd})
             _, _ = os.process_wait(p)
 
@@ -161,7 +161,7 @@ main :: proc() {
                 ib = im.pixels.buf[im.pixels.off:]
             }
             path, _ := os.join_path({strings.trim_right(cmd[len(cmd)-1], ".png"), ".raw"}, context.temp_allocator)
-            os.write_entire_file(path, ib)
+            _ = os.write_entire_file(path, ib)
         }
     }
 

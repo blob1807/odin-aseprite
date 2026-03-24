@@ -425,12 +425,12 @@ write_cel :: proc (
                 if ipix.a != 0 {
                     // Blend pixels)
                     p := ir.unaligned_load(ipix)
-                    a := alpha(cel.opacity, layer.opacity)
+                    a := f64(cel.opacity)/255 * f64(layer.opacity)/255.0
                     pix = blend(p, pix, a, layer.blend_mode) or_return
 
                 } else {
                     // Merge Alpha & Opacities
-                    pix.a = u8(alpha(i32(pix.a), alpha(cel.opacity, layer.opacity)))
+                    pix.a = u8((f64(pix.a)/255 * f64(cel.opacity)/255 * f64(layer.opacity)/255) * 255)
                 }
 
                 ir.unaligned_store(ipix, pix)

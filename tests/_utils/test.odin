@@ -117,7 +117,7 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
         }
 
         doc: ase.Document
-        s := fp.join({"..", PATH, file}, context.temp_allocator)
+        s, _ := fp.join({"..", PATH, file}, context.temp_allocator)
         unm_err := ase.unmarshal(&doc, s)
         if unm_err != nil {
             testing.fail_now(t, fmt.tprint("Failed to unmarshal", s, unm_err))
@@ -154,8 +154,8 @@ test_runner :: proc(t: ^testing.T, PATH: string, SKIP_FILES: []string) {
                 }
             }
 
-            buf, buf_err := os.read_entire_file_from_filename(raw)
-            if buf_err != true {
+            buf, buf_err := os.read_entire_file(raw, context.allocator)
+            if buf_err != nil {
                 testing.fail_now(t, fmt.tprint("Failed read file", raw, buf_err))
             }
             defer delete(buf)
@@ -351,7 +351,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_16x1)
 
-    data, err := os.read_entire_file_or_err(FILES[0])
+    data, err := os.read_entire_file(FILES[0], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[0] + "\" %v", err) {
         return
     }
@@ -370,7 +370,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_4x4)
     
-    data, err = os.read_entire_file_or_err(FILES[1])
+    data, err = os.read_entire_file(FILES[1], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[1] + "\" %v", err) {
         return
     }
@@ -390,7 +390,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_5x4)
     
-    data, err = os.read_entire_file_or_err(FILES[2])
+    data, err = os.read_entire_file(FILES[2], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[2] + "\" %v", err) {
         return
     }
@@ -410,7 +410,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_3x6)
     
-    data, err = os.read_entire_file_or_err(FILES[3])
+    data, err = os.read_entire_file(FILES[3], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[3] + "\" %v", err) {
         return
     }
@@ -425,13 +425,13 @@ sprite_sheet_test :: proc(t: ^testing.T) {
 
     sheet_info = {
         size = utils.find_min_sprite_size(info, false),
-        count = 16,
+        per_row = 16,
     }
     rules = {
         align = .Bot_Center,
         shrink_to_pixels = true, 
         ingore_sprite_size = true,
-        background_colour = 0,
+        background_color = 0,
     }
     sheet_16x1_trim, err_16x1_trim := utils.create_sprite_sheet(info, sheet_info, rules)
     if !testing.expectf(t, err_16x1_trim == nil, "failed to create sheet_16x1_trim", err_16x1_trim) {
@@ -439,7 +439,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_16x1_trim)
 
-    data, err = os.read_entire_file_or_err(FILES[4])
+    data, err = os.read_entire_file(FILES[4], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[2] + "\" %v", err) {
         return
     }
@@ -458,7 +458,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_4x4_trim)
 
-    data, err = os.read_entire_file_or_err(FILES[5])
+    data, err = os.read_entire_file(FILES[5], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[3] + "\" %v", err) {
         return
     }
@@ -477,7 +477,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_5x4_trim)
     
-    data, err = os.read_entire_file_or_err(FILES[6])
+    data, err = os.read_entire_file(FILES[6], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[6] + "\" %v", err) {
         return
     }
@@ -497,7 +497,7 @@ sprite_sheet_test :: proc(t: ^testing.T) {
     }
     defer utils.destroy(&sheet_3x6_trim)
     
-    data, err = os.read_entire_file_or_err(FILES[7])
+    data, err = os.read_entire_file(FILES[7], context.allocator)
     if !testing.expectf(t, err == nil, "failed to open file\"" + FILES[7] + "\" %v", err) {
         return
     }
