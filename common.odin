@@ -226,6 +226,7 @@ _destroy_palette :: proc(c: Palette_Chunk, alloc := context.allocator) -> (err: 
 
 @(private)
 _destroy_user_data :: proc(c: User_Data_Chunk, alloc := context.allocator) -> (err: runtime.Allocator_Error) {
+	c := c
     switch &s in c.text {
     case string:
         delete(s, alloc) or_return

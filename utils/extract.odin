@@ -121,7 +121,7 @@ layers_from_doc_frame :: proc(frame: ase.Frame, layer_valid_opacity := false, al
     all_lays := make([dynamic]^ase.Layer_Chunk) or_return
     defer delete(all_lays)
 
-    for chunk in frame.chunks {
+    for &chunk in frame.chunks {
         #partial switch &v in chunk {
         case ase.Layer_Chunk:
             lay := Layer {
