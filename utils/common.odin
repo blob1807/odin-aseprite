@@ -277,9 +277,9 @@ to_core_image :: proc(img: Image, alloc := context.allocator) -> (res: image.Ima
     res.height     = img.md.height
     res.depth      = 8
     res.channels   = 4
-    res.pixels.buf = make([dynamic]byte, len(img.data), alloc) or_return
+    res.pixels = make([dynamic]byte, len(img.data), alloc) or_return
 
-    copy(res.pixels.buf[:], img.data)
+    copy(res.pixels[:], img.data)
     return
 }
 
@@ -297,7 +297,7 @@ to_core_image_non_alloc :: proc(img: Image) -> (res: image.Image) {
         allocator = runtime.nil_allocator(),
     }
 
-    res.pixels.buf = transmute([dynamic]byte)raw
+    res.pixels = transmute([dynamic]byte)raw
     return
 }
 
